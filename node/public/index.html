@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DP4500 UI (Node + Edge)</title>
+<style>
+  :root{--bg:#0b1020;--fg:#dfe7ff;--mut:#9bb1d4;--btn:#1f6feb;--ok:#0dbc79;--bad:#ff5d5d;--card:#111a2a}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--fg)}
+  header{padding:16px 20px;border-bottom:1px solid #12223a}
+  .wrap{max-width:980px;margin:0 auto;padding:18px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid #15243a;border-radius:12px;padding:14px;flex:1 1 300px}
+  button{background:var(--btn);color:white;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .mut{color:var(--mut)}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+  pre{background:#0a1322;border:1px solid #14243b;padding:10px;border-radius:10px;max-height:320px;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{border-bottom:1px solid #1a2a42;padding:6px 8px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header><h2>DP4500 – Panel simple</h2><div class="mut">Node + edge-js + .NET + DPUruNet</div></header>
+<div class="wrap">
+
+  <div class="row">
+    <div class="card">
+      <h3>Acciones</h3>
+      <div class="actions">
+        <button id="btnBootstrap">Bootstrap nativos</button>
+        <button id="btnRegister">Registrar callback</button>
+        <button id="btnInit">Init lector</button>
+        <button id="btnSingle">Captura simple</button>
+        <button id="btnIdentify">Identificar 1:N</button>
+        <button id="btnDispose">Dispose</button>
+      </div>
+      <p class="mut">FARN por defecto: 21474 (≈1%) • Timeout captura 10–12s</p>
+    </div>
+
+    <div class="card">
+      <h3>Galería (memoria)</h3>
+      <div class="actions">
+        <button id="btnList">Listar</button>
+        <button id="btnClear">Limpiar</button>
+      </div>
+      <table id="tbl"><thead><tr>
+        <th>Tag</th><th>Format</th><th>Bytes</th><th>XML</th><th>SHA1</th><th>UTC</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="card">
+      <h3>Resultado</h3>
+      <div id="result" class="mut">—</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h3>Logs en vivo</h3>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<script>
+const logEl = document.getElementById('log');
+const resultEl = document.getElementById('result');
+const tblBody = document.querySelector('#tbl tbody');
+
+function addLog(line){
+  const now = new Date().toISOString();
+  logEl.textContent += `[${now}] ${line}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+async function api(path, opts){
+  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: opts? JSON.stringify(opts): undefined});
+  const j = await r.json();
+  if(!j.ok) addLog(`ERR ${path}: ${j.error ?? JSON.stringify(j)}`);
+  else addLog(`${path}: OK`);
+  return j;
+}
+async function apiGet(path){ const r = await fetch(path); return r.json(); }
+async function apiDel(path){ const r = await fetch(path, {method:'DELETE'}); return r.json(); }
+
+document.getElementById('btnBootstrap').onclick = async ()=>{ await api('/api/bootstrap'); };
+document.getElementById('btnRegister').onclick  = async ()=>{ await api('/api/register'); };
+document.getElementById('btnInit').onclick      = async ()=>{ await api('/api/init'); };
+document.getElementById('btnSingle').onclick    = async ()=>{ resultEl.textContent='—'; await api('/api/single', {timeoutMs:10000}); };
+document.getElementById('btnIdentify').onclick  = async ()=>{
+  const r = await api('/api/identify1n', {timeoutMs:12000, targetFarn:21474, top:5});
+  if (r?.r) {
+    const match = r.r.match ? 'MATCH' : 'NO MATCH';
+    resultEl.innerHTML = `<b>${match}</b> | bestScore=${r.r.bestScore} | bestTag=${r.r.bestTag || '—'} | gallery=${r.r.galleryFormat || '—'}`;
+  }
+};
+document.getElementById('btnDispose').onclick   = async ()=>{ await api('/api/dispose'); };
+
+document.getElementById('btnList').onclick = async ()=>{
+  const j = await apiGet('/api/store');
+  tblBody.innerHTML = '';
+  (j.items || []).forEach(it=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${it.Tag}</td><td>${it.Format}</td><td>${it.Bytes}</td><td>${it.XmlLength}</td><td>${it.Sha1}</td><td>${it.Utc}</td>`;
+    tblBody.appendChild(tr);
+  });
+  addLog(`/api/store: ${ (j.items||[]).length } elementos`);
+};
+document.getElementById('btnClear').onclick = async ()=>{
+  await apiDel('/api/store');
+  tblBody.innerHTML = '';
+};
+
+const es = new EventSource('/events');
+es.onmessage = (ev)=>{
+  try{
+    const data = JSON.parse(ev.data);
+    if (data.evt === 'status')  addLog(`[STATUS] ${data.msg}`);
+    else if (data.evt === 'attempt') addLog(`[ATTEMPT] #${data.i} ok=${data.ok} why=${data.why||''}`);
+    else if (data.evt === 'count')   addLog(`[COUNT] ${data.n}`);
+    else addLog(`[EVT] ${ev.data}`);
+  }catch{ addLog(ev.data); }
+};
+
+addLog('UI ready. Paso 1: Bootstrap → Registrar → Init.');
+</script>
+</body>
+</html>

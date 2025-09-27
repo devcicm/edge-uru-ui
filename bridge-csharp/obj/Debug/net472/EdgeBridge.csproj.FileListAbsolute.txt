@@ -1,0 +1,10 @@
+C:\Users\Carlos Ivan\Documents\Proyectos VSCODE\edge-uru-ui\bridge-csharp\obj\Debug\net472\EdgeBridge.csproj.AssemblyReference.cache
+C:\Users\Carlos Ivan\Documents\Proyectos VSCODE\edge-uru-ui\bridge-csharp\obj\Debug\net472\EdgeBridge.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Carlos Ivan\Documents\Proyectos VSCODE\edge-uru-ui\bridge-csharp\obj\Debug\net472\EdgeBridge.AssemblyInfoInputs.cache
+C:\Users\Carlos Ivan\Documents\Proyectos VSCODE\edge-uru-ui\bridge-csharp\obj\Debug\net472\EdgeBridge.AssemblyInfo.cs
+C:\Users\Carlos Ivan\Documents\Proyectos VSCODE\edge-uru-ui\bridge-csharp\obj\Debug\net472\EdgeBridge.csproj.CoreCompileInputs.cache
+C:\Users\Carlos Ivan\Documents\Proyectos VSCODE\edge-uru-ui\out\net472\bridge-csharp.dll
+C:\Users\Carlos Ivan\Documents\Proyectos VSCODE\edge-uru-ui\out\net472\bridge-csharp.pdb
+C:\Users\Carlos Ivan\Documents\Proyectos VSCODE\edge-uru-ui\bridge-csharp\obj\Debug\net472\EdgeBridge.csproj.Up2Date
+C:\Users\Carlos Ivan\Documents\Proyectos VSCODE\edge-uru-ui\bridge-csharp\obj\Debug\net472\bridge-csharp.dll
+C:\Users\Carlos Ivan\Documents\Proyectos VSCODE\edge-uru-ui\bridge-csharp\obj\Debug\net472\bridge-csharp.pdb
