@@ -6,9 +6,9 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
-    "edge-js": "^20.11.1",
-    "express": "^4.19.2",
-    "body-parser": "^1.20.2"
+    "edge-js": "^20.3.0",
+    "express": "^4.21.1",
+    "body-parser": "^1.20.3"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

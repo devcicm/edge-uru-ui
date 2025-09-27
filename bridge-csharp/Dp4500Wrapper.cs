@@ -98,6 +98,8 @@ public sealed class Dp4500Service : IDisposable
     private bool _subscribed;
     private int _dpi = 500;
 
+    public DPUruNet.Fid? LastFid => _lastFid;
+
     private readonly Lazy<DPUruNet.Reader> _readerLazy = new Lazy<DPUruNet.Reader>(() =>
     {
         var readers = DPUruNet.ReaderCollection.GetReaders();

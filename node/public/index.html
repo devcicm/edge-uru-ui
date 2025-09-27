@@ -1,128 +1,1006 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>DP4500 UI (Node + Edge)</title>
-<style>
-  :root{--bg:#0b1020;--fg:#dfe7ff;--mut:#9bb1d4;--btn:#1f6feb;--ok:#0dbc79;--bad:#ff5d5d;--card:#111a2a}
-  body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--fg)}
-  header{padding:16px 20px;border-bottom:1px solid #12223a}
-  .wrap{max-width:980px;margin:0 auto;padding:18px}
-  .row{display:flex;gap:12px;flex-wrap:wrap}
-  .card{background:var(--card);border:1px solid #15243a;border-radius:12px;padding:14px;flex:1 1 300px}
-  button{background:var(--btn);color:white;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
-  button:disabled{opacity:.5;cursor:not-allowed}
-  .mut{color:var(--mut)}
-  .ok{color:var(--ok)} .bad{color:var(--bad)}
-  pre{background:#0a1322;border:1px solid #14243b;padding:10px;border-radius:10px;max-height:320px;overflow:auto}
-  table{width:100%;border-collapse:collapse;font-size:14px}
-  th,td{border-bottom:1px solid #1a2a42;padding:6px 8px}
-  .actions{display:flex;gap:8px;flex-wrap:wrap}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DP4500 - Sistema de Huellas Dactilares</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 10px;
+        }
+
+        h1 {
+            color: #4CAF50;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #aaa;
+            font-size: 1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #444;
+        }
+
+        .card h2 {
+            color: #4CAF50;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        button:hover {
+            background: #45a049;
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button.danger {
+            background: #f44336;
+        }
+
+        button.danger:hover {
+            background: #da190b;
+        }
+
+        button.warning {
+            background: #ff9800;
+        }
+
+        button.warning:hover {
+            background: #e68900;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+
+        .status.info {
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid #2196F3;
+            color: #2196F3;
+        }
+
+        .fingerprint-image {
+            width: 100%;
+            max-width: 300px;
+            height: 400px;
+            background: #1a1a1a;
+            border: 2px dashed #444;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .fingerprint-image img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 8px;
+        }
+
+        .fingerprint-placeholder {
+            color: #666;
+            text-align: center;
+            font-size: 48px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+            font-weight: 500;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .log-container {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 10px;
+            height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-entry.info { color: #2196F3; }
+        .log-entry.success { color: #4CAF50; }
+        .log-entry.error { color: #f44336; }
+        .log-entry.warning { color: #ff9800; }
+
+        .store-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .store-item {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .store-item-info {
+            flex: 1;
+        }
+
+        .store-item-tag {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .store-item-details {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #444;
+            border-top: 2px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .tech-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .tech-section {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .tech-section h3 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .tech-detail {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .tech-detail:last-child {
+            border-bottom: none;
+        }
+
+        .tech-label {
+            color: #ccc;
+            font-weight: 500;
+        }
+
+        .tech-value {
+            color: #4CAF50;
+            font-family: 'Courier New', monospace;
+            text-align: right;
+        }
+
+        .driver-item {
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .driver-name {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .driver-details {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
-<header><h2>DP4500 – Panel simple</h2><div class="mut">Node + edge-js + .NET + DPUruNet</div></header>
-<div class="wrap">
+    <div class="container">
+        <header>
+            <h1>🔒 DP4500 Sistema de Huellas</h1>
+            <div class="subtitle">Enrolamiento, Verificación e Identificación en Tiempo Real</div>
+        </header>
 
-  <div class="row">
-    <div class="card">
-      <h3>Acciones</h3>
-      <div class="actions">
-        <button id="btnBootstrap">Bootstrap nativos</button>
-        <button id="btnRegister">Registrar callback</button>
-        <button id="btnInit">Init lector</button>
-        <button id="btnSingle">Captura simple</button>
-        <button id="btnIdentify">Identificar 1:N</button>
-        <button id="btnDispose">Dispose</button>
-      </div>
-      <p class="mut">FARN por defecto: 21474 (≈1%) • Timeout captura 10–12s</p>
+        <div class="grid">
+            <!-- Control del Lector -->
+            <div class="card">
+                <h2>🔌 Control del Lector</h2>
+                <div class="controls">
+                    <button id="btnInit">Inicializar</button>
+                    <button id="btnDispose" class="danger">Apagar</button>
+                    <button id="btnReaderInfo">📋 Info Técnica</button>
+                </div>
+                <div id="readerStatus" class="status info">Lector desconectado</div>
+            </div>
+
+            <!-- Imagen de Huella en Tiempo Real -->
+            <div class="card">
+                <h2>👁️ Vista en Tiempo Real</h2>
+                <div class="fingerprint-image" id="fingerprintDisplay">
+                    <div class="fingerprint-placeholder">🔍</div>
+                </div>
+                <div class="controls">
+                    <button id="btnCapture">Capturar</button>
+                </div>
+            </div>
+
+            <!-- Enrolamiento -->
+            <div class="card">
+                <h2>📝 Enrolar Nueva Huella</h2>
+                <div class="input-group">
+                    <label for="enrollUserId">ID del Usuario:</label>
+                    <input type="text" id="enrollUserId" placeholder="Ej: Usuario001">
+                </div>
+                <div class="controls">
+                    <button id="btnEnroll">Enrolar</button>
+                </div>
+                <div id="enrollStatus" class="status info">Listo para enrolar</div>
+            </div>
+
+            <!-- Verificación -->
+            <div class="card">
+                <h2>✅ Verificación</h2>
+                <div class="input-group">
+                    <label for="verifyUserId">Seleccionar Usuario:</label>
+                    <select id="verifyUserId">
+                        <option value="">-- Seleccionar Usuario --</option>
+                    </select>
+                </div>
+                <div class="controls">
+                    <button id="btnVerify" disabled>Verificar 1:1</button>
+                    <button id="btnIdentify" class="warning">Identificar 1:N</button>
+                </div>
+                <div id="verifyStatus" class="status info">Selecciona un usuario</div>
+            </div>
+
+            <!-- Store de Huellas -->
+            <div class="card full-width">
+                <h2>💾 Huellas Almacenadas</h2>
+                <div class="controls">
+                    <button id="btnRefreshStore">🔄 Actualizar</button>
+                    <button id="btnClearStore" class="danger">🗑️ Limpiar Todo</button>
+                </div>
+                <div class="store-list" id="storeList">
+                    <div class="status info">No hay huellas almacenadas</div>
+                </div>
+            </div>
+
+            <!-- Información Técnica del Lector -->
+            <div class="card full-width" id="readerInfoCard" style="display: none;">
+                <h2>📋 Información Técnica del Lector</h2>
+                <div class="controls">
+                    <button id="btnRefreshInfo">🔄 Actualizar</button>
+                    <button id="btnHideInfo" class="danger">❌ Ocultar</button>
+                </div>
+                <div id="readerTechInfo" class="tech-info">
+                    <!-- La información técnica aparecerá aquí -->
+                </div>
+            </div>
+
+            <!-- Log de Eventos -->
+            <div class="card full-width">
+                <h2>📊 Log de Eventos en Tiempo Real</h2>
+                <div class="controls">
+                    <button id="btnClearLog">Limpiar Log</button>
+                </div>
+                <div class="log-container" id="logContainer">
+                    <!-- Los eventos aparecerán aquí -->
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="card">
-      <h3>Galería (memoria)</h3>
-      <div class="actions">
-        <button id="btnList">Listar</button>
-        <button id="btnClear">Limpiar</button>
-      </div>
-      <table id="tbl"><thead><tr>
-        <th>Tag</th><th>Format</th><th>Bytes</th><th>XML</th><th>SHA1</th><th>UTC</th>
-      </tr></thead><tbody></tbody></table>
-    </div>
+    <script>
+        // Estado global
+        let readerInitialized = false;
+        let currentOperation = null;
+        let eventSource = null;
 
-    <div class="card">
-      <h3>Resultado</h3>
-      <div id="result" class="mut">—</div>
-    </div>
-  </div>
+        // Elementos DOM
+        const elements = {
+            btnInit: document.getElementById('btnInit'),
+            btnDispose: document.getElementById('btnDispose'),
+            btnCapture: document.getElementById('btnCapture'),
+            btnEnroll: document.getElementById('btnEnroll'),
+            btnVerify: document.getElementById('btnVerify'),
+            btnIdentify: document.getElementById('btnIdentify'),
+            btnRefreshStore: document.getElementById('btnRefreshStore'),
+            btnClearStore: document.getElementById('btnClearStore'),
+            btnClearLog: document.getElementById('btnClearLog'),
+            btnReaderInfo: document.getElementById('btnReaderInfo'),
+            btnRefreshInfo: document.getElementById('btnRefreshInfo'),
+            btnHideInfo: document.getElementById('btnHideInfo'),
 
-  <div class="card" style="margin-top:12px">
-    <h3>Logs en vivo</h3>
-    <pre id="log"></pre>
-  </div>
-</div>
+            readerStatus: document.getElementById('readerStatus'),
+            enrollStatus: document.getElementById('enrollStatus'),
+            verifyStatus: document.getElementById('verifyStatus'),
+            fingerprintDisplay: document.getElementById('fingerprintDisplay'),
+            logContainer: document.getElementById('logContainer'),
+            storeList: document.getElementById('storeList'),
+            readerInfoCard: document.getElementById('readerInfoCard'),
+            readerTechInfo: document.getElementById('readerTechInfo'),
 
-<script>
-const logEl = document.getElementById('log');
-const resultEl = document.getElementById('result');
-const tblBody = document.querySelector('#tbl tbody');
+            enrollUserId: document.getElementById('enrollUserId'),
+            verifyUserId: document.getElementById('verifyUserId')
+        };
 
-function addLog(line){
-  const now = new Date().toISOString();
-  logEl.textContent += `[${now}] ${line}\n`;
-  logEl.scrollTop = logEl.scrollHeight;
-}
+        // Utilidades
+        function log(level, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${level}`;
+            entry.textContent = `[${timestamp}] ${message}`;
 
-async function api(path, opts){
-  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: opts? JSON.stringify(opts): undefined});
-  const j = await r.json();
-  if(!j.ok) addLog(`ERR ${path}: ${j.error ?? JSON.stringify(j)}`);
-  else addLog(`${path}: OK`);
-  return j;
-}
-async function apiGet(path){ const r = await fetch(path); return r.json(); }
-async function apiDel(path){ const r = await fetch(path, {method:'DELETE'}); return r.json(); }
+            elements.logContainer.appendChild(entry);
+            elements.logContainer.scrollTop = elements.logContainer.scrollHeight;
 
-document.getElementById('btnBootstrap').onclick = async ()=>{ await api('/api/bootstrap'); };
-document.getElementById('btnRegister').onclick  = async ()=>{ await api('/api/register'); };
-document.getElementById('btnInit').onclick      = async ()=>{ await api('/api/init'); };
-document.getElementById('btnSingle').onclick    = async ()=>{ resultEl.textContent='—'; await api('/api/single', {timeoutMs:10000}); };
-document.getElementById('btnIdentify').onclick  = async ()=>{
-  const r = await api('/api/identify1n', {timeoutMs:12000, targetFarn:21474, top:5});
-  if (r?.r) {
-    const match = r.r.match ? 'MATCH' : 'NO MATCH';
-    resultEl.innerHTML = `<b>${match}</b> | bestScore=${r.r.bestScore} | bestTag=${r.r.bestTag || '—'} | gallery=${r.r.galleryFormat || '—'}`;
-  }
-};
-document.getElementById('btnDispose').onclick   = async ()=>{ await api('/api/dispose'); };
+            // Mantener solo los últimos 50 logs
+            while (elements.logContainer.children.length > 50) {
+                elements.logContainer.removeChild(elements.logContainer.firstChild);
+            }
+        }
 
-document.getElementById('btnList').onclick = async ()=>{
-  const j = await apiGet('/api/store');
-  tblBody.innerHTML = '';
-  (j.items || []).forEach(it=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${it.Tag}</td><td>${it.Format}</td><td>${it.Bytes}</td><td>${it.XmlLength}</td><td>${it.Sha1}</td><td>${it.Utc}</td>`;
-    tblBody.appendChild(tr);
-  });
-  addLog(`/api/store: ${ (j.items||[]).length } elementos`);
-};
-document.getElementById('btnClear').onclick = async ()=>{
-  await apiDel('/api/store');
-  tblBody.innerHTML = '';
-};
+        function setStatus(element, type, message) {
+            element.className = `status ${type}`;
+            element.textContent = message;
+        }
 
-const es = new EventSource('/events');
-es.onmessage = (ev)=>{
-  try{
-    const data = JSON.parse(ev.data);
-    if (data.evt === 'status')  addLog(`[STATUS] ${data.msg}`);
-    else if (data.evt === 'attempt') addLog(`[ATTEMPT] #${data.i} ok=${data.ok} why=${data.why||''}`);
-    else if (data.evt === 'count')   addLog(`[COUNT] ${data.n}`);
-    else addLog(`[EVT] ${ev.data}`);
-  }catch{ addLog(ev.data); }
-};
+        function setOperationInProgress(operation, inProgress) {
+            if (inProgress) {
+                currentOperation = operation;
+                // Deshabilitar todos los botones excepto dispose
+                Object.keys(elements).forEach(key => {
+                    if (key.startsWith('btn') && key !== 'btnDispose') {
+                        elements[key].disabled = true;
+                    }
+                });
+            } else {
+                currentOperation = null;
+                updateButtonStates();
+            }
+        }
 
-addLog('UI ready. Paso 1: Bootstrap → Registrar → Init.');
-</script>
+        function updateButtonStates() {
+            elements.btnInit.disabled = readerInitialized;
+            elements.btnDispose.disabled = !readerInitialized;
+            elements.btnCapture.disabled = !readerInitialized;
+            elements.btnEnroll.disabled = !readerInitialized;
+            elements.btnVerify.disabled = !readerInitialized || !elements.verifyUserId.value;
+            elements.btnIdentify.disabled = !readerInitialized;
+            elements.btnReaderInfo.disabled = false; // Siempre habilitado
+        }
+
+        function showLoading(element) {
+            element.innerHTML = '<div class="loading"><div class="spinner"></div>Procesando...</div>';
+        }
+
+        function updateFingerprintImage(imagePath) {
+            if (imagePath) {
+                const img = document.createElement('img');
+                img.src = `/images/${imagePath}?t=${Date.now()}`;
+                img.onload = () => {
+                    elements.fingerprintDisplay.innerHTML = '';
+                    elements.fingerprintDisplay.appendChild(img);
+                };
+                img.onerror = () => {
+                    elements.fingerprintDisplay.innerHTML = '<div class="fingerprint-placeholder">❌</div>';
+                };
+            } else {
+                elements.fingerprintDisplay.innerHTML = '<div class="fingerprint-placeholder">🔍</div>';
+            }
+        }
+
+        // API calls
+        async function apiCall(endpoint, data = null) {
+            try {
+                const options = {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                };
+
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(endpoint, options);
+                const result = await response.json();
+
+                if (!result.ok) {
+                    log('error', `${endpoint}: ${result.error}`);
+                }
+
+                return result;
+            } catch (error) {
+                log('error', `${endpoint}: Error de red - ${error.message}`);
+                return { ok: false, error: error.message };
+            }
+        }
+
+        async function apiGet(endpoint) {
+            try {
+                const response = await fetch(endpoint);
+                return await response.json();
+            } catch (error) {
+                log('error', `${endpoint}: Error de red - ${error.message}`);
+                return { ok: false, error: error.message };
+            }
+        }
+
+        // Operaciones principales
+        async function initializeReader() {
+            setOperationInProgress('init', true);
+            setStatus(elements.readerStatus, 'info', 'Inicializando...');
+            showLoading(elements.readerStatus);
+
+            log('info', 'Iniciando bootstrap del sistema...');
+            let result = await apiCall('/api/bootstrap');
+            if (!result.ok) {
+                setOperationInProgress('init', false);
+                setStatus(elements.readerStatus, 'error', 'Error en bootstrap');
+                return;
+            }
+
+            log('info', 'Registrando callbacks...');
+            result = await apiCall('/api/register');
+            if (!result.ok) {
+                setOperationInProgress('init', false);
+                setStatus(elements.readerStatus, 'error', 'Error en callbacks');
+                return;
+            }
+
+            log('info', 'Inicializando lector...');
+            result = await apiCall('/api/init');
+            if (result.ok) {
+                readerInitialized = true;
+                setStatus(elements.readerStatus, 'success', 'Lector conectado y listo');
+                log('success', 'Lector inicializado correctamente');
+            } else {
+                setStatus(elements.readerStatus, 'error', 'Error al inicializar lector');
+            }
+
+            setOperationInProgress('init', false);
+        }
+
+        async function disposeReader() {
+            setOperationInProgress('dispose', true);
+            setStatus(elements.readerStatus, 'info', 'Desconectando...');
+
+            const result = await apiCall('/api/dispose');
+            if (result.ok) {
+                readerInitialized = false;
+                setStatus(elements.readerStatus, 'info', 'Lector desconectado');
+                log('info', 'Lector desconectado');
+                updateFingerprintImage(null);
+            } else {
+                setStatus(elements.readerStatus, 'error', 'Error al desconectar');
+            }
+
+            setOperationInProgress('dispose', false);
+        }
+
+        async function captureFingerprint() {
+            setOperationInProgress('capture', true);
+            setStatus(elements.readerStatus, 'info', 'Capturando huella...');
+
+            const result = await apiCall('/api/single');
+            if (result.ok) {
+                log('success', 'Captura exitosa');
+                if (result.imagePath) {
+                    updateFingerprintImage(result.imagePath);
+                }
+                setStatus(elements.readerStatus, 'success', 'Captura completada');
+            } else {
+                setStatus(elements.readerStatus, 'error', 'Error en captura');
+            }
+
+            setOperationInProgress('capture', false);
+        }
+
+        async function enrollFingerprint() {
+            const userId = elements.enrollUserId.value.trim();
+            if (!userId) {
+                log('error', 'Debe ingresar un ID de usuario');
+                return;
+            }
+
+            setOperationInProgress('enroll', true);
+            setStatus(elements.enrollStatus, 'info', 'Enrolando huella...');
+            showLoading(elements.enrollStatus);
+
+            log('info', `Iniciando enrolamiento para: ${userId}`);
+            const result = await apiCall('/api/enroll', { tag: userId });
+
+            if (result.ok && result.enrolled) {
+                setStatus(elements.enrollStatus, 'success', `Enrolamiento exitoso: ${userId}`);
+                log('success', `Usuario ${userId} enrolado correctamente`);
+                elements.enrollUserId.value = '';
+                await refreshStore();
+            } else {
+                setStatus(elements.enrollStatus, 'error', result.msg || 'Error en enrolamiento');
+            }
+
+            setOperationInProgress('enroll', false);
+        }
+
+        async function verifyFingerprint() {
+            const userId = elements.verifyUserId.value;
+            if (!userId) {
+                log('error', 'Debe seleccionar un usuario');
+                return;
+            }
+
+            setOperationInProgress('verify', true);
+            setStatus(elements.verifyStatus, 'info', 'Verificando...');
+            showLoading(elements.verifyStatus);
+
+            log('info', `Verificando huella para: ${userId}`);
+            const result = await apiCall('/api/verify', { tag: userId });
+
+            if (result.ok) {
+                if (result.verified) {
+                    setStatus(elements.verifyStatus, 'success', `✅ VERIFICADO - Score: ${result.score}`);
+                    log('success', `Verificación exitosa para ${userId} (Score: ${result.score})`);
+                } else {
+                    setStatus(elements.verifyStatus, 'error', `❌ NO VERIFICADO - Score: ${result.score}`);
+                    log('warning', `Verificación fallida para ${userId} (Score: ${result.score})`);
+                }
+            } else {
+                setStatus(elements.verifyStatus, 'error', 'Error en verificación');
+            }
+
+            setOperationInProgress('verify', false);
+        }
+
+        async function identifyFingerprint() {
+            setOperationInProgress('identify', true);
+            setStatus(elements.verifyStatus, 'info', 'Identificando...');
+            showLoading(elements.verifyStatus);
+
+            log('info', 'Iniciando identificación 1:N');
+            const result = await apiCall('/api/identify1n');
+
+            if (result.ok) {
+                if (result.match) {
+                    setStatus(elements.verifyStatus, 'success', `✅ IDENTIFICADO: ${result.bestTag} (Score: ${result.bestScore})`);
+                    log('success', `Identificación exitosa: ${result.bestTag} (Score: ${result.bestScore})`);
+                } else {
+                    setStatus(elements.verifyStatus, 'warning', '⚠️ NO IDENTIFICADO - No hay coincidencias');
+                    log('warning', 'No se encontraron coincidencias en la identificación');
+                }
+            } else {
+                setStatus(elements.verifyStatus, 'error', 'Error en identificación');
+            }
+
+            setOperationInProgress('identify', false);
+        }
+
+        async function refreshStore() {
+            const result = await apiGet('/api/store');
+
+            if (result.ok && result.items) {
+                updateStoreDisplay(result.items);
+                updateVerifyUserList(result.items);
+                log('info', `Cargadas ${result.items.length} huellas del store`);
+            }
+        }
+
+        function updateStoreDisplay(items) {
+            if (!items || items.length === 0) {
+                elements.storeList.innerHTML = '<div class="status info">No hay huellas almacenadas</div>';
+                return;
+            }
+
+            elements.storeList.innerHTML = items.map(item => `
+                <div class="store-item">
+                    <div class="store-item-info">
+                        <div class="store-item-tag">${item.Tag}</div>
+                        <div class="store-item-details">
+                            ${item.Format} • ${item.Bytes} bytes • ${new Date(item.Utc).toLocaleString()}
+                        </div>
+                    </div>
+                    <button onclick="deleteUser('${item.Tag}')" class="danger" style="min-width: auto; padding: 8px 12px;">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function updateVerifyUserList(items) {
+            const currentValue = elements.verifyUserId.value;
+            elements.verifyUserId.innerHTML = '<option value="">-- Seleccionar Usuario --</option>';
+
+            if (items && items.length > 0) {
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.Tag;
+                    option.textContent = `${item.Tag} (${item.Format})`;
+                    elements.verifyUserId.appendChild(option);
+                });
+
+                if (currentValue) {
+                    elements.verifyUserId.value = currentValue;
+                }
+            }
+
+            updateButtonStates();
+        }
+
+        async function clearStore() {
+            if (!confirm('¿Está seguro de que desea eliminar todas las huellas?')) return;
+
+            log('info', 'Limpiando store de huellas...');
+            const result = await fetch('/api/store', { method: 'DELETE' });
+
+            if (result.ok) {
+                await refreshStore();
+                setStatus(elements.verifyStatus, 'info', 'Selecciona un usuario');
+                log('info', 'Store limpiado correctamente');
+            }
+        }
+
+        async function deleteUser(tag) {
+            if (!confirm(`¿Eliminar huella de ${tag}?`)) return;
+
+            log('info', `Eliminando huella de ${tag}`);
+            // Note: Aquí necesitarías implementar un endpoint específico para eliminar usuarios individuales
+            await refreshStore();
+        }
+
+        function clearLog() {
+            elements.logContainer.innerHTML = '';
+            log('info', 'Log limpiado');
+        }
+
+        async function showReaderInfo() {
+            elements.readerInfoCard.style.display = 'block';
+            await refreshReaderInfo();
+        }
+
+        function hideReaderInfo() {
+            elements.readerInfoCard.style.display = 'none';
+        }
+
+        async function refreshReaderInfo() {
+            try {
+                const result = await apiGet('/api/reader-info');
+
+                if (result.ok) {
+                    displayReaderInfo(result.reader, result.drivers);
+                    log('success', 'Información técnica actualizada');
+                } else {
+                    elements.readerTechInfo.innerHTML = `<div class="status error">Error: ${result.error}</div>`;
+                    log('error', `Error al obtener info técnica: ${result.error}`);
+                }
+            } catch (error) {
+                elements.readerTechInfo.innerHTML = `<div class="status error">Error de conexión</div>`;
+                log('error', `Error de conexión: ${error.message}`);
+            }
+        }
+
+        function displayReaderInfo(reader, drivers) {
+            const readerSection = `
+                <div class="tech-section">
+                    <h3>🔍 Información del Lector</h3>
+                    <div class="tech-detail">
+                        <span class="tech-label">GUID/Serial:</span>
+                        <span class="tech-value">${reader.Guid}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Nombre:</span>
+                        <span class="tech-value">${reader.Name}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Vendor ID:</span>
+                        <span class="tech-value">0x${reader.VendorId.toString(16).toUpperCase()}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Product ID:</span>
+                        <span class="tech-value">0x${reader.ProductId.toString(16).toUpperCase()}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Tecnología:</span>
+                        <span class="tech-value">${reader.Technology}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Modalidad:</span>
+                        <span class="tech-value">${reader.Modality}</span>
+                    </div>
+                </div>
+            `;
+
+            const capabilitiesSection = `
+                <div class="tech-section">
+                    <h3>⚙️ Capacidades</h3>
+                    <div class="tech-detail">
+                        <span class="tech-label">Resoluciones:</span>
+                        <span class="tech-value">${reader.Resolutions.join(', ')} DPI</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Formatos de imagen:</span>
+                        <span class="tech-value">${reader.ImageFormats.join(', ')}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Max capturas:</span>
+                        <span class="tech-value">${reader.MaxCaptures}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Streaming:</span>
+                        <span class="tech-value">${reader.CanStream ? '✅ Sí' : '❌ No'}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Extracción de características:</span>
+                        <span class="tech-value">${reader.CanExtractFeatures ? '✅ Sí' : '❌ No'}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Coincidencia:</span>
+                        <span class="tech-value">${reader.CanMatch ? '✅ Sí' : '❌ No'}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Identificación:</span>
+                        <span class="tech-value">${reader.CanIdentify ? '✅ Sí' : '❌ No'}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Indicador:</span>
+                        <span class="tech-value">${reader.IndicatorType}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Gestión de energía:</span>
+                        <span class="tech-value">${reader.HasPowerManagement ? '✅ Sí' : '❌ No'}</span>
+                    </div>
+                    <div class="tech-detail">
+                        <span class="tech-label">Calibración:</span>
+                        <span class="tech-value">${reader.HasCalibration ? '✅ Sí' : '❌ No'}</span>
+                    </div>
+                </div>
+            `;
+
+            const driversSection = `
+                <div class="tech-section">
+                    <h3>💾 Controladores y DLLs</h3>
+                    ${drivers.map(driver => `
+                        <div class="driver-item">
+                            <div class="driver-name">${driver.FileName}</div>
+                            <div class="driver-details">
+                                Versión: ${driver.Version}<br>
+                                Versión del producto: ${driver.ProductVersion}<br>
+                                Tamaño: ${(driver.Size / 1024).toFixed(1)} KB<br>
+                                Modificado: ${new Date(driver.LastModified).toLocaleString('es-ES')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            const imageSizesSection = reader.SupportedImageSizes.length > 0 ? `
+                <div class="tech-section">
+                    <h3>📐 Tamaños de Imagen Soportados</h3>
+                    ${reader.SupportedImageSizes.map(size => `
+                        <div class="tech-detail">
+                            <span class="tech-label">Resolución:</span>
+                            <span class="tech-value">${size.Width} × ${size.Height}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            elements.readerTechInfo.innerHTML = readerSection + capabilitiesSection + driversSection + imageSizesSection;
+        }
+
+        // Event listeners
+        elements.btnInit.onclick = initializeReader;
+        elements.btnDispose.onclick = disposeReader;
+        elements.btnCapture.onclick = captureFingerprint;
+        elements.btnEnroll.onclick = enrollFingerprint;
+        elements.btnVerify.onclick = verifyFingerprint;
+        elements.btnIdentify.onclick = identifyFingerprint;
+        elements.btnRefreshStore.onclick = refreshStore;
+        elements.btnClearStore.onclick = clearStore;
+        elements.btnClearLog.onclick = clearLog;
+        elements.btnReaderInfo.onclick = showReaderInfo;
+        elements.btnRefreshInfo.onclick = refreshReaderInfo;
+        elements.btnHideInfo.onclick = hideReaderInfo;
+
+        elements.verifyUserId.onchange = function() {
+            updateButtonStates();
+            if (this.value) {
+                setStatus(elements.verifyStatus, 'info', `Listo para verificar: ${this.value}`);
+            } else {
+                setStatus(elements.verifyStatus, 'info', 'Selecciona un usuario');
+            }
+        };
+
+        // Server-Sent Events para comunicación en tiempo real
+        function connectToEvents() {
+            eventSource = new EventSource('/events');
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    switch(data.evt) {
+                        case 'status':
+                            log('info', `Estado: ${data.msg}`);
+                            break;
+                        case 'attempt':
+                            const level = data.ok ? 'success' : 'warning';
+                            log(level, `Intento #${data.i}: ${data.ok ? 'Éxito' : 'Fallo'} ${data.why ? `(${data.why})` : ''}`);
+                            break;
+                        case 'count':
+                            log('info', `Muestras: ${data.n}`);
+                            break;
+                        case 'hello':
+                            log('success', `Conectado al servidor (ID: ${data.id})`);
+                            break;
+                        default:
+                            log('info', `Evento: ${JSON.stringify(data)}`);
+                    }
+                } catch (error) {
+                    log('error', `Error al procesar evento: ${event.data}`);
+                }
+            };
+
+            eventSource.onerror = function() {
+                log('error', 'Conexión perdida con el servidor');
+                setTimeout(connectToEvents, 3000); // Reconectar automáticamente
+            };
+        }
+
+        // Inicialización
+        function init() {
+            log('info', 'Sistema iniciado. Conecte el lector antes de usar.');
+            updateButtonStates();
+            refreshStore();
+            connectToEvents();
+        }
+
+        // Inicializar cuando se carga la página
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
 </body>
 </html>

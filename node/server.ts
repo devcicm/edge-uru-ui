@@ -7,7 +7,7 @@ import bodyParser = require("body-parser");
 const edge = require("edge-js");
 type EdgeFunc = (payload: any, cb: (err: any, res: any) => void) => void;
 
-const assemblyFile = path.join(__dirname, "..", "out", "bridge-csharp.dll");
+const assemblyFile = path.join(__dirname, "..", "..", "out", "net472", "bridge-csharp.dll");
 const bridge: EdgeFunc = edge.func({
   assemblyFile,
   typeName: "EdgeBridge.EdgeUruBridge",
@@ -32,6 +32,7 @@ function sseBroadcast(ev: any) {
 }
 
 app.use("/", express.static(path.join(__dirname, "public")));
+app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
 
 app.get("/events", (req, res) => {
   res.set({
@@ -51,7 +52,7 @@ app.get("/events", (req, res) => {
 
 app.post("/api/bootstrap", async (req, res) => {
   try {
-    const nativeDir = path.join(__dirname, "..", "bin-deps");
+    const nativeDir = path.join(__dirname, "..", "..", "bin-deps");
     const out = await call({ op: "bootstrap", searchPath: nativeDir });
     res.json(out);
   } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
@@ -61,9 +62,9 @@ app.post("/api/register", async (_, res) => {
   try {
     const out = await call({
       op: "registerCallback",
-      callback: (err: any, data: any) => {
-        if (err) console.error("[C#->JS cb err]", err);
-        else sseBroadcast(data);
+      callback: (eventData: any) => {
+        console.log("[C# Event]", eventData);
+        sseBroadcast(eventData);
       }
     });
     res.json(out);
@@ -89,6 +90,29 @@ app.post("/api/identify1n", async (req, res) => {
   } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
+app.post("/api/enroll", async (req, res) => {
+  try {
+    const tag = req.body?.tag || `User_${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    const timeoutMs = req.body?.timeoutMs ?? 30000;
+    const targetFarn = req.body?.targetFarn ?? 21474;
+    const maxRetriesPerSample = req.body?.maxRetriesPerSample ?? 3;
+    const maxSamples = req.body?.maxSamples ?? 4;
+    res.json(await call({ op: "enroll", tag, timeoutMs, targetFarn, maxRetriesPerSample, maxSamples }));
+  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
+app.post("/api/verify", async (req, res) => {
+  try {
+    const tag = req.body?.tag;
+    if (!tag) {
+      return res.status(400).json({ ok: false, error: "Tag is required for verification" });
+    }
+    const timeoutMs = req.body?.timeoutMs ?? 15000;
+    const targetFarn = req.body?.targetFarn ?? 21474;
+    res.json(await call({ op: "verify1to1", tag, timeoutMs, targetFarn }));
+  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
 app.get("/api/store", async (_, res) => {
   try { res.json(await call({ op: "storeList" })); }
   catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
@@ -104,16 +128,21 @@ app.post("/api/dispose", async (_, res) => {
   catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
+app.get("/api/reader-info", async (_, res) => {
+  try { res.json(await call({ op: "getReaderInfo" })); }
+  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
 (async () => {
   try {
     await call({
       op: "registerCallback",
-      callback: (err: any, data: any) => {
-        if (err) console.error("[C#->JS cb err]", err);
-        else sseBroadcast(data);
+      callback: (eventData: any) => {
+        console.log("[C# Event]", eventData);
+        sseBroadcast(eventData);
       }
     });
-    const nativeDir = path.join(__dirname, "..", "bin-deps");
+    const nativeDir = path.join(__dirname, "..", "..", "bin-deps");
     await call({ op: "bootstrap", searchPath: nativeDir });
     console.log("[OK] Native bootstrap");
   } catch (e) {
