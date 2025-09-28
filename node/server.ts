@@ -31,7 +31,13 @@ function sseBroadcast(ev: any) {
   for (const c of clients) c.res.write(line);
 }
 
-app.use("/", express.static(path.join(__dirname, "public")));
+// Always serve from source public directory to ensure we use the latest files
+const sourcePublicDir = path.join(__dirname, "..", "public");
+
+console.log(`[STATIC ROUTES] Serving static files from: ${sourcePublicDir}`);
+console.log(`[STATIC ROUTES] Source directory exists: ${fs.existsSync(sourcePublicDir)}`);
+
+app.use("/", express.static(sourcePublicDir));
 app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
 
 app.get("/events", (req, res) => {
@@ -60,14 +66,8 @@ app.post("/api/bootstrap", async (req, res) => {
 
 app.post("/api/register", async (_, res) => {
   try {
-    const out = await call({
-      op: "registerCallback",
-      callback: (eventData: any) => {
-        console.log("[C# Event]", eventData);
-        sseBroadcast(eventData);
-      }
-    });
-    res.json(out);
+    // Callback is already registered in server startup, just return success
+    res.json({ ok: true, msg: "Callback already registered at server startup" });
   } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 

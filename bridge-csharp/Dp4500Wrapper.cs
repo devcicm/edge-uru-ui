@@ -115,6 +115,7 @@ public sealed class Dp4500Service : IDisposable
     public event Action<string>? OnStatus;
     public event Action<int>? OnSampleCountChanged;
     public event Action<int, bool, string?>? OnAttemptResult;
+    public event Action<string>? OnImageCaptured;
 
     private const int TARGET_FARN_ENROLL_CHECK = 100_000; // filtro intra-enrolamiento
 
@@ -288,6 +289,31 @@ public sealed class Dp4500Service : IDisposable
         return filePath;
     }
 
+    public static string FidToBase64Png(DPUruNet.Fid fid)
+    {
+        var v = fid.Views[0];
+        using var bmp = new Bitmap(v.Width, v.Height, PixelFormat.Format8bppIndexed);
+        var pal = bmp.Palette; for (int i = 0; i < 256; i++) pal.Entries[i] = Color.FromArgb(i, i, i);
+        bmp.Palette = pal;
+
+        var data = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.WriteOnly, bmp.PixelFormat);
+        try
+        {
+            int stride = data.Stride, srcW = v.Width;
+            for (int y = 0; y < v.Height; y++)
+            {
+                var dstRow = IntPtr.Add(data.Scan0, y * stride);
+                Marshal.Copy(v.RawImage!, y * srcW, dstRow, srcW);
+            }
+        }
+        finally { bmp.UnlockBits(data); }
+
+        using var ms = new MemoryStream();
+        bmp.Save(ms, ImageFormat.Png);
+        var imageBytes = ms.ToArray();
+        return Convert.ToBase64String(imageBytes);
+    }
+
     public static string FidToXmlBase64(DPUruNet.Fid fid)
     {
         var v = fid.Views[0];
@@ -311,6 +337,17 @@ public sealed class Dp4500Service : IDisposable
 
         PrintFidMeta(cap!.Data!, cap);
         _lastFid = cap.Data;
+
+        // Send captured image immediately via callback
+        try
+        {
+            var imageBase64 = FidToBase64Png(cap.Data!);
+            OnImageCaptured?.Invoke(imageBase64);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARNING] Could not generate base64 image: {ex.Message}");
+        }
 
         var preFmt = "";
         var fmdPre = FidToPreFmd(cap.Data!, out preFmt);
@@ -416,6 +453,17 @@ public sealed class Dp4500Service : IDisposable
 
         _lastFid = cap!.Data;
 
+        // Send captured image immediately via callback for verification
+        try
+        {
+            var imageBase64 = FidToBase64Png(cap.Data!);
+            OnImageCaptured?.Invoke(imageBase64);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARNING] Could not generate base64 image during verification: {ex.Message}");
+        }
+
         var fxVer = DPUruNet.FeatureExtraction.CreateFmdFromFid(cap.Data!, DPUruNet.Constants.Formats.Fmd.DP_VERIFICATION);
         if (fxVer.ResultCode != DPUruNet.Constants.ResultCode.DP_SUCCESS || fxVer.Data == null)
             return (false, int.MaxValue, "VER", $"CreateFmdFromFid VER falló: {fxVer.ResultCode}");
@@ -470,6 +518,17 @@ public sealed class Dp4500Service : IDisposable
             return (false, int.MaxValue, "", galleryFmt, new System.Collections.Generic.List<(string tag, int score)>(), $"Mala captura: {why}");
 
         _lastFid = cap!.Data;
+
+        // Send captured image immediately via callback for identification
+        try
+        {
+            var imageBase64 = FidToBase64Png(cap.Data!);
+            OnImageCaptured?.Invoke(imageBase64);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARNING] Could not generate base64 image during identification: {ex.Message}");
+        }
 
         DPUruNet.Fmd? probe = null;
         string usedProbe = "";
@@ -546,6 +605,17 @@ public sealed class Dp4500Service : IDisposable
 
                 PrintFidMeta(cap!.Data!, cap);
                 _lastFid = cap.Data;
+
+                // Send captured image immediately via callback for each enrollment sample
+                try
+                {
+                    var imageBase64 = FidToBase64Png(cap.Data!);
+                    OnImageCaptured?.Invoke(imageBase64);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WARNING] Could not generate base64 image during enrollment sample {sampleIndex + 1}: {ex.Message}");
+                }
 
                 var preFmt = "";
                 var fmdPre = FidToPreFmd(cap.Data!, out preFmt);
