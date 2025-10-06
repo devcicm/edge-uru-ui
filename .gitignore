@@ -1,0 +1,73 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userprefs
+*.pidb
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+dist/
+
+# Environment
+.env
+.env.local
+*.log
+nul
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude
+.claude/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Fingerprint Storage
+fingerprint-storage/
+images/
+
+# Temp files
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+.nuget/
+
+# Build artifacts (keep only main DLL)
+out/net472/*.dll
+out/net472/*.pdb
+!out/net472/bridge-csharp.dll
+!out/net472/bridge-csharp.pdb
+
+# MSBuild
+bridge-csharp/obj/
+*.csproj.user
