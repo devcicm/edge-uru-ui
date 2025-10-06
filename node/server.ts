@@ -133,6 +133,69 @@ app.get("/api/reader-info", async (_, res) => {
   catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
+// Template Management Endpoints
+app.post("/api/enroll-with-template", async (req, res) => {
+  try {
+    const userId = req.body?.userId || `User_${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    const timeoutMs = req.body?.timeoutMs ?? 30000;
+    const targetFarn = req.body?.targetFarn ?? 21474;
+    const maxRetriesPerSample = req.body?.maxRetriesPerSample ?? 3;
+    const maxSamples = req.body?.maxSamples ?? 4;
+    res.json(await call({ op: "enrollWithTemplate", userId, timeoutMs, targetFarn, maxRetriesPerSample, maxSamples }));
+  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
+app.get("/api/template/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    if (!userId) {
+      return res.status(400).json({ ok: false, error: "userId is required" });
+    }
+    res.json(await call({ op: "templateGet", userId }));
+  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
+app.post("/api/template/load", async (req, res) => {
+  try {
+    const templateJson = req.body?.templateJson;
+    if (!templateJson) {
+      return res.status(400).json({ ok: false, error: "templateJson is required" });
+    }
+    res.json(await call({ op: "templateLoad", templateJson }));
+  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
+app.post("/api/template/save", async (req, res) => {
+  try {
+    const userId = req.body?.userId;
+    const templateJson = req.body?.templateJson;
+    if (!userId || !templateJson) {
+      return res.status(400).json({ ok: false, error: "userId and templateJson are required" });
+    }
+    res.json(await call({ op: "templateSave", userId, templateJson }));
+  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
+app.get("/api/template/list", async (_, res) => {
+  try { res.json(await call({ op: "templateList" })); }
+  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
+app.delete("/api/template/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    if (!userId) {
+      return res.status(400).json({ ok: false, error: "userId is required" });
+    }
+    res.json(await call({ op: "templateDelete", userId }));
+  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
+app.delete("/api/template/clear-all", async (_, res) => {
+  try { res.json(await call({ op: "templateClear" })); }
+  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
 (async () => {
   try {
     await call({

@@ -713,3 +713,231 @@ public sealed class Dp4500Service : IDisposable
         _sampleReady.Dispose();
     }
 }
+
+/* ===============================
+ * Template Storage Classes (JSON Persistence)
+ * ===============================*/
+public sealed class SampleInfo
+{
+    public int SampleNumber { get; set; }
+    public string PreTemplateBase64 { get; set; } = "";
+    public string VerTemplateBase64 { get; set; } = "";
+    public string AnsiTemplateBase64 { get; set; } = "";
+    public DateTime CapturedAt { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class FingerprintTemplate
+{
+    public string UserId { get; set; } = "";
+    public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
+    public string RegTemplate { get; set; } = ""; // Base64 of REG format
+    public string VerTemplate { get; set; } = ""; // Base64 of VER format
+    public string AnsiTemplate { get; set; } = ""; // Base64 of ANSI format
+    public string CombinedTemplate { get; set; } = ""; // Base64 of final combined REG
+    public List<SampleInfo> Samples { get; set; } = new List<SampleInfo>();
+    public string Sha256 { get; set; } = "";
+}
+
+public static class TemplateStore
+{
+    private static readonly object _sync = new object();
+    private static readonly Dictionary<string, FingerprintTemplate> _templates = new Dictionary<string, FingerprintTemplate>();
+    private static readonly string _storageDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "fingerprint-storage");
+
+    static TemplateStore()
+    {
+        try
+        {
+            var fullPath = Path.GetFullPath(_storageDir);
+            if (!Directory.Exists(fullPath))
+                Directory.CreateDirectory(fullPath);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TemplateStore] Error creating storage directory: {ex.Message}");
+        }
+    }
+
+    public static string SaveTemplate(string userId, FingerprintTemplate template)
+    {
+        lock (_sync)
+        {
+            // Calculate SHA256 of combined template
+            using (var sha256 = SHA256.Create())
+            {
+                var bytes = Convert.FromBase64String(template.CombinedTemplate);
+                var hash = sha256.ComputeHash(bytes);
+                template.Sha256 = BitConverter.ToString(hash).Replace("-", "").ToLower();
+            }
+
+            _templates[userId] = template;
+
+            // Save to file
+            try
+            {
+                var fullPath = Path.GetFullPath(_storageDir);
+                var filePath = Path.Combine(fullPath, $"{userId}.json");
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(template, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText(filePath, json);
+                return filePath;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[TemplateStore] Error saving to file: {ex.Message}");
+                return "";
+            }
+        }
+    }
+
+    public static FingerprintTemplate? GetTemplate(string userId)
+    {
+        lock (_sync)
+        {
+            if (_templates.TryGetValue(userId, out var template))
+                return template;
+
+            // Try to load from file
+            try
+            {
+                var fullPath = Path.GetFullPath(_storageDir);
+                var filePath = Path.Combine(fullPath, $"{userId}.json");
+                if (File.Exists(filePath))
+                {
+                    var json = File.ReadAllText(filePath);
+                    var loaded = Newtonsoft.Json.JsonConvert.DeserializeObject<FingerprintTemplate>(json);
+                    if (loaded != null)
+                    {
+                        _templates[userId] = loaded;
+                        return loaded;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[TemplateStore] Error loading from file: {ex.Message}");
+            }
+
+            return null;
+        }
+    }
+
+    public static string GetTemplateAsBase64Json(string userId)
+    {
+        var template = GetTemplate(userId);
+        if (template == null) return "";
+
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(template);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        return Convert.ToBase64String(bytes);
+    }
+
+    public static bool LoadTemplateFromBase64Json(string base64Json)
+    {
+        try
+        {
+            var bytes = Convert.FromBase64String(base64Json);
+            var json = System.Text.Encoding.UTF8.GetString(bytes);
+            var template = Newtonsoft.Json.JsonConvert.DeserializeObject<FingerprintTemplate>(json);
+
+            if (template == null || string.IsNullOrEmpty(template.UserId))
+                return false;
+
+            lock (_sync)
+            {
+                _templates[template.UserId] = template;
+
+                // Load into FingerprintTempStore for verification
+                if (!string.IsNullOrEmpty(template.CombinedTemplate))
+                {
+                    var fmdBytes = Convert.FromBase64String(template.CombinedTemplate);
+                    var fmd = DPUruNet.Fmd.DeserializeXml(System.Text.Encoding.UTF8.GetString(fmdBytes));
+                    if (fmd != null)
+                    {
+                        FingerprintTempStore.Add(template.UserId, "DP_REGISTRATION", fmd, false);
+                    }
+                }
+
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TemplateStore] Error loading template from base64: {ex.Message}");
+            return false;
+        }
+    }
+
+    public static List<string> GetAllUserIds()
+    {
+        lock (_sync)
+        {
+            var userIds = new List<string>(_templates.Keys);
+
+            // Also check file system
+            try
+            {
+                var fullPath = Path.GetFullPath(_storageDir);
+                if (Directory.Exists(fullPath))
+                {
+                    var files = Directory.GetFiles(fullPath, "*.json");
+                    foreach (var file in files)
+                    {
+                        var userId = Path.GetFileNameWithoutExtension(file);
+                        if (!userIds.Contains(userId))
+                            userIds.Add(userId);
+                    }
+                }
+            }
+            catch { }
+
+            return userIds;
+        }
+    }
+
+    public static bool DeleteTemplate(string userId)
+    {
+        lock (_sync)
+        {
+            _templates.Remove(userId);
+
+            try
+            {
+                var fullPath = Path.GetFullPath(_storageDir);
+                var filePath = Path.Combine(fullPath, $"{userId}.json");
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[TemplateStore] Error deleting file: {ex.Message}");
+            }
+
+            return false;
+        }
+    }
+
+    public static void ClearAll()
+    {
+        lock (_sync)
+        {
+            _templates.Clear();
+
+            try
+            {
+                var fullPath = Path.GetFullPath(_storageDir);
+                if (Directory.Exists(fullPath))
+                {
+                    var files = Directory.GetFiles(fullPath, "*.json");
+                    foreach (var file in files)
+                    {
+                        try { File.Delete(file); } catch { }
+                    }
+                }
+            }
+            catch { }
+        }
+    }
+}

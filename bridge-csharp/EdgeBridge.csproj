@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="4.10.0" PrivateAssets="all" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <Reference Include="DPUruNet">
       <HintPath>..\bin-deps\DPUruNet.dll</HintPath>
       <Private>true</Private>

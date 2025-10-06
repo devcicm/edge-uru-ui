@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DP4500 - Sistema de Huellas Dactilares</title>
+    <title>Sistema Biométrico Modular - DigitalPersona</title>
+
     <style>
         * {
             margin: 0;
@@ -13,9 +14,10 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: #1a1a1a;
-            color: #e0e0e0;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #212529;
             line-height: 1.6;
+            min-height: 100vh;
         }
 
         .container {
@@ -26,1701 +28,1113 @@
 
         header {
             text-align: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #2a2a2a;
-            border-radius: 10px;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         }
 
         h1 {
-            color: #4CAF50;
-            font-size: 2rem;
-            margin-bottom: 10px;
+            color: #212529;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            font-weight: 700;
         }
 
         .subtitle {
-            color: #aaa;
-            font-size: 1rem;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            color: #6c757d;
+            font-size: 1.1rem;
+            font-weight: 500;
             margin-bottom: 20px;
         }
 
-        .card {
-            background: #2a2a2a;
-            border-radius: 10px;
-            padding: 20px;
-            border: 1px solid #444;
-        }
-
-        .card h2 {
-            color: #4CAF50;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-        }
-
-        button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 12px 20px;
+        .legacy-link {
+            display: inline-block;
+            background: #6c757d;
+            color: #ffffff;
+            padding: 8px 16px;
             border-radius: 6px;
-            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
             font-size: 14px;
-            transition: all 0.3s ease;
-            min-width: 120px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
         }
 
-        button:hover {
-            background: #45a049;
+        .legacy-link:hover {
+            background: #5a6268;
             transform: translateY(-1px);
         }
 
-        button:disabled {
-            background: #666;
-            cursor: not-allowed;
-            transform: none;
+        .control-panel {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         }
 
-        button.danger {
-            background: #f44336;
+        .control-panel h2 {
+            color: #212529;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
         }
 
-        button.danger:hover {
-            background: #da190b;
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
-        button.warning {
-            background: #ff9800;
-        }
-
-        button.warning:hover {
-            background: #e68900;
-        }
-
-        .status {
-            padding: 10px;
-            border-radius: 6px;
-            margin: 10px 0;
-            font-weight: 500;
-        }
-
-        .status.success {
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid #4CAF50;
-            color: #4CAF50;
-        }
-
-        .status.error {
-            background: rgba(244, 67, 54, 0.2);
-            border: 1px solid #f44336;
-            color: #f44336;
-        }
-
-        .status.info {
-            background: rgba(33, 150, 243, 0.2);
-            border: 1px solid #2196F3;
-            color: #2196F3;
-        }
-
-        .fingerprint-image {
-            width: 100%;
-            max-width: 300px;
-            height: 400px;
-            background: #1a1a1a;
-            border: 2px dashed #444;
-            border-radius: 10px;
+        .create-button {
+            background: #212529;
+            color: #ffffff;
+            border: 1px solid #343a40;
+            padding: 15px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 15px auto;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .fingerprint-image img {
-            max-width: 100%;
-            max-height: 100%;
-            border-radius: 8px;
-        }
-
-        .fingerprint-placeholder {
-            color: #666;
-            text-align: center;
-            font-size: 48px;
-        }
-
-        .input-group {
-            margin-bottom: 15px;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #ccc;
-            font-weight: 500;
-        }
-
-        .input-group input, .input-group select {
-            width: 100%;
-            padding: 10px;
-            background: #1a1a1a;
-            border: 1px solid #444;
-            border-radius: 6px;
-            color: #e0e0e0;
-            font-size: 14px;
-        }
-
-        .input-group input:focus, .input-group select:focus {
-            outline: none;
-            border-color: #4CAF50;
-        }
-
-        .log-container {
-            background: #1a1a1a;
-            border: 1px solid #444;
-            border-radius: 10px;
-            height: 300px;
-            overflow-y: auto;
-            padding: 15px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-
-        .log-entry {
-            margin-bottom: 5px;
-            padding: 5px 0;
-            border-bottom: 1px solid #333;
-        }
-
-        .log-entry.info { color: #2196F3; }
-        .log-entry.success { color: #4CAF50; }
-        .log-entry.error { color: #f44336; }
-        .log-entry.warning { color: #ff9800; }
-
-        .store-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .store-item {
-            background: #1a1a1a;
-            border: 1px solid #444;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .store-item-info {
-            flex: 1;
-        }
-
-        .store-item-tag {
-            font-weight: bold;
-            color: #4CAF50;
-        }
-
-        .store-item-details {
-            font-size: 12px;
-            color: #aaa;
-        }
-
-        .loading {
-            display: inline-flex;
-            align-items: center;
             gap: 10px;
         }
 
-        .spinner {
-            width: 16px;
-            height: 16px;
-            border: 2px solid #444;
-            border-top: 2px solid #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        .create-button:hover {
+            background: #000000;
+            border-color: #000000;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
+        .create-button.active {
+            background: #28a745;
+            border-color: #28a745;
         }
 
-        .full-width {
-            grid-column: 1 / -1;
+        .create-button.active:hover {
+            background: #218838;
+            border-color: #1e7e34;
         }
 
-        .tech-info {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 15px;
-        }
-
-        .tech-section {
-            background: #1a1a1a;
-            border: 1px solid #444;
-            border-radius: 8px;
-            padding: 15px;
-        }
-
-        .tech-section h3 {
-            color: #4CAF50;
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-        }
-
-        .tech-detail {
+        .utility-buttons {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            padding: 4px 0;
-            border-bottom: 1px solid #333;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
         }
 
-        .tech-detail:last-child {
-            border-bottom: none;
-        }
-
-        .tech-label {
-            color: #ccc;
-            font-weight: 500;
-        }
-
-        .tech-value {
-            color: #4CAF50;
-            font-family: 'Courier New', monospace;
-            text-align: right;
-        }
-
-        .driver-item {
-            background-color: #fff;
-            border: 1px solid #e2e8f0;
+        .utility-button {
+            background: #6c757d;
+            color: #ffffff;
+            border: 1px solid #6c757d;
+            padding: 10px 20px;
             border-radius: 6px;
-            padding: 12px;
-            margin: 8px 0;
-            transition: all 0.3s ease;
-        }
-
-        .driver-item:hover {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .driver-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .driver-name {
-            font-weight: bold;
-            color: #2d3748;
+            cursor: pointer;
             font-size: 14px;
-        }
-
-        .driver-category {
-            font-size: 12px;
-            font-weight: bold;
+            font-weight: 600;
+            transition: all 0.2s ease;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .driver-details {
-            font-size: 12px;
-            color: #718096;
-            line-height: 1.5;
+        .utility-button:hover {
+            background: #5a6268;
+            border-color: #5a6268;
+            transform: translateY(-1px);
         }
 
+        .utility-button.danger {
+            background: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .utility-button.danger:hover {
+            background: #c82333;
+            border-color: #bd2130;
+        }
+
+        .component-container {
+            min-height: 500px;
+            margin-bottom: 30px;
+        }
+
+        .component-placeholder {
+            background: #f8f9fa;
+            border: 3px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .status-bar {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #dc3545;
+        }
+
+        .status-indicator.connected {
+            background: #28a745;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #ffffff;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .modal-header {
+            padding: 20px 25px 15px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            color: #212529;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: #f8f9fa;
+            color: #212529;
+        }
+
+        .modal-body {
+            padding: 0;
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
-            .grid {
+            .container {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .button-grid {
                 grid-template-columns: 1fr;
             }
 
-            .controls {
+            .utility-buttons {
                 flex-direction: column;
             }
 
-            button {
-                width: 100%;
+            .status-bar {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 10px;
             }
         }
     </style>
+
+    <!-- Estilos de componentes -->
+    <link rel="stylesheet" href="js/styles/components.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🔒 DP4500 Sistema de Huellas</h1>
-            <div class="subtitle">Enrolamiento, Verificación e Identificación en Tiempo Real</div>
+            <h1>🔒 Sistema Biométrico Modular</h1>
+            <div class="subtitle">Componentes DigitalPersona para Aplicaciones Web</div>
+            <a href="legacy.html" class="legacy-link">📄 Ver UI Legacy</a>
         </header>
 
-        <div class="grid">
-            <!-- Control del Lector -->
-            <div class="card">
-                <h2>🔌 Control del Lector</h2>
-                <div class="controls">
-                    <button id="btnInit">Inicializar</button>
-                    <button id="btnDispose" class="danger">Apagar</button>
-                    <button id="btnReaderInfo">📋 Info Técnica</button>
-                </div>
-                <div id="readerStatus" class="status info">Lector desconectado</div>
+        <!-- Barra de Estado -->
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-indicator" id="connectionStatus"></div>
+                <span>Estado: <span id="connectionText">Desconectado</span></span>
+            </div>
+            <div class="status-item">
+                <span>Componentes: <span id="componentCount">0</span></span>
+            </div>
+            <div class="status-item">
+                <span>Modo: <span id="displayMode">Inline</span></span>
+            </div>
+        </div>
+
+        <!-- Panel de Control -->
+        <div class="control-panel">
+            <h2>🎛️ Panel de Control</h2>
+
+            <div class="button-grid">
+                <button class="create-button" id="createEnrollment">
+                    📝 <span>Crear Enrollment</span>
+                </button>
+                <button class="create-button" id="createCapture">
+                    📸 <span>Crear Capture</span>
+                </button>
+                <button class="create-button" id="createVerification">
+                    ✅ <span>Crear Verification</span>
+                </button>
+                <button class="create-button" id="createReaderControl">
+                    🔌 <span>Crear Reader Control</span>
+                </button>
+                <button class="create-button" id="createLogDevice">
+                    📋 <span>Crear Log Device</span>
+                </button>
+                <button class="create-button" id="createTechDevice">
+                    🔧 <span>Crear Tech Device</span>
+                </button>
             </div>
 
-            <!-- Captura Simple -->
-            <div class="card">
-                <h2>📸 Captura Simple</h2>
-                <div class="fingerprint-image" id="captureDisplay">
-                    <div class="fingerprint-placeholder">🔍</div>
-                </div>
-                <div id="captureInstructions" class="status info">Presiona "Capturar" y coloca el dedo</div>
-                <div class="controls">
-                    <button id="btnCapture">Capturar</button>
-                    <button id="btnTestImage" style="background: #9c27b0;">🧪 Prueba</button>
-                    <button id="btnClearImage" style="background: #ff9800;">🗑️ Limpiar</button>
-                </div>
+            <div class="utility-buttons">
+                <button class="utility-button" id="toggleMode">
+                    🪟 Cambiar a Modal
+                </button>
+                <button class="utility-button" id="initReader">
+                    🔌 Inicializar Lector
+                </button>
+                <button class="utility-button danger" id="clearAll">
+                    🗑️ Limpiar Todo
+                </button>
+                <button class="utility-button" id="showDemo">
+                    🎮 Ver Demo Completo
+                </button>
             </div>
+        </div>
 
-            <!-- Enrolamiento -->
-            <div class="card">
-                <h2>📝 Enrolar Nueva Huella</h2>
-                <div class="fingerprint-image" id="enrollDisplay">
-                    <div class="fingerprint-placeholder">👤</div>
-                </div>
-                <div id="enrollInstructions" class="status info">Ingresa ID y presiona "Enrolar"</div>
-                <div class="input-group">
-                    <label for="enrollUserId">ID del Usuario:</label>
-                    <input type="text" id="enrollUserId" placeholder="Ej: Usuario001">
-                </div>
-                <div class="controls">
-                    <button id="btnEnroll">Enrolar</button>
-                </div>
-                <div id="enrollStatus" class="status info">Listo para enrolar</div>
-            </div>
-
-            <!-- Verificación -->
-            <div class="card">
-                <h2>✅ Verificación</h2>
-                <div class="fingerprint-image" id="verifyDisplay">
-                    <div class="fingerprint-placeholder">🔒</div>
-                </div>
-                <div id="verifyInstructions" class="status info">Selecciona usuario y presiona "Verificar"</div>
-                <div class="input-group">
-                    <label for="verifyUserId">Seleccionar Usuario:</label>
-                    <select id="verifyUserId">
-                        <option value="">-- Seleccionar Usuario --</option>
-                    </select>
-                </div>
-                <div class="controls">
-                    <button id="btnVerify" disabled>Verificar 1:1</button>
-                    <button id="btnIdentify" class="warning">Identificar 1:N</button>
-                </div>
-                <div id="verifyStatus" class="status info">Selecciona un usuario</div>
-            </div>
-
-            <!-- Store de Huellas -->
-            <div class="card full-width">
-                <h2>💾 Huellas Almacenadas</h2>
-                <div class="controls">
-                    <button id="btnRefreshStore">🔄 Actualizar</button>
-                    <button id="btnClearStore" class="danger">🗑️ Limpiar Todo</button>
-                </div>
-                <div class="store-list" id="storeList">
-                    <div class="status info">No hay huellas almacenadas</div>
-                </div>
-            </div>
-
-            <!-- Información Técnica del Lector -->
-            <div class="card full-width" id="readerInfoCard" style="display: none;">
-                <h2>📋 Información Técnica del Lector</h2>
-                <div class="controls">
-                    <button id="btnRefreshInfo">🔄 Actualizar</button>
-                    <button id="btnCopyInfo">📋 Copiar</button>
-                    <button id="btnHideInfo" class="danger">❌ Ocultar</button>
-                </div>
-                <div id="readerTechInfo" class="tech-info">
-                    <!-- La información técnica aparecerá aquí -->
-                </div>
-            </div>
-
-            <!-- Log de Eventos -->
-            <div class="card full-width">
-                <h2>📊 Log de Eventos en Tiempo Real</h2>
-                <div class="controls">
-                    <button id="btnClearLog">Limpiar Log</button>
-                </div>
-                <div class="log-container" id="logContainer">
-                    <!-- Los eventos aparecerán aquí -->
+        <!-- Contenedor de Componentes -->
+        <div class="component-container" id="componentContainer">
+            <div class="component-placeholder">
+                <div style="font-size: 48px; margin-bottom: 20px;">🧩</div>
+                <div>Selecciona un componente para comenzar</div>
+                <div style="font-size: 14px; margin-top: 10px; color: #adb5bd;">
+                    Los componentes aparecerán aquí o en ventanas modales
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Modal para Componentes -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Componente Biométrico</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Componente se insertará aquí -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts del sistema con pipeline de carga -->
     <script>
-        // Estado global
+        // Sistema de pipeline de carga segura
+        window.BiometricSystem = {
+            loaded: {
+                adapter: false,
+                baseComponent: false,
+                enrollment: false,
+                capture: false,
+                verification: false,
+                readercontrol: false,
+                logdevice: false,
+                techdevice: false,
+                factory: false
+            },
+            callbacks: [],
+
+            markLoaded: function(component) {
+                this.loaded[component] = true;
+                console.log(`✅ ${component} cargado`);
+                this.checkComplete();
+            },
+
+            checkComplete: function() {
+                const allLoaded = Object.values(this.loaded).every(loaded => loaded);
+                if (allLoaded) {
+                    console.log('🚀 Todos los componentes cargados, iniciando sistema...');
+                    this.callbacks.forEach(callback => {
+                        try {
+                            callback();
+                        } catch (error) {
+                            console.error('Error en callback de inicialización:', error);
+                        }
+                    });
+                    this.callbacks = [];
+                }
+            },
+
+            onReady: function(callback) {
+                const allLoaded = Object.values(this.loaded).every(loaded => loaded);
+                if (allLoaded) {
+                    callback();
+                } else {
+                    this.callbacks.push(callback);
+                }
+            }
+        };
+    </script>
+
+    <!-- BiometricAdapter -->
+    <script src="js/core/BiometricAdapter.js" onload="BiometricSystem.markLoaded('adapter')" onerror="console.error('Error cargando BiometricAdapter')"></script>
+
+    <!-- BaseComponent -->
+    <script src="js/core/BaseComponent.js" onload="BiometricSystem.markLoaded('baseComponent')" onerror="console.error('Error cargando BaseComponent')"></script>
+
+    <!-- Componentes -->
+    <script src="js/components/EnrollmentControl.js" onload="BiometricSystem.markLoaded('enrollment')" onerror="console.error('Error cargando EnrollmentControl')"></script>
+    <script src="js/components/SimpleCaptureControl.js" onload="BiometricSystem.markLoaded('capture')" onerror="console.error('Error cargando SimpleCaptureControl')"></script>
+    <script src="js/components/VerificationControl.js" onload="BiometricSystem.markLoaded('verification')" onerror="console.error('Error cargando VerificationControl')"></script>
+    <script src="js/components/ReaderControl.js" onload="BiometricSystem.markLoaded('readercontrol')" onerror="console.error('Error cargando ReaderControl')"></script>
+    <script src="js/components/LogDeviceControl.js" onload="BiometricSystem.markLoaded('logdevice')" onerror="console.error('Error cargando LogDeviceControl')"></script>
+    <script src="js/components/TechDeviceControl.js" onload="BiometricSystem.markLoaded('techdevice')" onerror="console.error('Error cargando TechDeviceControl')"></script>
+
+    <!-- Factory (último) -->
+    <script src="js/factory/ComponentFactory.js" onload="BiometricSystem.markLoaded('factory')" onerror="console.error('Error cargando ComponentFactory')"></script>
+
+    <script>
+        // Estado de la aplicación
+        let currentComponent = null;
+        let componentCount = 0;
+        let isModalMode = false;
         let readerInitialized = false;
-        let currentOperation = null;
-        let eventSource = null;
 
-        // Elementos DOM
+        // Referencias DOM
         const elements = {
-            btnInit: document.getElementById('btnInit'),
-            btnDispose: document.getElementById('btnDispose'),
-            btnCapture: document.getElementById('btnCapture'),
-            btnTestImage: document.getElementById('btnTestImage'),
-            btnClearImage: document.getElementById('btnClearImage'),
-            btnEnroll: document.getElementById('btnEnroll'),
-            btnVerify: document.getElementById('btnVerify'),
-            btnIdentify: document.getElementById('btnIdentify'),
-            btnRefreshStore: document.getElementById('btnRefreshStore'),
-            btnClearStore: document.getElementById('btnClearStore'),
-            btnClearLog: document.getElementById('btnClearLog'),
-            btnReaderInfo: document.getElementById('btnReaderInfo'),
-            btnRefreshInfo: document.getElementById('btnRefreshInfo'),
-            btnCopyInfo: document.getElementById('btnCopyInfo'),
-            btnHideInfo: document.getElementById('btnHideInfo'),
+            // Botones
+            createEnrollment: document.getElementById('createEnrollment'),
+            createCapture: document.getElementById('createCapture'),
+            createVerification: document.getElementById('createVerification'),
+            createReaderControl: document.getElementById('createReaderControl'),
+            createLogDevice: document.getElementById('createLogDevice'),
+            createTechDevice: document.getElementById('createTechDevice'),
+            toggleMode: document.getElementById('toggleMode'),
+            initReader: document.getElementById('initReader'),
+            clearAll: document.getElementById('clearAll'),
+            showDemo: document.getElementById('showDemo'),
 
-            readerStatus: document.getElementById('readerStatus'),
-            enrollStatus: document.getElementById('enrollStatus'),
-            verifyStatus: document.getElementById('verifyStatus'),
+            // Contenedores
+            componentContainer: document.getElementById('componentContainer'),
+            modalOverlay: document.getElementById('modalOverlay'),
+            modalTitle: document.getElementById('modalTitle'),
+            modalBody: document.getElementById('modalBody'),
+            modalClose: document.getElementById('modalClose'),
 
-            // Individual image displays
-            captureDisplay: document.getElementById('captureDisplay'),
-            enrollDisplay: document.getElementById('enrollDisplay'),
-            verifyDisplay: document.getElementById('verifyDisplay'),
-            fingerprintDisplay: document.getElementById('captureDisplay'), // Alias for compatibility
-
-            // Individual instruction displays
-            captureInstructions: document.getElementById('captureInstructions'),
-            enrollInstructions: document.getElementById('enrollInstructions'),
-            verifyInstructions: document.getElementById('verifyInstructions'),
-
-            logContainer: document.getElementById('logContainer'),
-            storeList: document.getElementById('storeList'),
-            readerInfoCard: document.getElementById('readerInfoCard'),
-            readerTechInfo: document.getElementById('readerTechInfo'),
-
-            enrollUserId: document.getElementById('enrollUserId'),
-            verifyUserId: document.getElementById('verifyUserId')
+            // Estado
+            connectionStatus: document.getElementById('connectionStatus'),
+            connectionText: document.getElementById('connectionText'),
+            componentCount: document.getElementById('componentCount'),
+            displayMode: document.getElementById('displayMode')
         };
 
-        // Utilidades
-        function log(level, message, source = null) {
-            const timestamp = new Date().toLocaleTimeString();
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${level}`;
-            const sourceText = source ? `[${source}] ` : '';
-            entry.textContent = `[${timestamp}] ${sourceText}${message}`;
-
-            elements.logContainer.appendChild(entry);
-            elements.logContainer.scrollTop = elements.logContainer.scrollHeight;
-
-            // Mantener solo los últimos 50 logs
-            while (elements.logContainer.children.length > 50) {
-                elements.logContainer.removeChild(elements.logContainer.firstChild);
+        // Configuración de componentes
+        const componentConfigs = {
+            enrollment: {
+                title: '📝 Enrolamiento de Huellas',
+                type: 'enrollment',
+                config: { maxSamples: 4, autoCancel: false }
+            },
+            capture: {
+                title: '📸 Captura Simple',
+                type: 'simplecapture',
+                config: { autoCapture: false, captureInterval: 5000 }
+            },
+            verification: {
+                title: '✅ Verificación e Identificación',
+                type: 'verification',
+                config: { scoreThreshold: 60, autoRefreshUsers: true }
+            },
+            readercontrol: {
+                title: '🔌 Control del Lector',
+                type: 'readercontrol',
+                config: { autoInit: false, showTechnicalInfo: true }
+            },
+            logdevice: {
+                title: '📋 Monitor de Logs',
+                type: 'logdevice',
+                config: { maxEntries: 50, autoScroll: true }
+            },
+            techdevice: {
+                title: '🔧 Información Técnica',
+                type: 'techdevice',
+                config: { autoRefresh: false, showDrivers: true }
             }
-        }
+        };
 
-        // Make log function available globally for inline handlers
-        window.logFunction = log;
+        // Función de inicialización principal
+        function initializeSystem() {
+            console.log('🔍 Iniciando verificación de componentes...');
 
-        function setStatus(element, type, message) {
-            element.className = `status ${type}`;
-            element.textContent = message;
-        }
+            // Verificar que todos los componentes estén disponibles
+            const requiredComponents = {
+                'BiometricAdapter': window.BiometricAdapter,
+                'ComponentFactory': window.ComponentFactory,
+                'BaseComponent': window.BaseComponent,
+                'EnrollmentControl': window.EnrollmentControl,
+                'SimpleCaptureControl': window.SimpleCaptureControl,
+                'VerificationControl': window.VerificationControl,
+                'ReaderControl': window.ReaderControl,
+                'LogDeviceControl': window.LogDeviceControl,
+                'TechDeviceControl': window.TechDeviceControl
+            };
 
-        // Dedicated Event Handler System for Real-time Status Updates
-        class StatusEventHandler {
-            constructor() {
-                this.setupEventListeners();
-            }
-
-            setupEventListeners() {
-                console.log('[EVENT-HANDLER] Setting up event listeners...');
-
-                // Listen for enrollment status events
-                document.addEventListener('enrollmentStatus', (event) => {
-                    console.log('[EVENT-HANDLER] ✅ enrollmentStatus event received:', event.detail);
-                    this.handleEnrollmentStatus(event.detail);
-                });
-
-                // Listen for capture status events
-                document.addEventListener('captureStatus', (event) => {
-                    console.log('[EVENT-HANDLER] ✅ captureStatus event received:', event.detail);
-                    this.handleCaptureStatus(event.detail);
-                });
-
-                // Listen for verification status events
-                document.addEventListener('verificationStatus', (event) => {
-                    console.log('[EVENT-HANDLER] ✅ verificationStatus event received:', event.detail);
-                    this.handleVerificationStatus(event.detail);
-                });
-
-                // Listen for attempt result events
-                document.addEventListener('attemptResult', (event) => {
-                    console.log('[EVENT-HANDLER] ✅ attemptResult event received:', event.detail);
-                    this.handleAttemptResult(event.detail);
-                });
-
-                // Listen for sample count events
-                document.addEventListener('sampleCount', (event) => {
-                    console.log('[EVENT-HANDLER] ✅ sampleCount event received:', event.detail);
-                    this.handleSampleCount(event.detail);
-                });
-
-                console.log('[EVENT-HANDLER] All event listeners registered successfully');
+            console.log('🔍 Estado de componentes:');
+            for (const [name, component] of Object.entries(requiredComponents)) {
+                console.log(`  ${name}: ${component ? '✅' : '❌'}`);
             }
 
-            handleEnrollmentStatus(data) {
-                console.log('[EVENT-HANDLER] 🟢 EXECUTING handleEnrollmentStatus');
-                console.log('[EVENT-HANDLER] - Message:', data.message);
-                console.log('[EVENT-HANDLER] - Type:', data.type || 'info');
-                const result = this.updateInstructions('enroll', data.type || 'info', `👆 ${data.message}`);
-                console.log('[EVENT-HANDLER] 🟢 handleEnrollmentStatus COMPLETED, result:', result);
-            }
-
-            handleCaptureStatus(data) {
-                console.log('[EVENT-HANDLER] 🔵 EXECUTING handleCaptureStatus');
-                console.log('[EVENT-HANDLER] - Message:', data.message);
-                console.log('[EVENT-HANDLER] - Type:', data.type || 'info');
-                const result = this.updateInstructions('capture', data.type || 'info', `👆 ${data.message}`);
-                console.log('[EVENT-HANDLER] 🔵 handleCaptureStatus COMPLETED, result:', result);
-            }
-
-            handleVerificationStatus(data) {
-                console.log('[EVENT-HANDLER] 🟣 EXECUTING handleVerificationStatus');
-                console.log('[EVENT-HANDLER] - Message:', data.message);
-                console.log('[EVENT-HANDLER] - Type:', data.type || 'info');
-                const result = this.updateInstructions('verify', data.type || 'info', `👆 ${data.message}`);
-                console.log('[EVENT-HANDLER] 🟣 handleVerificationStatus COMPLETED, result:', result);
-            }
-
-            handleAttemptResult(data) {
-                console.log('[EVENT-HANDLER] 🟡 EXECUTING handleAttemptResult');
-                console.log('[EVENT-HANDLER] - Attempt:', data.attempt);
-                console.log('[EVENT-HANDLER] - Success:', data.success);
-                console.log('[EVENT-HANDLER] - Reason:', data.reason);
-
-                const message = data.success
-                    ? `✅ Intento #${data.attempt}: Éxito`
-                    : `⚠️ Intento #${data.attempt}: ${data.reason || 'Fallo'}`;
-                const type = data.success ? 'success' : 'warning';
-
-                console.log('[EVENT-HANDLER] - Generated message:', message);
-                console.log('[EVENT-HANDLER] - Generated type:', type);
-
-                // Most attempts are during enrollment
-                const result = this.updateInstructions('enroll', type, message);
-                console.log('[EVENT-HANDLER] 🟡 handleAttemptResult COMPLETED, result:', result);
-            }
-
-            handleSampleCount(data) {
-                console.log('[EVENT-HANDLER] 🟠 EXECUTING handleSampleCount');
-                console.log('[EVENT-HANDLER] - Count:', data.count);
-
-                const message = `✅ Muestras capturadas: ${data.count}/4`;
-                console.log('[EVENT-HANDLER] - Generated message:', message);
-
-                const result = this.updateInstructions('enroll', 'success', message);
-                console.log('[EVENT-HANDLER] 🟠 handleSampleCount COMPLETED, result:', result);
-            }
-
-            updateInstructions(operation, type, message) {
-                console.log(`[EVENT-HANDLER] 🔄 UPDATING INSTRUCTIONS for ${operation}`);
-                console.log(`[EVENT-HANDLER] - Looking for element: ${operation}Instructions`);
-
-                const instructionElement = elements[`${operation}Instructions`];
-
-                if (instructionElement) {
-                    console.log(`[EVENT-HANDLER] ✅ Element found:`, instructionElement);
-                    console.log(`[EVENT-HANDLER] - Old className:`, instructionElement.className);
-                    console.log(`[EVENT-HANDLER] - Old textContent:`, instructionElement.textContent);
-
-                    instructionElement.className = `status ${type}`;
-                    instructionElement.innerHTML = `<strong>${message}</strong>`;
-
-                    // Apply forced visibility and visual emphasis
-                    instructionElement.style.display = 'block';
-                    instructionElement.style.visibility = 'visible';
-                    instructionElement.style.fontSize = '16px';
-                    instructionElement.style.fontWeight = 'bold';
-                    instructionElement.style.backgroundColor = '#fff3cd';
-                    instructionElement.style.border = '3px solid #ffc107';
-                    instructionElement.style.padding = '15px';
-                    instructionElement.style.borderRadius = '8px';
-                    instructionElement.style.boxShadow = '0 4px 8px rgba(255, 193, 7, 0.3)';
-                    instructionElement.style.animation = 'pulse 1.5s ease-in-out infinite';
-                    instructionElement.style.zIndex = '1000';
-                    instructionElement.style.position = 'relative';
-
-                    console.log(`[EVENT-HANDLER] - New className:`, instructionElement.className);
-                    console.log(`[EVENT-HANDLER] - New innerHTML:`, instructionElement.innerHTML);
-                    console.log(`[EVENT-HANDLER] ✅ Successfully updated ${operation} instructions WITH VISUAL EMPHASIS`);
-
-                    // Clear emphasis after 10 seconds
-                    setTimeout(() => {
-                        instructionElement.style.animation = '';
-                        instructionElement.style.backgroundColor = '';
-                        instructionElement.style.border = '';
-                        instructionElement.style.boxShadow = '';
-                        instructionElement.style.padding = '';
-                        console.log(`[EVENT-HANDLER] 🔄 Cleared visual emphasis for ${operation} instructions`);
-                    }, 10000);
-
-                    return { success: true, element: instructionElement, operation, type, message };
-                } else {
-                    console.error(`[EVENT-HANDLER] ❌ Element NOT found: ${operation}Instructions`);
-                    console.error(`[EVENT-HANDLER] - Available elements:`, Object.keys(elements).filter(k => k.includes('Instructions')));
-
-                    return { success: false, error: 'Element not found', operation, type, message };
+            const missing = [];
+            for (const [name, component] of Object.entries(requiredComponents)) {
+                if (!component) {
+                    missing.push(name);
                 }
             }
 
-            // Public methods to dispatch events
-            static dispatchEnrollmentStatus(message, type = 'info') {
-                console.log('[EVENT-HANDLER] 📤 DISPATCHING enrollmentStatus event');
-                console.log('[EVENT-HANDLER] - Message:', message);
-                console.log('[EVENT-HANDLER] - Type:', type);
-
-                const event = new CustomEvent('enrollmentStatus', {
-                    detail: { message, type }
-                });
-
-                console.log('[EVENT-HANDLER] - Event created:', event);
-                document.dispatchEvent(event);
-                console.log('[EVENT-HANDLER] 📤 enrollmentStatus event DISPATCHED');
-            }
-
-            static dispatchCaptureStatus(message, type = 'info') {
-                console.log('[EVENT-HANDLER] 📤 DISPATCHING captureStatus event');
-                console.log('[EVENT-HANDLER] - Message:', message);
-                console.log('[EVENT-HANDLER] - Type:', type);
-
-                const event = new CustomEvent('captureStatus', {
-                    detail: { message, type }
-                });
-
-                console.log('[EVENT-HANDLER] - Event created:', event);
-                document.dispatchEvent(event);
-                console.log('[EVENT-HANDLER] 📤 captureStatus event DISPATCHED');
-            }
-
-            static dispatchVerificationStatus(message, type = 'info') {
-                console.log('[EVENT-HANDLER] 📤 DISPATCHING verificationStatus event');
-                console.log('[EVENT-HANDLER] - Message:', message);
-                console.log('[EVENT-HANDLER] - Type:', type);
-
-                const event = new CustomEvent('verificationStatus', {
-                    detail: { message, type }
-                });
-
-                console.log('[EVENT-HANDLER] - Event created:', event);
-                document.dispatchEvent(event);
-                console.log('[EVENT-HANDLER] 📤 verificationStatus event DISPATCHED');
-            }
-
-            static dispatchAttemptResult(attempt, success, reason = null) {
-                console.log('[EVENT-HANDLER] 📤 DISPATCHING attemptResult event');
-                console.log('[EVENT-HANDLER] - Attempt:', attempt);
-                console.log('[EVENT-HANDLER] - Success:', success);
-                console.log('[EVENT-HANDLER] - Reason:', reason);
-
-                const event = new CustomEvent('attemptResult', {
-                    detail: { attempt, success, reason }
-                });
-
-                console.log('[EVENT-HANDLER] - Event created:', event);
-                document.dispatchEvent(event);
-                console.log('[EVENT-HANDLER] 📤 attemptResult event DISPATCHED');
-            }
-
-            static dispatchSampleCount(count) {
-                console.log('[EVENT-HANDLER] 📤 DISPATCHING sampleCount event');
-                console.log('[EVENT-HANDLER] - Count:', count);
-
-                const event = new CustomEvent('sampleCount', {
-                    detail: { count }
-                });
-
-                console.log('[EVENT-HANDLER] - Event created:', event);
-                document.dispatchEvent(event);
-                console.log('[EVENT-HANDLER] 📤 sampleCount event DISPATCHED');
-            }
-        }
-
-        // Initialize the event handler system
-        console.log('[EVENT-HANDLER] 🚀 INITIALIZING StatusEventHandler system...');
-        const statusEventHandler = new StatusEventHandler();
-        console.log('[EVENT-HANDLER] 🚀 StatusEventHandler system INITIALIZED and READY');
-
-        function setInstructions(operation, type, message) {
-            const instructionElement = elements[`${operation}Instructions`];
-            console.log(`[DEBUG] setInstructions: ${operation}, ${type}, ${message}`);
-            console.log(`[DEBUG] instructionElement:`, instructionElement);
-            if (instructionElement) {
-                instructionElement.className = `status ${type}`;
-                instructionElement.textContent = message;
-                console.log(`[DEBUG] Instructions updated for ${operation}: ${message}`);
-            } else {
-                console.error(`[ERROR] Instruction element not found: ${operation}Instructions`);
-            }
-        }
-
-        function displayImageInOperation(operation, imageBase64) {
-            const displayElement = elements[`${operation}Display`];
-            if (!displayElement) {
-                console.warn(`[WARNING] Display element for ${operation} not found`);
+            if (missing.length > 0) {
+                console.error('❌ Componentes faltantes:', missing);
+                showNotification(`Error: Componentes no disponibles: ${missing.join(', ')}`, 'error');
                 return;
             }
 
-            if (!imageBase64) {
-                displayElement.innerHTML = '<div class="fingerprint-placeholder">🔍</div>';
-                return;
-            }
+            console.log('✅ Todos los componentes disponibles');
 
-            try {
-                const imageHtml = `<img src="data:image/png;base64,${imageBase64}"
-                                       style="max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain;"
-                                       onload="console.log('[SUCCESS] ${operation} image loaded');"
-                                       onerror="console.error('[ERROR] Failed to load ${operation} image');" />`;
+            // Configurar la UI
+            setupEventListeners();
+            setupAdapterEvents(); // Asegurar que los eventos del adapter estén configurados
+            updateConnectionStatus();
+            updateComponentCount();
 
-                displayElement.innerHTML = imageHtml;
-                console.log(`[DEBUG] Image set for ${operation} operation`);
+            // Debug: Verificar BiometricAdapter
+            console.log('🚀 Sistema Biométrico Modular iniciado');
+            console.log('📋 Métodos BiometricAdapter:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.BiometricAdapter)));
+            console.log('📋 Métodos ComponentFactory:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.ComponentFactory)));
+            console.log('🔗 Estado conexión:', window.BiometricAdapter.isConnected);
 
-                // Update instructions immediately
-                setInstructions(operation, 'success', '✅ Imagen capturada exitosamente');
-
-            } catch (error) {
-                console.error(`[ERROR] Exception displaying image for ${operation}:`, error);
-                displayElement.innerHTML = '<div class="fingerprint-placeholder">❌</div>';
-                setInstructions(operation, 'error', '❌ Error al mostrar imagen');
-            }
-        }
-
-        function setOperationInProgress(operation, inProgress) {
-            if (inProgress) {
-                currentOperation = operation;
-                // Deshabilitar todos los botones excepto dispose, test y clear
-                Object.keys(elements).forEach(key => {
-                    if (key.startsWith('btn') &&
-                        key !== 'btnDispose' &&
-                        key !== 'btnTestImage' &&
-                        key !== 'btnClearImage') {
-                        elements[key].disabled = true;
+            // Intentar conectar automáticamente después de 1 segundo
+            setTimeout(async () => {
+                try {
+                    if (!window.BiometricAdapter.isConnected) {
+                        console.log('🔌 Intentando conectar automáticamente...');
+                        await window.BiometricAdapter.connect();
+                        updateConnectionStatus();
                     }
-                });
-                // Ensure test and clear buttons stay enabled
-                elements.btnTestImage.disabled = false;
-                elements.btnClearImage.disabled = false;
-            } else {
-                currentOperation = null;
-                updateButtonStates();
-            }
-        }
-
-        function updateButtonStates() {
-            elements.btnInit.disabled = readerInitialized;
-            elements.btnDispose.disabled = !readerInitialized;
-            elements.btnCapture.disabled = !readerInitialized;
-            elements.btnEnroll.disabled = !readerInitialized;
-            elements.btnVerify.disabled = !readerInitialized || !elements.verifyUserId.value;
-            elements.btnIdentify.disabled = !readerInitialized;
-            elements.btnReaderInfo.disabled = false; // Siempre habilitado
-
-            // Test and clear buttons should always be enabled (don't require reader)
-            elements.btnTestImage.disabled = false;
-            elements.btnClearImage.disabled = false;
-        }
-
-        function showLoading(element) {
-            element.innerHTML = '<div class="loading"><div class="spinner"></div>Procesando...</div>';
-        }
-
-        function displayFingerprintImageDirect(imageBase64) {
-            console.log('[DEBUG] displayFingerprintImageDirect called with', imageBase64 ? `${imageBase64.length} chars` : 'null');
-
-            if (!elements.fingerprintDisplay) {
-                console.error('[ERROR] fingerprintDisplay element not found!');
-                log('error', 'Error: elemento fingerprintDisplay no encontrado', 'IMAGEN');
-                return;
-            }
-
-            if (!imageBase64) {
-                console.warn('[WARNING] No base64 image data provided');
-                log('warning', 'No se proporcionaron datos de imagen base64', 'IMAGEN');
-                return;
-            }
-
-            try {
-                // Create the complete image HTML directly
-                const imageHtml = `<img src="data:image/png;base64,${imageBase64}"
-                                       style="max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain;"
-                                       onload="console.log('[SUCCESS] Base64 fingerprint image loaded'); window.logFunction && window.logFunction('success', 'Imagen de huella cargada exitosamente', 'IMAGEN');"
-                                       onerror="console.error('[ERROR] Failed to load base64 image'); window.logFunction && window.logFunction('error', 'Error al cargar imagen base64', 'IMAGEN');" />`;
-
-                // Set the HTML directly
-                elements.fingerprintDisplay.innerHTML = imageHtml;
-
-                console.log('[DEBUG] Image HTML set directly');
-                log('info', 'Imagen de huella insertada directamente como base64', 'IMAGEN');
-
-                // Verify the img element was actually created and inserted
-                setTimeout(() => {
-                    const imgElement = elements.fingerprintDisplay.querySelector('img');
-                    if (imgElement) {
-                        console.log('[VERIFICATION] ✅ IMG element successfully inserted');
-                        console.log('[VERIFICATION] IMG src length:', imgElement.src.length);
-                        console.log('[VERIFICATION] IMG parent:', imgElement.parentElement ? imgElement.parentElement.id : 'NO PARENT');
-                        log('success', '✅ Elemento <img> verificado e insertado correctamente en el DOM', 'VERIFICACIÓN');
-
-                        // Additional verification of the base64 data
-                        if (imgElement.src.startsWith('data:image/png;base64,')) {
-                            log('success', '✅ Base64 PNG detectado correctamente en src del img', 'VERIFICACIÓN');
-                        } else {
-                            log('warning', '⚠️ Formato src inesperado: ' + imgElement.src.substring(0, 50) + '...', 'VERIFICACIÓN');
-                        }
-                    } else {
-                        console.error('[VERIFICATION] ❌ IMG element NOT found after insertion');
-                        log('error', '❌ No se pudo cargar la imagen de la huella - elemento <img> no encontrado después de inserción', 'VERIFICACIÓN');
-
-                        // Show current HTML content for debugging
-                        console.log('[DEBUG] Current fingerprintDisplay innerHTML:', elements.fingerprintDisplay.innerHTML);
-                        log('error', 'Contenido actual del div: ' + elements.fingerprintDisplay.innerHTML.substring(0, 100), 'DEBUG');
-                    }
-                }, 100); // Wait 100ms for DOM to update
-
-            } catch (error) {
-                console.error('[ERROR] Exception in displayFingerprintImageDirect:', error);
-                elements.fingerprintDisplay.innerHTML = '<div class="fingerprint-placeholder">❌</div>';
-                log('error', `Error en displayFingerprintImageDirect: ${error.message}`, 'IMAGEN');
-            }
-        }
-
-        function updateFingerprintImage(imagePath, imageBase64) {
-            console.log('[DEBUG] updateFingerprintImage called:', { imagePath, imageBase64: imageBase64 ? `${imageBase64.length} chars` : 'null' });
-
-            if (!elements.fingerprintDisplay) {
-                console.error('[ERROR] fingerprintDisplay element not found!');
-                log('error', 'Error: elemento fingerprintDisplay no encontrado', 'IMAGEN');
-                return;
-            }
-
-            if (imageBase64) {
-                console.log('[DEBUG] Using base64 image data');
-                log('info', 'Cargando imagen de huella desde base64', 'IMAGEN');
-
-                // Use base64 image data if available (preferred method)
-                const img = document.createElement('img');
-                img.src = `data:image/png;base64,${imageBase64}`;
-                img.style.maxWidth = '100%';
-                img.style.maxHeight = '100%';
-                img.style.borderRadius = '8px';
-
-                img.onload = () => {
-                    console.log('[DEBUG] Base64 image loaded successfully');
-                    elements.fingerprintDisplay.innerHTML = '';
-                    elements.fingerprintDisplay.appendChild(img);
-                    log('success', 'Imagen de huella cargada exitosamente', 'IMAGEN');
-                };
-
-                img.onerror = (error) => {
-                    console.error('[ERROR] Failed to load base64 image:', error);
-                    elements.fingerprintDisplay.innerHTML = '<div class="fingerprint-placeholder">❌</div>';
-                    log('error', 'Error al cargar imagen de huella desde base64', 'IMAGEN');
-                };
-            } else if (imagePath) {
-                console.log('[DEBUG] Using image path:', imagePath);
-                log('info', `Cargando imagen de huella desde archivo: ${imagePath}`, 'IMAGEN');
-
-                // Fallback to file path method
-                const img = document.createElement('img');
-                img.src = `/images/${imagePath}?t=${Date.now()}`;
-                img.style.maxWidth = '100%';
-                img.style.maxHeight = '100%';
-                img.style.borderRadius = '8px';
-
-                img.onload = () => {
-                    console.log('[DEBUG] File image loaded successfully');
-                    elements.fingerprintDisplay.innerHTML = '';
-                    elements.fingerprintDisplay.appendChild(img);
-                    log('success', `Imagen de huella cargada desde archivo: ${imagePath}`, 'IMAGEN');
-                };
-
-                img.onerror = (error) => {
-                    console.error('[ERROR] Failed to load file image:', error);
-                    elements.fingerprintDisplay.innerHTML = '<div class="fingerprint-placeholder">❌</div>';
-                    log('error', `Error al cargar imagen desde archivo: ${imagePath}`, 'IMAGEN');
-                };
-            } else {
-                console.log('[DEBUG] No image data provided, showing placeholder');
-                elements.fingerprintDisplay.innerHTML = '<div class="fingerprint-placeholder">🔍</div>';
-            }
-        }
-
-        // API calls
-        async function apiCall(endpoint, data = null) {
-            try {
-                const options = {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                };
-
-                if (data) {
-                    options.body = JSON.stringify(data);
+                } catch (error) {
+                    console.log('⚠️ No se pudo conectar automáticamente:', error.message);
                 }
-
-                const response = await fetch(endpoint, options);
-                const result = await response.json();
-
-                if (!result.ok) {
-                    log('error', `${endpoint}: ${result.error}`);
-                }
-
-                return result;
-            } catch (error) {
-                log('error', `${endpoint}: Error de red - ${error.message}`);
-                return { ok: false, error: error.message };
-            }
-        }
-
-        async function apiGet(endpoint) {
-            try {
-                const response = await fetch(endpoint);
-                return await response.json();
-            } catch (error) {
-                log('error', `${endpoint}: Error de red - ${error.message}`);
-                return { ok: false, error: error.message };
-            }
-        }
-
-        // Operaciones principales
-        async function initializeReader() {
-            setOperationInProgress('init', true);
-            setStatus(elements.readerStatus, 'info', 'Inicializando...');
-            showLoading(elements.readerStatus);
-
-            log('info', 'Iniciando bootstrap del sistema...', 'INICIALIZAR');
-            let result = await apiCall('/api/bootstrap');
-            if (!result.ok) {
-                setOperationInProgress('init', false);
-                setStatus(elements.readerStatus, 'error', 'Error en bootstrap');
-                return;
-            }
-
-            log('info', 'Registrando callbacks...', 'INICIALIZAR');
-            result = await apiCall('/api/register');
-            if (!result.ok) {
-                setOperationInProgress('init', false);
-                setStatus(elements.readerStatus, 'error', 'Error en callbacks');
-                return;
-            }
-
-            log('info', 'Inicializando lector...', 'INICIALIZAR');
-            result = await apiCall('/api/init');
-            if (result.ok) {
-                readerInitialized = true;
-                setStatus(elements.readerStatus, 'success', 'Lector conectado y listo');
-                log('success', 'Lector inicializado correctamente', 'INICIALIZAR');
-            } else {
-                setStatus(elements.readerStatus, 'error', 'Error al inicializar lector');
-            }
-
-            setOperationInProgress('init', false);
-        }
-
-        async function disposeReader() {
-            setOperationInProgress('dispose', true);
-            setStatus(elements.readerStatus, 'info', 'Desconectando...');
-
-            const result = await apiCall('/api/dispose');
-            if (result.ok) {
-                readerInitialized = false;
-                setStatus(elements.readerStatus, 'info', 'Lector desconectado');
-                log('info', 'Lector desconectado', 'APAGAR');
-                updateFingerprintImage(null, null);
-            } else {
-                setStatus(elements.readerStatus, 'error', 'Error al desconectar');
-            }
-
-            setOperationInProgress('dispose', false);
-        }
-
-        async function captureFingerprint() {
-            setOperationInProgress('capture', true);
-            setInstructions('capture', 'info', '👆 Coloca el dedo en el lector...');
-            setStatus(elements.readerStatus, 'info', 'Capturando huella...');
-
-            const result = await apiCall('/api/single');
-            if (result.ok) {
-                log('success', 'Captura exitosa', 'CAPTURAR');
-                setStatus(elements.readerStatus, 'success', 'Captura completada');
-                setInstructions('capture', 'success', '⏳ Procesando imagen...');
-
-                // Image will be displayed automatically via SSE event to captureDisplay
-                console.log('[DEBUG] Capture completed successfully, image should arrive via SSE');
-            } else {
-                setStatus(elements.readerStatus, 'error', 'Error en captura');
-                setInstructions('capture', 'error', '❌ Error en captura - ' + (result.error || 'intenta de nuevo'));
-            }
-
-            setOperationInProgress('capture', false);
-        }
-
-        // Función de prueba para verificar que el display de imágenes funciona
-        function testImageDisplay() {
-            log('info', 'Ejecutando prueba de visualización de imagen', 'PRUEBA');
-
-            // Crear una imagen de prueba simple (cuadrado gris de 200x200)
-            const canvas = document.createElement('canvas');
-            canvas.width = 200;
-            canvas.height = 200;
-            const ctx = canvas.getContext('2d');
-
-            // Fondo gris
-            ctx.fillStyle = '#666666';
-            ctx.fillRect(0, 0, 200, 200);
-
-            // Patrón de prueba (círculos concéntricos simulando huella)
-            ctx.strokeStyle = '#333333';
-            ctx.lineWidth = 2;
-            for (let i = 1; i <= 8; i++) {
-                ctx.beginPath();
-                ctx.arc(100, 100, i * 12, 0, 2 * Math.PI);
-                ctx.stroke();
-            }
-
-            // Texto de prueba
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '12px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('IMAGEN DE PRUEBA', 100, 180);
-
-            // Convertir a base64
-            const testImageBase64 = canvas.toDataURL('image/png').split(',')[1];
-
-            console.log('[DEBUG] Generated test image, base64 length:', testImageBase64.length);
-            log('info', `Imagen de prueba generada (${testImageBase64.length} caracteres)`, 'PRUEBA');
-
-            // Usar la función directa para mostrar la imagen de prueba
-            displayFingerprintImageDirect(testImageBase64);
-
-            // NUEVO: Probar el sistema de eventos dedicado
-            console.log('[TEST] Testing dedicated event handler system...');
-
-            // Test enrollment status
-            StatusEventHandler.dispatchEnrollmentStatus('🧪 PRUEBA - Coloca el dedo (muestra 1/4)… levanta y recoloca cada vez.', 'info');
-
-            setTimeout(() => {
-                // Test attempt result
-                StatusEventHandler.dispatchAttemptResult(1, true);
             }, 1000);
+        }
 
-            setTimeout(() => {
-                // Test sample count
-                StatusEventHandler.dispatchSampleCount(1);
-            }, 2000);
+        // Inicialización con pipeline seguro
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📄 DOM cargado, esperando componentes...');
 
-            setTimeout(() => {
-                // Test next enrollment status
-                StatusEventHandler.dispatchEnrollmentStatus('🧪 PRUEBA - Coloca el dedo (muestra 2/4)… levanta y recoloca cada vez.', 'info');
-            }, 3000);
+            // Usar el pipeline de carga segura
+            BiometricSystem.onReady(() => {
+                initializeSystem();
+            });
 
+            // Fallback: Si después de 5 segundos no están todos los componentes, intentar inicializar igual
             setTimeout(() => {
-                // Test final success
-                StatusEventHandler.dispatchAttemptResult(2, true);
-                StatusEventHandler.dispatchSampleCount(2);
+                const allLoaded = Object.values(BiometricSystem.loaded).every(loaded => loaded);
+                if (!allLoaded) {
+                    console.warn('⚠️ Timeout esperando componentes, intentando inicializar...');
+                    console.warn('🔍 Estado de carga:', BiometricSystem.loaded);
+                    initializeSystem();
+                }
+            }, 5000);
+        });
+
+        // Configurar eventos del adapter después de que esté listo
+        function setupAdapterEvents() {
+            if (window.BiometricAdapter && typeof window.BiometricAdapter.on === 'function') {
+                window.BiometricAdapter.on('hello', () => {
+                    readerInitialized = true;
+                    updateConnectionStatus();
+                });
+                console.log('✅ Eventos del BiometricAdapter configurados');
+            } else {
+                console.warn('⚠️ BiometricAdapter no está listo para eventos');
+            }
+        }
+
+        // Configurar eventos
+        function setupEventListeners() {
+            // Botones de crear componentes
+            elements.createEnrollment.onclick = () => createComponent('enrollment');
+            elements.createCapture.onclick = () => createComponent('capture');
+            elements.createVerification.onclick = () => createComponent('verification');
+            elements.createReaderControl.onclick = () => createComponent('readercontrol');
+            elements.createLogDevice.onclick = () => createComponent('logdevice');
+            elements.createTechDevice.onclick = () => createComponent('techdevice');
+
+            // Botones de utilidad
+            elements.toggleMode.onclick = toggleDisplayMode;
+            elements.initReader.onclick = initializeReader;
+            elements.clearAll.onclick = clearAllComponents;
+            elements.showDemo.onclick = () => window.open('demo-modular.html', '_blank');
+
+            // Modal
+            elements.modalClose.onclick = closeModal;
+            elements.modalOverlay.onclick = (e) => {
+                if (e.target === elements.modalOverlay) closeModal();
+            };
+
+            // Eventos del adapter
+            setupAdapterEvents();
+
+            // Tecla ESC para cerrar modal
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && isModalMode) {
+                    closeModal();
+                }
+            });
+        }
+
+        // Crear componente
+        function createComponent(componentKey) {
+            // Validar ComponentFactory
+            if (!window.ComponentFactory) {
+                showNotification('ComponentFactory no disponible', 'error');
+                console.error('❌ ComponentFactory no está disponible');
+                return;
+            }
+
+            if (typeof window.ComponentFactory.create !== 'function') {
+                showNotification('ComponentFactory.create no es una función', 'error');
+                console.error('❌ ComponentFactory.create no es una función');
+                console.error('ComponentFactory methods:', Object.getOwnPropertyNames(window.ComponentFactory));
+                return;
+            }
+
+            const config = componentConfigs[componentKey];
+            if (!config) {
+                console.error('Configuración de componente no encontrada:', componentKey);
+                showNotification(`Configuración de componente '${componentKey}' no encontrada`, 'error');
+                return;
+            }
+
+            try {
+                // Limpiar componente anterior si existe
+                clearCurrentComponent();
+
+                // Determinar contenedor
+                const containerId = generateComponentId(config.type);
+                const targetContainer = isModalMode ? elements.modalBody : elements.componentContainer;
+
+                // Crear contenedor para el componente
+                const componentDiv = document.createElement('div');
+                componentDiv.id = containerId;
+                componentDiv.className = 'component-wrapper';
+
+                // Limpiar contenedor objetivo
+                targetContainer.innerHTML = '';
+                targetContainer.appendChild(componentDiv);
+
+                // Crear componente con configuración modal si es necesario
+                const componentConfig = {
+                    ...config.config,
+                    isModal: isModalMode,
+                    modalContainer: isModalMode ? elements.modalBody : null
+                };
+
+                console.log(`🔧 Creando componente ${config.type} con config:`, componentConfig);
+
+                const component = window.ComponentFactory.create(config.type, containerId, componentConfig);
+
+                if (component) {
+                    currentComponent = {
+                        instance: component,
+                        config: config,
+                        containerId: containerId,
+                        isModal: isModalMode
+                    };
+
+                    // Actualizar UI
+                    updateActiveButton(componentKey);
+                    componentCount++;
+                    updateComponentCount();
+
+                    // Manejar modal
+                    if (isModalMode) {
+                        elements.modalTitle.textContent = config.title;
+                        showModal();
+                    }
+
+                    // Eventos del componente
+                    setupComponentEvents(component, componentKey);
+
+                    console.log(`✅ Componente ${config.type} creado en modo ${isModalMode ? 'modal' : 'inline'}`);
+                    showNotification(`Componente ${config.title} creado exitosamente`, 'success');
+                } else {
+                    throw new Error('window.ComponentFactory.create retornó null o undefined');
+                }
+
+            } catch (error) {
+                console.error('Error creando componente:', error);
+                showNotification(`Error creando componente: ${error.message}`, 'error');
+            }
+        }
+
+        // Configurar eventos específicos del componente
+        function setupComponentEvents(component, componentKey) {
+            // Eventos comunes
+            component.on('ready', () => {
+                console.log(`Componente ${componentKey} listo`);
+            });
+
+            component.on('error', (error) => {
+                console.error(`Error en componente ${componentKey}:`, error);
+            });
+
+            // Eventos específicos por tipo
+            if (componentKey === 'enrollment') {
+                component.on('enrolled', (data) => {
+                    console.log('Usuario enrolado:', data.userId);
+                    showNotification(`Usuario ${data.userId} enrolado exitosamente`, 'success');
+                });
+            }
+
+            if (componentKey === 'capture') {
+                component.on('captured', (data) => {
+                    console.log('Huella capturada:', data);
+                    showNotification('Huella capturada exitosamente', 'success');
+                });
+            }
+
+            if (componentKey === 'verification') {
+                component.on('verified', (result) => {
+                    const message = result.verified
+                        ? `Verificación exitosa: ${result.user}`
+                        : `Verificación fallida: ${result.user}`;
+                    showNotification(message, result.verified ? 'success' : 'error');
+                });
+
+                component.on('identified', (result) => {
+                    const message = result.identified
+                        ? `Identificado: ${result.user}`
+                        : 'No se pudo identificar la huella';
+                    showNotification(message, result.identified ? 'success' : 'warning');
+                });
+            }
+        }
+
+        // Mostrar notificación
+        function showNotification(message, type = 'info') {
+            // Crear elemento de notificación
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : type === 'warning' ? '#ffc107' : '#6c757d'};
+                color: ${type === 'warning' ? '#212529' : '#ffffff'};
+                padding: 15px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                z-index: 1001;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            `;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            // Animar entrada
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+
+            // Auto-remover después de 4 segundos
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.parentElement.removeChild(notification);
+                    }
+                }, 300);
             }, 4000);
         }
 
-        function clearImageDisplay() {
-            log('info', 'Limpiando visualización de imágenes', 'LIMPIAR');
+        // Alternar modo de visualización
+        function toggleDisplayMode() {
+            isModalMode = !isModalMode;
+            elements.toggleMode.textContent = isModalMode ? '📱 Cambiar a Inline' : '🪟 Cambiar a Modal';
+            elements.displayMode.textContent = isModalMode ? 'Modal' : 'Inline';
 
-            // Clear all operation displays
-            ['capture', 'enroll', 'verify'].forEach(operation => {
-                const displayElement = elements[`${operation}Display`];
-                if (displayElement) {
-                    displayElement.innerHTML = '<div class="fingerprint-placeholder">🔍</div>';
+            // Si hay un componente activo, recrearlo en el nuevo modo
+            if (currentComponent) {
+                const componentKey = Object.keys(componentConfigs).find(
+                    key => componentConfigs[key].type === currentComponent.config.type
+                );
+                if (componentKey) {
+                    createComponent(componentKey);
+                }
+            }
+
+            console.log(`Modo cambiado a: ${isModalMode ? 'Modal' : 'Inline'}`);
+        }
+
+        // Mostrar/ocultar modal
+        function showModal() {
+            elements.modalOverlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            elements.modalOverlay.classList.remove('show');
+            document.body.style.overflow = '';
+
+            if (isModalMode && currentComponent) {
+                clearCurrentComponent();
+            }
+        }
+
+        // Limpiar componente actual
+        function clearCurrentComponent() {
+            if (currentComponent) {
+                try {
+                    window.ComponentFactory.destroy(currentComponent.config.type, currentComponent.containerId);
+                } catch (error) {
+                    console.warn('Error destruyendo componente:', error);
                 }
 
-                // Reset instructions to default
-                setInstructions(operation, 'info', 'Presiona el botón correspondiente para iniciar');
+                currentComponent = null;
+                clearActiveButtons();
+
+                // Restaurar placeholder si está en modo inline
+                if (!isModalMode) {
+                    elements.componentContainer.innerHTML = `
+                        <div class="component-placeholder">
+                            <div style="font-size: 48px; margin-bottom: 20px;">🧩</div>
+                            <div>Selecciona un componente para comenzar</div>
+                            <div style="font-size: 14px; margin-top: 10px; color: #adb5bd;">
+                                Los componentes aparecerán aquí o en ventanas modales
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Limpiar todos los componentes
+        function clearAllComponents() {
+            if (confirm('¿Estás seguro de que deseas limpiar todos los componentes?')) {
+                try {
+                    clearCurrentComponent();
+                    closeModal();
+
+                    if (window.ComponentFactory && typeof window.ComponentFactory.destroyAll === 'function') {
+                        window.ComponentFactory.destroyAll();
+                    } else {
+                        console.warn('ComponentFactory.destroyAll no disponible');
+                    }
+
+                    componentCount = 0;
+                    updateComponentCount();
+                    console.log('Todos los componentes limpiados');
+                    showNotification('Todos los componentes limpiados', 'info');
+                } catch (error) {
+                    console.error('Error limpiando componentes:', error);
+                    showNotification(`Error limpiando componentes: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Inicializar lector
+        async function initializeReader() {
+            console.log('[UI] 🔧 Función initializeReader llamada');
+            console.log('[UI] 📊 Estado actual - readerInitialized:', readerInitialized);
+
+            if (readerInitialized) {
+                console.log('[UI] ⚠️ Lector ya inicializado, abortando');
+                showNotification('El lector ya está inicializado', 'info');
+                return;
+            }
+
+            // Verificar que BiometricAdapter esté disponible
+            console.log('[UI] 🔍 Verificando disponibilidad de BiometricAdapter...');
+            if (!window.BiometricAdapter) {
+                console.error('[UI] ❌ BiometricAdapter no disponible');
+                showNotification('BiometricAdapter no está disponible', 'error');
+                return;
+            }
+            console.log('[UI] ✅ BiometricAdapter disponible');
+
+            // Verificar que las funciones estén disponibles
+            console.log('[UI] 🔍 Verificando función initializeReader...');
+            if (typeof window.BiometricAdapter.initializeReader !== 'function') {
+                console.error('[UI] ❌ Función initializeReader no disponible');
+                console.error('[UI] 📋 Métodos disponibles:', Object.getOwnPropertyNames(window.BiometricAdapter));
+                showNotification('Función initializeReader no disponible', 'error');
+                return;
+            }
+            console.log('[UI] ✅ Función initializeReader disponible');
+
+            try {
+                console.log('[UI] 🚀 Iniciando proceso de inicialización...');
+                elements.initReader.disabled = true;
+                elements.initReader.textContent = '🔄 Inicializando...';
+
+                // Intentar conectar primero si no está conectado
+                console.log('[UI] 🔍 Verificando conexión...', window.BiometricAdapter.isConnected);
+                if (window.BiometricAdapter && !window.BiometricAdapter.isConnected) {
+                    console.log('[UI] 🔌 Conectando al backend...');
+                    await window.BiometricAdapter.connect();
+                    console.log('[UI] ✅ Conexión establecida');
+                } else {
+                    console.log('[UI] ✅ Ya estaba conectado');
+                }
+
+                // Inicializar lector
+                console.log('[UI] 🎯 Llamando window.BiometricAdapter.initializeReader()...');
+                const result = await window.BiometricAdapter.initializeReader();
+                console.log('[UI] 📥 Resultado de inicialización:', result);
+
+                if (result && result.ok) {
+                    console.log('[UI] 🎉 Inicialización exitosa');
+                    readerInitialized = true;
+                    updateConnectionStatus();
+                    showNotification('Lector inicializado exitosamente', 'success');
+                } else {
+                    console.error('[UI] ❌ Inicialización falló - resultado inválido:', result);
+                    throw new Error(result?.error || 'Error desconocido en inicialización');
+                }
+            } catch (error) {
+                console.error('[UI] ❌ Error en proceso de inicialización:', error);
+                console.error('[UI] 📋 Stack trace:', error.stack);
+                console.error('[UI] 🔍 Detalles del error:', {
+                    name: error.name,
+                    message: error.message,
+                    cause: error.cause
+                });
+                showNotification(`Error: ${error.message}`, 'error');
+            } finally {
+                console.log('[UI] 🔄 Restaurando estado del botón...');
+                elements.initReader.disabled = false;
+                elements.initReader.textContent = '🔌 Inicializar Lector';
+            }
+        }
+
+        // Actualizar botón activo
+        function updateActiveButton(activeKey) {
+            clearActiveButtons();
+
+            const buttonMap = {
+                enrollment: elements.createEnrollment,
+                capture: elements.createCapture,
+                verification: elements.createVerification
+            };
+
+            if (buttonMap[activeKey]) {
+                buttonMap[activeKey].classList.add('active');
+            }
+        }
+
+        function clearActiveButtons() {
+            [elements.createEnrollment, elements.createCapture, elements.createVerification]
+                .forEach(btn => btn.classList.remove('active'));
+        }
+
+        // Actualizar estado de conexión
+        function updateConnectionStatus() {
+            const isConnected = window.BiometricAdapter && window.BiometricAdapter.isConnected && readerInitialized;
+
+            elements.connectionStatus.classList.toggle('connected', isConnected);
+            elements.connectionText.textContent = isConnected ? 'Conectado' : 'Desconectado';
+        }
+
+        // Actualizar contador de componentes
+        function updateComponentCount() {
+            if (window.ComponentFactory && typeof window.ComponentFactory.getActiveComponents === 'function') {
+                elements.componentCount.textContent = window.ComponentFactory.getActiveComponents().length;
+            } else {
+                elements.componentCount.textContent = '0';
+            }
+        }
+
+        // Generar ID único para componente
+        function generateComponentId(type) {
+            return `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        }
+
+        // Actualizar contador cada 5 segundos
+        setInterval(updateComponentCount, 5000);
+
+        // Función de diagnóstico mejorada
+        window.debugBiometric = function() {
+            console.log('=== DEBUG BIOMÉTRICO COMPLETO ===');
+
+            // Estado de carga del pipeline
+            console.log('🔄 Estado Pipeline:', BiometricSystem.loaded);
+
+            // BiometricAdapter
+            console.log('📡 BiometricAdapter disponible:', !!window.BiometricAdapter);
+            if (window.BiometricAdapter) {
+                console.log('  - Conectado:', window.BiometricAdapter.isConnected);
+                console.log('  - Métodos:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.BiometricAdapter)));
+                console.log('  - initializeReader disponible:', typeof window.BiometricAdapter.initializeReader === 'function');
+            }
+
+            // ComponentFactory
+            console.log('🏭 ComponentFactory disponible:', !!window.ComponentFactory);
+            if (window.ComponentFactory) {
+                console.log('  - create disponible:', typeof window.ComponentFactory.create === 'function');
+                console.log('  - Métodos:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.ComponentFactory)));
+                console.log('  - Componentes activos:', window.ComponentFactory.getActiveComponents().length);
+            }
+
+            // Componentes individuales
+            const components = ['BaseComponent', 'EnrollmentControl', 'SimpleCaptureControl', 'VerificationControl'];
+            components.forEach(comp => {
+                console.log(`🧩 ${comp} disponible:`, !!window[comp]);
             });
 
-            // Also clear the old display for compatibility
-            updateFingerprintImage(null, null);
-        }
+            // Estado de la aplicación
+            console.log('🎛️ Estado aplicación:');
+            console.log('  - Lector inicializado:', readerInitialized);
+            console.log('  - Modo modal:', isModalMode);
+            console.log('  - Componente actual:', currentComponent ? currentComponent.config.type : 'ninguno');
 
-        async function enrollFingerprint() {
-            const userId = elements.enrollUserId.value.trim();
-            if (!userId) {
-                log('error', 'Debe ingresar un ID de usuario', 'ENROLAR');
-                setInstructions('enroll', 'error', '❌ Ingresa un ID de usuario válido');
-                return;
-            }
-
-            setOperationInProgress('enroll', true);
-            setInstructions('enroll', 'info', `👆 Enrolando ${userId}... Coloca el dedo cuando se indique`);
-            setStatus(elements.enrollStatus, 'info', 'Enrolando huella...');
-            showLoading(elements.enrollStatus);
-
-            log('info', `Iniciando enrolamiento para: ${userId}`, 'ENROLAR');
-            const result = await apiCall('/api/enroll', { tag: userId });
-
-            if (result.ok && result.enrolled) {
-                setStatus(elements.enrollStatus, 'success', `Enrolamiento exitoso: ${userId}`);
-                log('success', `Usuario ${userId} enrolado correctamente`, 'ENROLAR');
-                elements.enrollUserId.value = '';
-                await refreshStore();
-
-                // Don't change instructions here - let SSE events handle the real-time updates
-                console.log('[DEBUG] Enrollment completed, SSE events will continue updating instructions');
-            } else {
-                setStatus(elements.enrollStatus, 'error', result.msg || 'Error en enrolamiento');
-                setInstructions('enroll', 'error', '❌ Error en enrolamiento - ' + (result.msg || 'intenta de nuevo'));
-            }
-
-            setOperationInProgress('enroll', false);
-        }
-
-        async function verifyFingerprint() {
-            const userId = elements.verifyUserId.value;
-            if (!userId) {
-                log('error', 'Debe seleccionar un usuario', 'VERIFICAR');
-                setInstructions('verify', 'error', '❌ Selecciona un usuario de la lista');
-                return;
-            }
-
-            setOperationInProgress('verify', true);
-            setInstructions('verify', 'info', `👆 Verificando ${userId}... Coloca el dedo en el lector`);
-            setStatus(elements.verifyStatus, 'info', 'Verificando...');
-            showLoading(elements.verifyStatus);
-
-            log('info', `Verificando huella para: ${userId}`, 'VERIFICAR');
-            const result = await apiCall('/api/verify', { tag: userId });
-
-            if (result.ok) {
-                if (result.verified) {
-                    setStatus(elements.verifyStatus, 'success', `✅ VERIFICADO - Score: ${result.score}`);
-                    setInstructions('verify', 'success', `✅ VERIFICADO - ${userId} autenticado (Score: ${result.score})`);
-                    log('success', `Verificación exitosa para ${userId} (Score: ${result.score})`, 'VERIFICAR');
-                } else {
-                    setStatus(elements.verifyStatus, 'error', `❌ NO VERIFICADO - Score: ${result.score}`);
-                    setInstructions('verify', 'error', `❌ NO VERIFICADO - ${userId} no coincide (Score: ${result.score})`);
-                    log('warning', `Verificación fallida para ${userId} (Score: ${result.score})`, 'VERIFICAR');
-                }
-            } else {
-                setStatus(elements.verifyStatus, 'error', 'Error en verificación');
-                setInstructions('verify', 'error', '❌ Error en verificación - ' + (result.error || 'intenta de nuevo'));
-            }
-
-            setOperationInProgress('verify', false);
-        }
-
-        async function identifyFingerprint() {
-            setOperationInProgress('identify', true);
-            setInstructions('verify', 'info', '👆 Identificación 1:N... Coloca el dedo en el lector');
-            setStatus(elements.verifyStatus, 'info', 'Identificando...');
-            showLoading(elements.verifyStatus);
-
-            log('info', 'Iniciando identificación 1:N', 'IDENTIFICAR');
-            const result = await apiCall('/api/identify1n');
-
-            if (result.ok) {
-                if (result.match) {
-                    setStatus(elements.verifyStatus, 'success', `✅ IDENTIFICADO: ${result.bestTag} (Score: ${result.bestScore})`);
-                    setInstructions('verify', 'success', `✅ IDENTIFICADO - Usuario: ${result.bestTag} (Score: ${result.bestScore})`);
-                    log('success', `Identificación exitosa: ${result.bestTag} (Score: ${result.bestScore})`, 'IDENTIFICAR');
-                } else {
-                    setStatus(elements.verifyStatus, 'warning', '⚠️ NO IDENTIFICADO - No hay coincidencias');
-                    setInstructions('verify', 'warning', '⚠️ NO IDENTIFICADO - No se encontraron coincidencias');
-                    log('warning', 'No se encontraron coincidencias en la identificación', 'IDENTIFICAR');
-                }
-            } else {
-                setStatus(elements.verifyStatus, 'error', 'Error en identificación');
-                setInstructions('verify', 'error', '❌ Error en identificación - ' + (result.error || 'intenta de nuevo'));
-            }
-
-            setOperationInProgress('identify', false);
-        }
-
-        async function refreshStore() {
-            const result = await apiGet('/api/store');
-
-            if (result.ok && result.items) {
-                updateStoreDisplay(result.items);
-                updateVerifyUserList(result.items);
-                log('info', `Cargadas ${result.items.length} huellas del store`, 'STORE');
-            }
-        }
-
-        function updateStoreDisplay(items) {
-            if (!items || items.length === 0) {
-                elements.storeList.innerHTML = '<div class="status info">No hay huellas almacenadas</div>';
-                return;
-            }
-
-            elements.storeList.innerHTML = items.map(item => `
-                <div class="store-item">
-                    <div class="store-item-info">
-                        <div class="store-item-tag">${item.Tag}</div>
-                        <div class="store-item-details">
-                            ${item.Format} • ${item.Bytes} bytes • ${new Date(item.Utc).toLocaleString()}
-                        </div>
-                    </div>
-                    <button onclick="deleteUser('${item.Tag}')" class="danger" style="min-width: auto; padding: 8px 12px;">
-                        🗑️
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        function updateVerifyUserList(items) {
-            const currentValue = elements.verifyUserId.value;
-            elements.verifyUserId.innerHTML = '<option value="">-- Seleccionar Usuario --</option>';
-
-            if (items && items.length > 0) {
-                items.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.Tag;
-                    option.textContent = `${item.Tag} (${item.Format})`;
-                    elements.verifyUserId.appendChild(option);
-                });
-
-                if (currentValue) {
-                    elements.verifyUserId.value = currentValue;
-                }
-            }
-
-            updateButtonStates();
-        }
-
-        async function clearStore() {
-            if (!confirm('¿Está seguro de que desea eliminar todas las huellas?')) return;
-
-            log('info', 'Limpiando store de huellas...');
-            const result = await fetch('/api/store', { method: 'DELETE' });
-
-            if (result.ok) {
-                await refreshStore();
-                setStatus(elements.verifyStatus, 'info', 'Selecciona un usuario');
-                log('info', 'Store limpiado correctamente');
-            }
-        }
-
-        async function deleteUser(tag) {
-            if (!confirm(`¿Eliminar huella de ${tag}?`)) return;
-
-            log('info', `Eliminando huella de ${tag}`, 'STORE');
-            // Note: Aquí necesitarías implementar un endpoint específico para eliminar usuarios individuales
-            await refreshStore();
-        }
-
-        function clearLog() {
-            elements.logContainer.innerHTML = '';
-            log('info', 'Log limpiado');
-        }
-
-        async function showReaderInfo() {
-            elements.readerInfoCard.style.display = 'block';
-            await refreshReaderInfo();
-        }
-
-        function hideReaderInfo() {
-            elements.readerInfoCard.style.display = 'none';
-        }
-
-        function copyReaderInfo() {
-            try {
-                const readerInfoElement = elements.readerTechInfo;
-                if (!readerInfoElement || !readerInfoElement.innerHTML.trim()) {
-                    log('warning', 'No hay información técnica para copiar', 'COPIAR');
-                    return;
-                }
-
-                // Extraer texto plano de la información técnica
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = readerInfoElement.innerHTML;
-
-                // Convertir el HTML a texto legible
-                let textContent = '';
-                const sections = tempDiv.querySelectorAll('.tech-section');
-
-                sections.forEach(section => {
-                    const title = section.querySelector('h3');
-                    if (title) {
-                        textContent += title.textContent + '\n';
-                        textContent += '='.repeat(title.textContent.length) + '\n\n';
-                    }
-
-                    const details = section.querySelectorAll('.tech-detail');
-                    details.forEach(detail => {
-                        const label = detail.querySelector('.tech-label');
-                        const value = detail.querySelector('.tech-value');
-                        if (label && value) {
-                            textContent += `${label.textContent} ${value.textContent}\n`;
-                        }
-                    });
-
-                    const drivers = section.querySelectorAll('.driver-item');
-                    drivers.forEach(driver => {
-                        const name = driver.querySelector('.driver-name');
-                        const details = driver.querySelector('.driver-details');
-                        if (name) {
-                            textContent += `${name.textContent}\n`;
-                            if (details) {
-                                textContent += `  ${details.textContent.replace(/<br>/g, '\n  ')}\n`;
-                            }
-                        }
-                    });
-
-                    textContent += '\n';
-                });
-
-                // Agregar timestamp
-                const timestamp = new Date().toLocaleString('es-ES');
-                const finalText = `INFORMACIÓN TÉCNICA DEL LECTOR\nGenerado: ${timestamp}\n\n${textContent}`;
-
-                // Copiar al portapapeles
-                navigator.clipboard.writeText(finalText).then(() => {
-                    log('success', 'Información técnica copiada al portapapeles', 'COPIAR');
+            // Probar conexión si está disponible
+            if (window.BiometricAdapter && typeof window.BiometricAdapter.connect === 'function') {
+                console.log('🔌 Probando conexión...');
+                window.BiometricAdapter.connect().then(() => {
+                    console.log('✅ Conexión exitosa');
+                    updateConnectionStatus();
                 }).catch(err => {
-                    console.error('Error al copiar:', err);
-                    // Fallback para navegadores que no soportan clipboard API
-                    const textArea = document.createElement('textarea');
-                    textArea.value = finalText;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    log('success', 'Información técnica copiada al portapapeles (fallback)', 'COPIAR');
+                    console.log('❌ Error de conexión:', err.message);
                 });
-
-            } catch (error) {
-                console.error('Error al copiar información:', error);
-                log('error', `Error al copiar: ${error.message}`, 'COPIAR');
             }
-        }
 
-        async function refreshReaderInfo() {
-            try {
-                console.log('[DEBUG] Starting refreshReaderInfo...');
-                const result = await apiGet('/api/reader-info');
-                console.log('[DEBUG] API result:', result);
-
-                if (result.ok) {
-                    console.log('[DEBUG] Result OK, calling displayReaderInfo...');
-                    console.log('[DEBUG] Reader data:', result.reader);
-                    console.log('[DEBUG] Drivers data:', result.drivers);
-                    displayReaderInfo(result.reader, result.drivers);
-                    log('success', 'Información técnica actualizada', 'INFO TÉCNICA');
-                } else {
-                    console.log('[DEBUG] Result NOT OK, error:', result.error);
-                    let errorMsg = `Error: ${result.error}`;
-                    if (result.debug) {
-                        errorMsg += `\n\nDebug Info:\n${result.debug}`;
-                        console.log('Debug Info:', result.debug);
-                    }
-                    elements.readerTechInfo.innerHTML = `<div class="status error"><pre>${errorMsg}</pre></div>`;
-                    log('error', `Error al obtener info técnica: ${result.error}`, 'INFO TÉCNICA');
-                }
-            } catch (error) {
-                console.log('[DEBUG] JavaScript error caught:', error);
-                console.log('[DEBUG] Error stack:', error.stack);
-                elements.readerTechInfo.innerHTML = `<div class="status error">Error de conexión</div>`;
-                log('error', `Error de conexión: ${error.message}`, 'INFO TÉCNICA');
-            }
-        }
-
-        function displayReaderInfo(reader, drivers) {
-            console.log('[DEBUG] displayReaderInfo called with:', reader, drivers);
-
-            const readerSection = `
-                <div class="tech-section">
-                    <h3>🔍 Información del Lector</h3>
-                    <div class="tech-detail">
-                        <span class="tech-label">GUID/Serial:</span>
-                        <span class="tech-value">${reader.Guid || 'N/A'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Nombre:</span>
-                        <span class="tech-value">${reader.Name || 'Unknown'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Tecnología:</span>
-                        <span class="tech-value">${reader.Technology || 'Unknown'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Modalidad:</span>
-                        <span class="tech-value">${reader.Modality || 'Unknown'}</span>
-                    </div>
-                </div>
-            `;
-
-            const capabilitiesSection = `
-                <div class="tech-section">
-                    <h3>⚙️ Capacidades</h3>
-                    <div class="tech-detail">
-                        <span class="tech-label">Resoluciones:</span>
-                        <span class="tech-value">${reader.Resolutions && reader.Resolutions.length > 0 ? reader.Resolutions.join(', ') + ' DPI' : 'N/A'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Puede capturar:</span>
-                        <span class="tech-value">${reader.CanCapture ? '✅ Sí' : '❌ No'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Streaming:</span>
-                        <span class="tech-value">${reader.CanStream ? '✅ Sí' : '❌ No'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Extracción de características:</span>
-                        <span class="tech-value">${reader.ExtractFeatures ? '✅ Sí' : '❌ No'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Coincidencia:</span>
-                        <span class="tech-value">${reader.CanMatch ? '✅ Sí' : '❌ No'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Identificación:</span>
-                        <span class="tech-value">${reader.CanIdentify ? '✅ Sí' : '❌ No'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Almacenamiento de huellas:</span>
-                        <span class="tech-value">${reader.HasFingerprintStorage ? '✅ Sí' : '❌ No'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">PIV Compliance:</span>
-                        <span class="tech-value">${reader.PIVCompliant ? '✅ Sí' : '❌ No'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Tipo de indicador:</span>
-                        <span class="tech-value">${reader.IndicatorType || 'N/A'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Indicador:</span>
-                        <span class="tech-value">${reader.IndicatorType}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Gestión de energía:</span>
-                        <span class="tech-value">${reader.HasPowerManagement ? '✅ Sí' : '❌ No'}</span>
-                    </div>
-                    <div class="tech-detail">
-                        <span class="tech-label">Calibración:</span>
-                        <span class="tech-value">${reader.HasCalibration ? '✅ Sí' : '❌ No'}</span>
-                    </div>
-                </div>
-            `;
-
-            const driversSection = `
-                <div class="tech-section">
-                    <h3>💾 Controladores y DLLs</h3>
-                    ${drivers.map(driver => {
-                        const statusIcon = driver.Status === 'Active' ? '🟢' :
-                                         driver.Status === 'Loaded' ? '✅' :
-                                         driver.Status === 'Found' ? '🔵' :
-                                         driver.Status === 'System' ? '🏛️' :
-                                         driver.Status === 'Missing' ? '❌' :
-                                         driver.Status === 'Error' ? '🔴' : '❓';
-
-                        const categoryColor = driver.Category === 'Device Information' ? '#2563eb' :
-                                            driver.Category === 'SDK Library' ? '#059669' :
-                                            driver.Category === 'System Driver' ? '#7c3aed' :
-                                            driver.Category === 'Error' ? '#dc2626' : '#6b7280';
-
-                        return `
-                            <div class="driver-item" style="border-left: 4px solid ${categoryColor};">
-                                <div class="driver-header">
-                                    <div class="driver-name">
-                                        ${statusIcon} ${driver.Name || 'Unknown'}
-                                    </div>
-                                    <div class="driver-category" style="color: ${categoryColor}; font-size: 12px; font-weight: bold;">
-                                        ${driver.Category || 'Unknown'}
-                                    </div>
-                                </div>
-                                <div class="driver-details">
-                                    ${driver.Details ? `<strong>Archivo:</strong> ${driver.Details}<br>` : ''}
-                                    ${driver.Version && driver.Version !== 'N/A' ? `<strong>Versión:</strong> ${driver.Version}<br>` : ''}
-                                    ${driver.Company ? `<strong>Compañía:</strong> ${driver.Company}<br>` : ''}
-                                    ${driver.Size ? `<strong>Tamaño:</strong> ${driver.Size}<br>` : ''}
-                                    ${driver.Modified ? `<strong>Modificado:</strong> ${driver.Modified}<br>` : ''}
-                                    ${driver.Path && driver.Path !== 'N/A' ? `<strong>Ruta:</strong> <code style="font-size: 11px; background: #f1f5f9; padding: 2px 4px; border-radius: 3px;">${driver.Path}</code><br>` : ''}
-                                    <strong>Estado:</strong> <span style="color: ${categoryColor};">${driver.Status}</span>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-
-            const imageSizesSection = reader.Resolutions && reader.Resolutions.length > 0 ? `
-                <div class="tech-section">
-                    <h3>📐 Resoluciones Soportadas</h3>
-                    ${reader.Resolutions.map(resolution => `
-                        <div class="tech-detail">
-                            <span class="tech-label">Resolución:</span>
-                            <span class="tech-value">${resolution} DPI</span>
-                        </div>
-                    `).join('')}
-                </div>
-            ` : '';
-
-            elements.readerTechInfo.innerHTML = readerSection + capabilitiesSection + driversSection + imageSizesSection;
-        }
-
-        // Event listeners
-        elements.btnInit.onclick = initializeReader;
-        elements.btnDispose.onclick = disposeReader;
-        elements.btnCapture.onclick = captureFingerprint;
-        elements.btnTestImage.onclick = testImageDisplay;
-        elements.btnClearImage.onclick = clearImageDisplay;
-        elements.btnEnroll.onclick = enrollFingerprint;
-        elements.btnVerify.onclick = verifyFingerprint;
-        elements.btnIdentify.onclick = identifyFingerprint;
-        elements.btnRefreshStore.onclick = refreshStore;
-        elements.btnClearStore.onclick = clearStore;
-        elements.btnClearLog.onclick = clearLog;
-        elements.btnReaderInfo.onclick = showReaderInfo;
-        elements.btnRefreshInfo.onclick = refreshReaderInfo;
-        elements.btnCopyInfo.onclick = copyReaderInfo;
-        elements.btnHideInfo.onclick = hideReaderInfo;
-
-        elements.verifyUserId.onchange = function() {
-            updateButtonStates();
-            if (this.value) {
-                setStatus(elements.verifyStatus, 'info', `Listo para verificar: ${this.value}`);
-            } else {
-                setStatus(elements.verifyStatus, 'info', 'Selecciona un usuario');
-            }
+            console.log('================================');
         };
 
-        // Server-Sent Events para comunicación en tiempo real
-        function connectToEvents() {
-            eventSource = new EventSource('/events');
+        // Función de recuperación de errores
+        window.recoverBiometric = function() {
+            console.log('🔄 Intentando recuperar sistema...');
 
-            eventSource.onmessage = function(event) {
-                try {
-                    const data = JSON.parse(event.data);
+            // Recargar scripts si están faltando
+            const scripts = [
+                { name: 'BiometricAdapter', src: 'js/core/BiometricAdapter.js' },
+                { name: 'BaseComponent', src: 'js/core/BaseComponent.js' },
+                { name: 'EnrollmentControl', src: 'js/components/EnrollmentControl.js' },
+                { name: 'SimpleCaptureControl', src: 'js/components/SimpleCaptureControl.js' },
+                { name: 'VerificationControl', src: 'js/components/VerificationControl.js' },
+                { name: 'ComponentFactory', src: 'js/factory/ComponentFactory.js' }
+            ];
 
-                    switch(data.evt) {
-                        case 'status':
-                            log('info', `Estado: ${data.msg}`, 'C# EVENT');
-                            console.log(`[SSE] Status event received: "${data.msg}"`);
-
-                            // Use dedicated event handler system for instant updates
-                            if (data.msg && data.msg.includes('muestra')) {
-                                // Enrollment status messages
-                                StatusEventHandler.dispatchEnrollmentStatus(data.msg, 'info');
-                            }
-                            else if (data.msg && data.msg.includes('Captura simple')) {
-                                // Capture status messages
-                                StatusEventHandler.dispatchCaptureStatus(data.msg, 'info');
-                            }
-                            else if (data.msg && (data.msg.includes('Verificación') || data.msg.includes('Identificación'))) {
-                                // Verification/identification status messages
-                                StatusEventHandler.dispatchVerificationStatus(data.msg, 'info');
-                            }
-                            else if (data.msg && data.msg.includes('coloca el dedo')) {
-                                // Generic "coloca el dedo" messages - default to enrollment
-                                StatusEventHandler.dispatchEnrollmentStatus(data.msg, 'info');
-                            }
-                            else {
-                                console.log(`[SSE] Unmatched status message: "${data.msg}"`);
-                            }
-                            break;
-                        case 'attempt':
-                            const level = data.ok ? 'success' : 'warning';
-                            log(level, `Intento #${data.i}: ${data.ok ? 'Éxito' : 'Fallo'} ${data.why ? `(${data.why})` : ''}`, 'C# EVENT');
-                            console.log(`[SSE] Attempt event: #${data.i}, success: ${data.ok}`);
-
-                            // Dispatch attempt result event for instant handling
-                            StatusEventHandler.dispatchAttemptResult(data.i, data.ok, data.why);
-                            break;
-
-                        case 'count':
-                            log('info', `Muestras: ${data.n}`, 'C# EVENT');
-                            console.log(`[SSE] Count event: ${data.n}`);
-
-                            // Dispatch sample count event for instant handling
-                            StatusEventHandler.dispatchSampleCount(data.n);
-                            break;
-                        case 'image':
-                            console.log('[DEBUG] Received image event:', { imageBase64: data.imageBase64 ? `${data.imageBase64.length} chars` : 'null' });
-                            if (data.imageBase64) {
-                                log('success', 'Imagen de huella recibida en tiempo real', 'SSE');
-
-                                // Determine which operation is currently active and display image there
-                                let targetOperation = currentOperation || 'capture';
-                                console.log(`[DEBUG] Displaying image for operation: ${targetOperation}`);
-
-                                // Display image in the appropriate operation display
-                                displayImageInOperation(targetOperation, data.imageBase64);
-
-                                // Also keep compatibility with the old method for capture
-                                if (targetOperation === 'capture') {
-                                    displayFingerprintImageDirect(data.imageBase64);
-                                }
-                            } else {
-                                log('warning', 'Evento de imagen recibido pero sin datos base64', 'SSE');
-                            }
-                            break;
-                        case 'hello':
-                            log('success', `Conectado al servidor (ID: ${data.id})`, 'SERVIDOR');
-                            break;
-                        default:
-                            log('info', `Evento: ${JSON.stringify(data)}`, 'C# EVENT');
-                    }
-                } catch (error) {
-                    log('error', `Error al procesar evento: ${event.data}`);
-                }
-            };
-
-            eventSource.onerror = function() {
-                log('error', 'Conexión perdida con el servidor');
-                setTimeout(connectToEvents, 3000); // Reconectar automáticamente
-            };
-        }
-
-        // Inicialización
-        function init() {
-            log('info', 'Sistema iniciado. Conecte el lector antes de usar.', 'SISTEMA');
-
-            // Verificar que todos los elementos están disponibles
-            console.log('[DEBUG] Verificando elementos DOM...');
-            Object.keys(elements).forEach(key => {
-                if (!elements[key]) {
-                    console.error(`[ERROR] Element ${key} not found!`);
-                    log('error', `Elemento ${key} no encontrado`, 'INIT');
-                } else {
-                    console.log(`[DEBUG] Element ${key} found:`, elements[key]);
+            scripts.forEach(script => {
+                if (!window[script.name]) {
+                    console.log(`⚠️ Recargando ${script.name}...`);
+                    const scriptElement = document.createElement('script');
+                    scriptElement.src = script.src;
+                    scriptElement.onload = () => console.log(`✅ ${script.name} recargado`);
+                    scriptElement.onerror = () => console.error(`❌ Error recargando ${script.name}`);
+                    document.head.appendChild(scriptElement);
                 }
             });
 
-            // Inicializar vista de huella con placeholder
-            updateFingerprintImage(null, null);
+            // Reintentar inicialización después de 2 segundos
+            setTimeout(() => {
+                console.log('🔄 Reintentando inicialización...');
+                initializeSystem();
+            }, 2000);
+        };
 
-            updateButtonStates();
-            refreshStore();
-            connectToEvents();
-        }
+        // Log del sistema
+        console.log('🎛️ Panel de Control del Sistema Biométrico cargado');
+        console.log('📋 Componentes disponibles:', Object.keys(componentConfigs));
+        console.log('🔧 Para diagnóstico ejecuta: debugBiometric()');
+        console.log('🆘 Para recuperar errores ejecuta: recoverBiometric()');
 
-        // Inicializar cuando se carga la página
-        document.addEventListener('DOMContentLoaded', init);
+        // Agregar botón de diagnóstico visual
+        setTimeout(() => {
+            if (!window.BiometricAdapter || !window.ComponentFactory) {
+                showNotification('⚠️ Algunos componentes no cargaron. Usa debugBiometric() para diagnóstico', 'warning');
+            }
+        }, 3000);
     </script>
 </body>
 </html>
