@@ -498,6 +498,7 @@
         };
 
         let enrollmentCount = 0;
+        let readerInitialized = false;
 
         // ====================================================
         // UTILIDADES
@@ -513,8 +514,14 @@
         }
 
         function updateStatus(connected) {
+            readerInitialized = connected;
             elements.statusIndicator.className = `status-indicator ${connected ? 'online' : 'offline'}`;
             elements.statusText.textContent = connected ? 'Conectado' : 'Desconectado';
+
+            // Habilitar/deshabilitar botones según estado del lector
+            elements.btnEnroll.disabled = !connected;
+            elements.btnVerify.disabled = !connected;
+            elements.btnIdentify.disabled = !connected;
         }
 
         function showImage(previewElement, imageBase64, title = 'Huella Capturada') {
@@ -544,6 +551,28 @@
 
         bioApi.on(BiometricEventTypes.SYSTEM_ERROR, (data) => {
             addLog(`[Error] ${data.message}`, 'error');
+
+            // Si el error es "Reader not initialized", recordar el estado
+            if (data.message && data.message.includes('Reader not initialized')) {
+                updateStatus(false);
+            }
+        });
+
+        // Manejar eventos del lector
+        bioApi.on(BiometricEventTypes.READER_INITIALIZED, (data) => {
+            updateStatus(true);
+            addLog('[Lector] Inicializado correctamente', 'success');
+        });
+
+        bioApi.on(BiometricEventTypes.READER_STATUS_CHANGED, (data) => {
+            if (data.data && data.data.ready) {
+                updateStatus(true);
+            }
+        });
+
+        bioApi.on(BiometricEventTypes.READER_ERROR, (data) => {
+            addLog(`[Lector] Error: ${data.message}`, 'error');
+            updateStatus(false);
         });
 
         // Manejar eventos de enrolamiento
@@ -624,7 +653,12 @@
             const userId = elements.enrollUserId.value.trim();
 
             if (!userId) {
-                addLog('Por favor ingrese un ID de usuario', 'error');
+                addLog('✗ Por favor ingrese un ID de usuario', 'error');
+                return;
+            }
+
+            if (!readerInitialized) {
+                addLog('✗ Por favor inicialice el lector primero', 'error');
                 return;
             }
 
@@ -668,7 +702,7 @@
                     <p style="color: #dc3545; font-weight: 600;">✗ ERROR: ${error.message}</p>
                 `;
             } finally {
-                elements.btnEnroll.disabled = false;
+                elements.btnEnroll.disabled = !readerInitialized;
             }
         }
 
@@ -676,7 +710,12 @@
             const userId = elements.verifyUserId.value.trim();
 
             if (!userId) {
-                addLog('Por favor ingrese un ID de usuario', 'error');
+                addLog('✗ Por favor ingrese un ID de usuario', 'error');
+                return;
+            }
+
+            if (!readerInitialized) {
+                addLog('✗ Por favor inicialice el lector primero', 'error');
                 return;
             }
 
@@ -723,11 +762,16 @@
                     <p style="color: #dc3545; font-weight: 600;">✗ ERROR: ${error.message}</p>
                 `;
             } finally {
-                elements.btnVerify.disabled = false;
+                elements.btnVerify.disabled = !readerInitialized;
             }
         }
 
         async function identifyFingerprint() {
+            if (!readerInitialized) {
+                addLog('✗ Por favor inicialice el lector primero', 'error');
+                return;
+            }
+
             elements.btnIdentify.disabled = true;
             elements.identifyPreview.innerHTML = '';
             elements.identifyInfo.style.display = 'none';
@@ -789,7 +833,7 @@
                     <p style="color: #dc3545; font-weight: 600;">✗ ERROR: ${error.message}</p>
                 `;
             } finally {
-                elements.btnIdentify.disabled = false;
+                elements.btnIdentify.disabled = !readerInitialized;
             }
         }
 
@@ -868,18 +912,28 @@
             addLog('Arquitectura: Event-Driven con DTOs', 'info');
             addLog('Timeout: 60 segundos (sin timers en frontend)', 'info');
 
+            // Inicializar estado de botones
+            updateStatus(false);
+
             // Conectar a eventos SSE
             bioApi.connectEvents('/events');
             addLog('✓ Conectado a Event Stream', 'success');
 
-            // Verificar servidor
+            // Verificar servidor y auto-inicializar lector
             try {
                 const response = await fetch('http://localhost:8080/api/store');
                 if (response.ok) {
                     addLog('✓ Servidor disponible', 'success');
+
+                    // Auto-inicializar lector
+                    addLog('🔌 Inicializando lector automáticamente...', 'info');
+                    setTimeout(() => {
+                        initReader();
+                    }, 1000);
                 }
             } catch (error) {
                 addLog('✗ Servidor no disponible', 'error');
+                addLog('⚠️ Por favor, inicie el servidor Node.js', 'error');
             }
         });
 
