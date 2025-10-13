@@ -99,17 +99,33 @@ class EventRouter {
      * Categorizar evento por su tipo
      */
     _categorize(eventType) {
+        // Eventos específicos de enrolamiento
         if (eventType.startsWith('ENROLLMENT_')) return 'enrollment';
+        if (eventType === 'USER_ENROLLED') return 'enrollment';
+
+        // Eventos específicos de verificación
         if (eventType.startsWith('VERIFICATION_')) return 'verification';
+
+        // Eventos específicos de identificación
         if (eventType.startsWith('IDENTIFICATION_')) return 'identification';
+
+        // Eventos del lector
         if (eventType.startsWith('READER_') || eventType === 'DEVICE_STATUS') return 'reader';
 
-        // Eventos de captura: van al contexto activo
+        // Eventos de captura e imagen: van al contexto activo
         if (eventType.startsWith('CAPTURE_') || eventType === 'IMAGE_CAPTURED') {
             if (this.activeOperations.enrollment) return 'enrollment';
             if (this.activeOperations.verification) return 'verification';
             if (this.activeOperations.identification) return 'identification';
             return 'reader';
+        }
+
+        // Eventos de sistema: van al contexto activo
+        if (eventType === 'SYSTEM_STATUS') {
+            if (this.activeOperations.enrollment) return 'enrollment';
+            if (this.activeOperations.verification) return 'verification';
+            if (this.activeOperations.identification) return 'identification';
+            return null; // Si no hay operación activa, ignorar
         }
 
         return null;

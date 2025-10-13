@@ -20,6 +20,62 @@ class EnrollmentControl extends BaseComponent {
             this.eventRouter.subscribe('enrollment', this, this.componentId);
             console.log(`[${this.componentId}] Suscrito a eventos de enrollment`);
         }
+
+        // Escuchar evento de finalización
+        this._setupCompletionListener();
+    }
+
+    /**
+     * Configurar listener para ENROLLMENT_COMPLETED
+     */
+    _setupCompletionListener() {
+        // Sobrescribir handleRouterEvent para detectar ENROLLMENT_COMPLETED
+        const originalHandler = this.handleRouterEvent.bind(this);
+
+        this.handleRouterEvent = (eventType, eventData) => {
+            // Llamar al handler original primero
+            originalHandler(eventType, eventData);
+
+            // Detectar eventos de finalización
+            if (eventType === 'ENROLLMENT_COMPLETED') {
+                this._onEnrollmentCompleted(eventData);
+            } else if (eventType === 'ENROLLMENT_FAILED') {
+                this._onEnrollmentFailed(eventData);
+            }
+        };
+    }
+
+    /**
+     * Manejar finalización exitosa
+     */
+    _onEnrollmentCompleted(eventData) {
+        console.log(`[${this.componentId}] ✅ Enrolamiento completado, finalizando operación`);
+
+        this.isEnrolling = false;
+        this._updateUI();
+
+        // Finalizar operación en EventRouter
+        if (this.eventRouter) {
+            this.eventRouter.endOperation('enrollment');
+        }
+
+        // Auto-limpiar después de 3 segundos
+        setTimeout(() => this.clear(), 3000);
+    }
+
+    /**
+     * Manejar fallos
+     */
+    _onEnrollmentFailed(eventData) {
+        console.log(`[${this.componentId}] ❌ Enrolamiento fallido, finalizando operación`);
+
+        this.isEnrolling = false;
+        this._updateUI();
+
+        // Finalizar operación en EventRouter
+        if (this.eventRouter) {
+            this.eventRouter.endOperation('enrollment');
+        }
     }
 
     /**
@@ -126,26 +182,19 @@ class EnrollmentControl extends BaseComponent {
                 this.eventRouter.startOperation('enrollment', this.componentId);
             }
 
-            // Llamar al backend
-            const result = await this.adapter.enrollFingerprint(this.userId);
+            // Llamar al backend - NO esperamos resultado aquí
+            // Los eventos SSE nos notificarán del progreso y finalización
+            await this.adapter.enrollFingerprint(this.userId);
 
-            // Procesar resultado
-            if (result.ok && result.enrolled) {
-                this.showSuccess(`Usuario ${this.userId} enrolado exitosamente`);
-
-                // Auto-limpiar después de 3 segundos
-                setTimeout(() => this.clear(), 3000);
-            } else {
-                this.showError(result.msg || 'Error en el enrolamiento');
-            }
+            // NOTA: NO finalizamos aquí - esperamos evento ENROLLMENT_COMPLETED
 
         } catch (error) {
             this.showError(`Error: ${error.message}`);
-        } finally {
+
+            // Solo en caso de error de conexión finalizamos
             this.isEnrolling = false;
             this._updateUI();
 
-            // Finalizar operación en el EventRouter
             if (this.eventRouter) {
                 this.eventRouter.endOperation('enrollment');
             }
