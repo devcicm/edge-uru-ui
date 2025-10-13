@@ -63,9 +63,34 @@ class BaseComponent {
      * Configurar eventos del adapter (override en subclases)
      */
     _setupAdapterEvents() {
-        // Eventos base que todos los componentes pueden usar
-        this.adapter.on('status', (data) => this._handleStatusEvent(data));
-        this.adapter.on('image', (data) => this._handleImageEvent(data));
+        if (!this.adapter) {
+            return;
+        }
+
+        const bindStatus = (eventName) => {
+            this.adapter.on(eventName, (payload) => {
+                const enriched = payload || {};
+                if (!enriched.eventType) {
+                    enriched.eventType = eventName;
+                }
+                this._handleStatusEvent(enriched);
+            });
+        };
+
+        ['status', 'SYSTEM_STATUS', 'SYSTEM_ERROR', 'CAPTURE_STARTED', 'CAPTURE_COMPLETED', 'CAPTURE_FAILED'].forEach(bindStatus);
+
+        const bindImage = (eventName) => {
+            this.adapter.on(eventName, (payload) => {
+                const enriched = payload || {};
+                if (!enriched.eventType) {
+                    enriched.eventType = eventName;
+                }
+                this._handleImageEvent(enriched);
+            });
+        };
+
+        ['image', 'IMAGE_CAPTURED'].forEach(bindImage);
+
         this.adapter.on('hello', (data) => this._handleConnectedEvent(data));
     }
 
@@ -73,15 +98,55 @@ class BaseComponent {
      * Manejar evento de estado
      */
     _handleStatusEvent(data) {
-        this.updateStatus('info', data.msg || 'Estado actualizado');
+        if (!data) {
+            return;
+        }
+
+        const severity = (data.severity || data.level || '').toString().toUpperCase();
+        const message = data.msg || data.message || data.text || 'Estado actualizado';
+
+        let statusType = 'info';
+        switch (severity) {
+            case 'SUCCESS':
+                statusType = 'success';
+                break;
+            case 'ERROR':
+                statusType = 'error';
+                break;
+            case 'WARNING':
+            case 'WARN':
+                statusType = 'warning';
+                break;
+            case 'LOADING':
+            case 'PENDING':
+                statusType = 'loading';
+                break;
+            default:
+                statusType = 'info';
+        }
+
+        if (data.eventType === 'CAPTURE_STARTED') {
+            statusType = 'loading';
+        } else if (data.eventType === 'CAPTURE_COMPLETED') {
+            statusType = 'success';
+        } else if (data.eventType === 'CAPTURE_FAILED' || data.eventType === 'SYSTEM_ERROR') {
+            statusType = 'error';
+        }
+
+        this.updateStatus(statusType, message);
     }
 
     /**
      * Manejar evento de imagen
      */
     _handleImageEvent(data) {
-        if (data.imageBase64) {
-            this.displayImage(data.imageBase64);
+        if (!data) {
+            return;
+        }
+
+        const imageBase64 = data.imageBase64 || (data.data ? data.data.imageBase64 : null);
+        if (imageBase64) {
+            this.displayImage(imageBase64);
         }
     }
 
@@ -140,6 +205,20 @@ class BaseComponent {
      */
     showSuccess(message) {
         this.updateStatus('success', message);
+    }
+
+    /**
+     * Mostrar informacion
+     */
+    showInfo(message) {
+        this.updateStatus('info', message);
+    }
+
+    /**
+     * Mostrar advertencia
+     */
+    showWarning(message) {
+        this.updateStatus('warning', message);
     }
 
     /**

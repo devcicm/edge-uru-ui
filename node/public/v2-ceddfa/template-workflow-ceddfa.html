@@ -98,6 +98,25 @@
             border-bottom: 2px solid #667eea;
         }
 
+        .ceddfa-component-card {
+            margin: 20px 0;
+            padding: 16px;
+            border: 2px dashed rgba(102, 126, 234, 0.35);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.65);
+        }
+
+        .ceddfa-component-card h3 {
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            color: #4c51bf;
+        }
+
+        .ceddfa-component-card .biometric-component {
+            background: #ffffff;
+        }
+
+
         .form-group {
             margin-bottom: 15px;
         }
@@ -304,6 +323,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="/js/styles/components.css">
 </head>
 <body>
     <div class="container">
@@ -325,6 +345,11 @@
                     Captura 4 huellas con arquitectura CEDDFA
                 </p>
 
+                <div class="ceddfa-component-card">
+                    <h3>Interfaz Modular CEDDFA</h3>
+                    <div id="ceddfa-enroll-component"></div>
+                </div>
+
                 <div class="form-group">
                     <label for="enrollUserId">ID del Usuario:</label>
                     <input type="text" id="enrollUserId" placeholder="Ej: USER001" required>
@@ -337,9 +362,13 @@
                 <div class="status-box enrolling" id="enrollStatus">
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                         <div class="spinner" style="width: 16px; height: 16px; border-width: 2px; border-color: rgba(33, 150, 243, 0.3); border-top-color: #2196f3;"></div>
-                        <strong style="color: #1976d2;">Procesando...</strong>
+                        <strong style="color: #1976d2;">Procesando enrolamiento...</strong>
                     </div>
-                    <p id="enrollStatusText" style="margin: 0; font-size: 14px; color: #333; line-height: 1.6;"></p>
+                    <div id="enrollStatusText" style="margin: 0; font-size: 14px; color: #333; line-height: 1.6;">
+                        <div id="enrollInstruction" style="font-size: 15px; font-weight: 600; margin-bottom: 8px;">Coloque su dedo en el lector</div>
+                        <div id="enrollProgress" style="margin-bottom: 5px;">Muestras: 0/4 | Progreso: 0%</div>
+                        <div id="enrollAttempts" style="font-size: 12px; color: #666;">Esperando captura...</div>
+                    </div>
                 </div>
 
                 <div class="fingerprint-preview" id="enrollPreview"></div>
@@ -357,6 +386,11 @@
                     Verificación 1:1 con Event Bus
                 </p>
 
+                <div class="ceddfa-component-card">
+                    <h3>Interfaz Modular CEDDFA</h3>
+                    <div id="ceddfa-verify-component"></div>
+                </div>
+
                 <div class="form-group">
                     <label for="verifyUserId">ID del Usuario:</label>
                     <input type="text" id="verifyUserId" placeholder="Ej: USER001" required>
@@ -369,9 +403,12 @@
                 <div class="status-box verifying" id="verifyStatus">
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                         <div class="spinner" style="width: 16px; height: 16px; border-width: 2px; border-color: rgba(233, 30, 99, 0.3); border-top-color: #e91e63;"></div>
-                        <strong style="color: #c2185b;">Verificando...</strong>
+                        <strong style="color: #c2185b;">Verificando identidad...</strong>
                     </div>
-                    <p id="verifyStatusText" style="margin: 0; font-size: 14px; color: #333; line-height: 1.6;"></p>
+                    <div id="verifyStatusText" style="margin: 0; font-size: 14px; color: #333; line-height: 1.6;">
+                        <div id="verifyInstruction" style="font-size: 15px; font-weight: 600; margin-bottom: 8px;">Coloque su dedo en el lector</div>
+                        <div id="verifyProgress" style="font-size: 12px; color: #666;">Esperando captura...</div>
+                    </div>
                 </div>
 
                 <div class="fingerprint-preview" id="verifyPreview"></div>
@@ -397,9 +434,12 @@
             <div class="status-box identifying" id="identifyStatus">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                     <div class="spinner" style="width: 16px; height: 16px; border-width: 2px; border-color: rgba(156, 39, 176, 0.3); border-top-color: #9c27b0;"></div>
-                    <strong style="color: #7b1fa2;">Identificando...</strong>
+                    <strong style="color: #7b1fa2;">Identificando 1:N...</strong>
                 </div>
-                <p id="identifyStatusText" style="margin: 0; font-size: 14px; color: #333; line-height: 1.6;"></p>
+                <div id="identifyStatusText" style="margin: 0; font-size: 14px; color: #333; line-height: 1.6;">
+                    <div id="identifyInstruction" style="font-size: 15px; font-weight: 600; margin-bottom: 8px;">Coloque su dedo en el lector</div>
+                    <div id="identifyProgress" style="font-size: 12px; color: #666;">Esperando captura...</div>
+                </div>
             </div>
 
             <div class="fingerprint-preview" id="identifyPreview"></div>
@@ -445,7 +485,11 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/biometric-dtos.js"></script>
+    <script src="/js/core/BiometricAdapter.js"></script>
+    <script src="/js/core/BaseComponent.js"></script>
+    <script src="/js/components/EnrollmentControl.js"></script>
+    <script src="/js/components/VerificationControl.js"></script>
+    <script src="/v2-ceddfa/biometric-dtos.js"></script>
     <script>
         // ====================================================
         // COMPONENTE CEDDFA - FRONTEND
@@ -465,6 +509,9 @@
             btnEnroll: document.getElementById('btnEnroll'),
             enrollStatus: document.getElementById('enrollStatus'),
             enrollStatusText: document.getElementById('enrollStatusText'),
+            enrollInstruction: document.getElementById('enrollInstruction'),
+            enrollProgress: document.getElementById('enrollProgress'),
+            enrollAttempts: document.getElementById('enrollAttempts'),
             enrollPreview: document.getElementById('enrollPreview'),
             enrollInfo: document.getElementById('enrollInfo'),
             enrollResult: document.getElementById('enrollResult'),
@@ -474,6 +521,8 @@
             btnVerify: document.getElementById('btnVerify'),
             verifyStatus: document.getElementById('verifyStatus'),
             verifyStatusText: document.getElementById('verifyStatusText'),
+            verifyInstruction: document.getElementById('verifyInstruction'),
+            verifyProgress: document.getElementById('verifyProgress'),
             verifyPreview: document.getElementById('verifyPreview'),
             verifyInfo: document.getElementById('verifyInfo'),
             verifyResult: document.getElementById('verifyResult'),
@@ -482,6 +531,8 @@
             btnIdentify: document.getElementById('btnIdentify'),
             identifyStatus: document.getElementById('identifyStatus'),
             identifyStatusText: document.getElementById('identifyStatusText'),
+            identifyInstruction: document.getElementById('identifyInstruction'),
+            identifyProgress: document.getElementById('identifyProgress'),
             identifyPreview: document.getElementById('identifyPreview'),
             identifyInfo: document.getElementById('identifyInfo'),
             identifyResult: document.getElementById('identifyResult'),
@@ -496,6 +547,39 @@
 
             logContainer: document.getElementById('logContainer')
         };
+
+
+        const ceddfaComponents = {
+            enroll: null,
+            verify: null
+        };
+
+        function initCeddfaComponents() {
+            if (!window.BiometricAdapter || !window.EnrollmentControl || !window.VerificationControl) {
+                console.warn('[CEDDFA UI] Componentes modulares no disponibles');
+                return;
+            }
+
+            if (!window.BiometricAdapter.isConnected) {
+                window.BiometricAdapter.connect().catch((error) => console.error('[CEDDFA UI] Error conectando BiometricAdapter', error));
+            }
+
+            if (!ceddfaComponents.enroll) {
+                try {
+                    ceddfaComponents.enroll = new EnrollmentControl('ceddfa-enroll-component', window.BiometricAdapter, { isModal: false });
+                } catch (error) {
+                    console.error('[CEDDFA UI] Error inicializando EnrollmentControl', error);
+                }
+            }
+
+            if (!ceddfaComponents.verify) {
+                try {
+                    ceddfaComponents.verify = new VerificationControl('ceddfa-verify-component', window.BiometricAdapter, { isModal: false });
+                } catch (error) {
+                    console.error('[CEDDFA UI] Error inicializando VerificationControl', error);
+                }
+            }
+        }
 
         let enrollmentCount = 0;
         let readerInitialized = false;
@@ -579,70 +663,171 @@
         bioApi.on(BiometricEventTypes.ENROLLMENT_STARTED, (data) => {
             enrollmentCount = 0;
             elements.enrollStatus.classList.add('show');
-            elements.enrollStatusText.textContent = data.message || 'Iniciando enrolamiento...';
+            elements.enrollInstruction.textContent = '👆 Coloque su dedo en el lector';
+            elements.enrollInstruction.style.color = '#1976d2';
+            elements.enrollProgress.textContent = 'Muestras: 0/4 | Progreso: 0%';
+            elements.enrollAttempts.textContent = 'Esperando captura...';
+            elements.enrollPreview.innerHTML = '';
             addLog(`[Enrolamiento] ${data.message}`, 'info');
         });
 
         bioApi.on(BiometricEventTypes.ENROLLMENT_SAMPLE_COLLECTED, (data) => {
             enrollmentCount++;
-            const msg = `Muestra ${enrollmentCount}/4 capturada`;
-            elements.enrollStatusText.textContent = msg;
-            addLog(`[Enrolamiento] ${msg}`, 'success');
+            const sampleNum = data.data?.sampleNumber || enrollmentCount;
+            const totalSamples = data.data?.totalSamples || 4;
+            const progress = Math.round((sampleNum/totalSamples)*100);
+
+            elements.enrollInstruction.textContent = sampleNum < totalSamples ? '🔄 Retire el dedo y colóquelo nuevamente' : '✓ Procesando registro...';
+            elements.enrollInstruction.style.color = '#28a745';
+            elements.enrollProgress.textContent = `Muestras: ${sampleNum}/${totalSamples} | Progreso: ${progress}%`;
+            elements.enrollAttempts.textContent = `✓ Muestra ${sampleNum} capturada exitosamente`;
+            elements.enrollAttempts.style.color = '#28a745';
+
+            addLog(`[Enrolamiento] ✓ Muestra ${sampleNum}/${totalSamples} capturada - ${progress}% completado`, 'success');
         });
 
         bioApi.on(BiometricEventTypes.ENROLLMENT_COMPLETED, (data) => {
             elements.enrollStatus.classList.remove('show');
-            addLog('[Enrolamiento] Completado exitosamente', 'success');
+            addLog('[Enrolamiento] ✓ Completado exitosamente - 4/4 muestras', 'success');
         });
 
         bioApi.on(BiometricEventTypes.ENROLLMENT_FAILED, (data) => {
             elements.enrollStatus.classList.remove('show');
-            addLog(`[Enrolamiento] Falló: ${data.message}`, 'error');
+            elements.enrollInstruction.textContent = '✗ Enrolamiento fallido';
+            elements.enrollInstruction.style.color = '#dc3545';
+            elements.enrollAttempts.textContent = data.message || 'Error desconocido';
+            addLog(`[Enrolamiento] ✗ Falló: ${data.message}`, 'error');
         });
 
         // Manejar eventos de verificación
         bioApi.on(BiometricEventTypes.VERIFICATION_STARTED, (data) => {
             elements.verifyStatus.classList.add('show');
-            elements.verifyStatusText.textContent = data.message || 'Iniciando verificación...';
+            elements.verifyInstruction.textContent = '👆 Coloque su dedo en el lector';
+            elements.verifyInstruction.style.color = '#c2185b';
+            elements.verifyProgress.textContent = 'Esperando captura...';
+            elements.verifyPreview.innerHTML = '';
             addLog(`[Verificación] ${data.message}`, 'info');
         });
 
         bioApi.on(BiometricEventTypes.VERIFICATION_COMPLETED, (data) => {
             elements.verifyStatus.classList.remove('show');
-            addLog('[Verificación] Completada', 'success');
+            addLog('[Verificación] ✓ Completada', 'success');
         });
 
         bioApi.on(BiometricEventTypes.VERIFICATION_FAILED, (data) => {
             elements.verifyStatus.classList.remove('show');
-            addLog(`[Verificación] Falló: ${data.message}`, 'error');
+            elements.verifyInstruction.textContent = '✗ Verificación fallida';
+            elements.verifyInstruction.style.color = '#dc3545';
+            elements.verifyProgress.textContent = data.message || 'Error desconocido';
+            addLog(`[Verificación] ✗ Falló: ${data.message}`, 'error');
         });
 
         // Manejar eventos de identificación
         bioApi.on(BiometricEventTypes.IDENTIFICATION_STARTED, (data) => {
             elements.identifyStatus.classList.add('show');
-            elements.identifyStatusText.textContent = data.message || 'Iniciando identificación...';
-            addLog(`[Identificación] ${data.message}`, 'info');
+            const gallerySize = data.data?.gallerySize || 0;
+            elements.identifyInstruction.textContent = '👆 Coloque su dedo en el lector';
+            elements.identifyInstruction.style.color = '#7b1fa2';
+            elements.identifyProgress.textContent = `Buscando en galería: ${gallerySize} usuarios registrados`;
+            elements.identifyPreview.innerHTML = '';
+            addLog(`[Identificación] ${data.message} - Galería: ${gallerySize}`, 'info');
         });
 
         bioApi.on(BiometricEventTypes.IDENTIFICATION_COMPLETED, (data) => {
             elements.identifyStatus.classList.remove('show');
-            addLog('[Identificación] Completada', 'success');
+            addLog('[Identificación] ✓ Completada', 'success');
         });
 
         bioApi.on(BiometricEventTypes.IDENTIFICATION_FAILED, (data) => {
             elements.identifyStatus.classList.remove('show');
-            addLog(`[Identificación] Falló: ${data.message}`, 'error');
+            elements.identifyInstruction.textContent = '✗ Identificación fallida';
+            elements.identifyInstruction.style.color = '#dc3545';
+            elements.identifyProgress.textContent = data.message || 'Error desconocido';
+            addLog(`[Identificación] ✗ Falló: ${data.message}`, 'error');
         });
 
-        // Manejar imágenes capturadas
+        // Manejar imágenes capturadas en TIEMPO REAL
         bioApi.on(BiometricEventTypes.IMAGE_CAPTURED, (data) => {
-            addLog('[Imagen] Huella capturada', 'success');
-            // La imagen se mostrará cuando se complete la operación
+            addLog('[Imagen] Huella capturada en tiempo real', 'success');
+
+            // Mostrar imagen inmediatamente según el contexto
+            if (data.data?.imageBase64) {
+                const imageBase64 = data.data.imageBase64;
+
+                // Determinar en qué preview mostrar según el estado activo
+                if (elements.enrollStatus.classList.contains('show')) {
+                    showImage(elements.enrollPreview, imageBase64, '📸 Captura en tiempo real');
+                } else if (elements.verifyStatus.classList.contains('show')) {
+                    showImage(elements.verifyPreview, imageBase64, '📸 Captura en tiempo real');
+                } else if (elements.identifyStatus.classList.contains('show')) {
+                    showImage(elements.identifyPreview, imageBase64, '📸 Captura en tiempo real');
+                }
+            }
         });
 
-        // Escuchar TODOS los eventos (debugging)
+        // Manejar eventos de captura y estado
+        bioApi.on(BiometricEventTypes.CAPTURE_STARTED, (data) => {
+            const msg = data.message || 'Esperando dedo en el lector...';
+            addLog(`[Captura] ${msg}`, 'info');
+
+            // Actualizar UI según operación activa
+            if (elements.enrollStatus.classList.contains('show')) {
+                elements.enrollInstruction.textContent = '👆 Coloque su dedo en el lector';
+                elements.enrollInstruction.style.color = '#1976d2';
+            } else if (elements.verifyStatus.classList.contains('show')) {
+                elements.verifyInstruction.textContent = '👆 Coloque su dedo en el lector';
+                elements.verifyInstruction.style.color = '#c2185b';
+            } else if (elements.identifyStatus.classList.contains('show')) {
+                elements.identifyInstruction.textContent = '👆 Coloque su dedo en el lector';
+                elements.identifyInstruction.style.color = '#7b1fa2';
+            }
+        });
+
+        bioApi.on(BiometricEventTypes.CAPTURE_COMPLETED, (data) => {
+            addLog('[Captura] ✓ Huella capturada exitosamente', 'success');
+        });
+
+        // Manejar intentos fallidos - MOSTRAR RAZÓN Y CONTADORES
+        bioApi.on(BiometricEventTypes.CAPTURE_QUALITY_LOW, (data) => {
+            const attempt = data.data?.attemptNumber || '?';
+            const maxAttempts = data.data?.maxAttempts || 3;
+            const reason = data.data?.reason || data.message || 'Calidad insuficiente';
+
+            addLog(`[Captura] ⚠️ Intento ${attempt}/${maxAttempts} falló: ${reason}`, 'error');
+
+            if (elements.enrollStatus.classList.contains('show')) {
+                elements.enrollInstruction.textContent = '⚠️ Calidad insuficiente - Reintente';
+                elements.enrollInstruction.style.color = '#ff9800';
+                elements.enrollAttempts.textContent = `Intento ${attempt}/${maxAttempts}: ${reason}`;
+                elements.enrollAttempts.style.color = '#dc3545';
+            } else if (elements.verifyStatus.classList.contains('show')) {
+                elements.verifyInstruction.textContent = '⚠️ Calidad insuficiente - Reintente';
+                elements.verifyInstruction.style.color = '#ff9800';
+                elements.verifyProgress.textContent = `Intento ${attempt}/${maxAttempts}: ${reason}`;
+            } else if (elements.identifyStatus.classList.contains('show')) {
+                elements.identifyInstruction.textContent = '⚠️ Calidad insuficiente - Reintente';
+                elements.identifyInstruction.style.color = '#ff9800';
+                elements.identifyProgress.textContent = `Intento ${attempt}/${maxAttempts}: ${reason}`;
+            }
+        });
+
+        // Escuchar TODOS los eventos (debugging) - MUY DETALLADO
         bioApi.on('*', (data) => {
-            console.log('[CEDDFA Event]', data);
+            console.log('[CEDDFA Event] ===== EVENTO RECIBIDO =====');
+            console.log('[CEDDFA Event] Tipo:', data.eventType || data.evt);
+            console.log('[CEDDFA Event] Data completa:', data);
+            console.log('[CEDDFA Event] ================================');
+
+            // Verificar si el evento tiene los campos esperados
+            if (data.eventType) {
+                console.log('[CEDDFA Event] ✅ Tiene eventType:', data.eventType);
+            } else {
+                console.log('[CEDDFA Event] ⚠️ NO tiene eventType, usando evt:', data.evt);
+            }
+
+            if (data.data) {
+                console.log('[CEDDFA Event] ✅ Tiene data:', data.data);
+            }
         });
 
         // ====================================================
@@ -839,10 +1024,10 @@
 
         async function initReader() {
             elements.btnInit.disabled = true;
-            addLog('Inicializando lector de huellas...', 'info');
+            addLog('Inicializando lector de huellas V2...', 'info');
 
             try {
-                const response = await fetch('http://localhost:8080/api/init', {
+                const response = await fetch('http://localhost:8080/api/v2/init', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -851,7 +1036,7 @@
 
                 if (result.ok) {
                     updateStatus(true);
-                    addLog('✓ Lector inicializado correctamente', 'success');
+                    addLog('✓ Lector V2 inicializado correctamente', 'success');
                 } else {
                     throw new Error(result.error || 'Error desconocido');
                 }
@@ -912,6 +1097,8 @@
             addLog('Arquitectura: Event-Driven con DTOs', 'info');
             addLog('Timeout: 60 segundos (sin timers en frontend)', 'info');
 
+            initCeddfaComponents();
+
             // Inicializar estado de botones
             updateStatus(false);
 
@@ -944,3 +1131,4 @@
     </script>
 </body>
 </html>
+

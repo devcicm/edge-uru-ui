@@ -169,6 +169,57 @@ class VerificationControl extends BaseComponent {
     _setupVerificationEvents() {
         this.adapter.on('status', (data) => this._handleVerificationStatus(data));
         this.adapter.on('image', (data) => this._handleVerificationImage(data));
+
+        this.adapter.on('VERIFICATION_STARTED', (data) => {
+            this.verificationState = 'verifying';
+            const userId = data?.data?.userId || this.selectedUser || 'Usuario';
+            this.showLoading(data.message || 'Verificando ' + userId + '...');
+            this._updateButtonStates();
+        });
+
+        this.adapter.on('VERIFICATION_COMPLETED', (data) => {
+            this._processVerificationEvent(data, true);
+        });
+
+        this.adapter.on('VERIFICATION_FAILED', (data) => {
+            const enriched = Object.assign({ verified: false }, data || {});
+            this._processVerificationEvent(enriched, true);
+        });
+
+        this.adapter.on('IDENTIFICATION_STARTED', (data) => {
+            this.identificationState = 'identifying';
+            this.showLoading(data.message || 'Buscando coincidencias...');
+            this._updateButtonStates();
+        });
+
+        this.adapter.on('IDENTIFICATION_COMPLETED', (data) => {
+            this._processIdentificationEvent(data, true);
+        });
+
+        this.adapter.on('IDENTIFICATION_FAILED', (data) => {
+            const enriched = Object.assign({ matched: false }, data || {});
+            this._processIdentificationEvent(enriched, true);
+        });
+
+        this.adapter.on('CAPTURE_STARTED', (data) => {
+            if (this.verificationState === 'verifying' || this.identificationState === 'identifying') {
+                this.showLoading(data.message || 'Coloca el dedo en el lector');
+            }
+        });
+
+        this.adapter.on('CAPTURE_COMPLETED', (data) => {
+            if (this.verificationState === 'verifying' || this.identificationState === 'identifying') {
+                this.showInfo(data.message || 'Captura completada');
+            }
+        });
+
+        this.adapter.on('IMAGE_CAPTURED', (data) => this._handleVerificationImage(data));
+
+        this.adapter.on('SYSTEM_ERROR', (data) => {
+            if (this.verificationState === 'verifying' || this.identificationState === 'identifying') {
+                this.showError(data.message || 'Error en el proceso biometrico');
+            }
+        });
     }
 
     /**
@@ -263,42 +314,31 @@ class VerificationControl extends BaseComponent {
 
         try {
             this.verificationState = 'verifying';
-            this._updateButtonStates();
+            this.identificationState = 'idle';
 
-            this.showLoading(`Verificando ${this.selectedUser}... Coloca el dedo`);
+            this._updateButtonStates();
+            this.showLoading('Verificando ' + this.selectedUser + '... Coloca el dedo');
 
             const result = await this.adapter.verifyFingerprint(this.selectedUser);
 
-            if (result.ok) {
-                this.verificationState = result.verified ? 'verified' : 'failed';
-
-                const resultData = {
-                    user: this.selectedUser,
-                    verified: result.verified,
-                    score: result.score,
-                    timestamp: new Date()
-                };
-
-                this._showResult(resultData);
-                this.emit('verified', resultData);
-
-                if (result.verified) {
-                    this.showSuccess(`✅ VERIFICADO - Score: ${result.score}`);
+            if (this.verificationState === 'verifying') {
+                if (result.ok) {
+                    const enriched = Object.assign({ userId: this.selectedUser }, result || {});
+                    this._processVerificationEvent(enriched, false);
                 } else {
-                    this.showError(`❌ NO VERIFICADO - Score: ${result.score}`);
+                    this.verificationState = 'failed';
+                    this.showError(result.error || 'Error en verificacion');
+                    this._updateButtonStates();
                 }
-            } else {
-                this.verificationState = 'failed';
-                this.showError('Error en verificación');
             }
-
         } catch (error) {
             this.verificationState = 'failed';
-            this.showError(`Error: ${error.message}`);
-        } finally {
+            this.showError('Error: ' + error.message);
             this._updateButtonStates();
         }
     }
+
+
 
     /**
      * Realizar identificación 1:N
@@ -306,46 +346,114 @@ class VerificationControl extends BaseComponent {
     async identify() {
         try {
             this.identificationState = 'identifying';
-            this._updateButtonStates();
+            this.verificationState = 'idle';
 
-            this.showLoading('Identificación 1:N... Coloca el dedo');
+            this._updateButtonStates();
+            this.showLoading('Identificacion 1:N... Coloca el dedo');
 
             const result = await this.adapter.identifyFingerprint();
 
-            if (result.ok) {
-                this.identificationState = result.match ? 'identified' : 'not_found';
-
-                const resultData = {
-                    user: result.match ? result.bestTag : 'No identificado',
-                    identified: result.match,
-                    score: result.match ? result.bestScore : 0,
-                    timestamp: new Date()
-                };
-
-                this._showResult(resultData);
-                this.emit('identified', resultData);
-
-                if (result.match) {
-                    this.showSuccess(`✅ IDENTIFICADO: ${result.bestTag} (Score: ${result.bestScore})`);
+            if (this.identificationState === 'identifying') {
+                if (result.ok) {
+                    this._processIdentificationEvent(result || {}, false);
                 } else {
-                    this.showError('⚠️ NO IDENTIFICADO - No hay coincidencias');
+                    this.identificationState = 'not_found';
+                    this.showError(result.error || 'Error en identificacion');
+                    this._updateButtonStates();
                 }
-            } else {
-                this.identificationState = 'not_found';
-                this.showError('Error en identificación');
             }
-
         } catch (error) {
             this.identificationState = 'not_found';
-            this.showError(`Error: ${error.message}`);
-        } finally {
+            this.showError('Error: ' + error.message);
             this._updateButtonStates();
         }
     }
 
+
+
     /**
      * Mostrar resultado de verificación/identificación
      */
+    /**
+     * Procesar resultado de verificacion
+     */
+    _processVerificationEvent(payload, fromEvent = false) {
+        const normalized = this._normalizeVerificationPayload(payload || {});
+        const resultData = {
+            user: normalized.user,
+            verified: normalized.verified,
+            identified: false,
+            score: normalized.score,
+            timestamp: new Date()
+        };
+
+        this._showResult(resultData);
+
+        if (normalized.verified) {
+            this.showSuccess(normalized.message);
+        } else {
+            this.showError(normalized.message);
+        }
+
+        this.verificationState = normalized.verified ? 'verified' : 'failed';
+        this.emit('verified', { ...resultData, source: fromEvent ? 'event' : 'api' });
+        this._updateButtonStates();
+    }
+
+    _normalizeVerificationPayload(payload) {
+        const verified = typeof payload.verified === 'boolean'
+            ? payload.verified
+            : !!payload.success;
+        const score = typeof payload.score === 'number'
+            ? payload.score
+            : (typeof payload.bestScore === 'number' ? payload.bestScore : 0);
+        const user = payload.userId || (payload.data ? payload.data.userId : null) || this.selectedUser || 'Desconocido';
+        const message = payload.message || payload.msg || (verified ? 'Verificacion completada' : 'Verificacion fallida');
+        return { verified, score, user, message };
+    }
+
+    /**
+     * Procesar resultado de identificacion
+     */
+    _processIdentificationEvent(payload, fromEvent = false) {
+        const normalized = this._normalizeIdentificationPayload(payload || {});
+        const resultData = {
+            user: normalized.user,
+            verified: false,
+            identified: normalized.matched,
+            score: normalized.score,
+            timestamp: new Date()
+        };
+
+        this._showResult(resultData);
+
+        if (normalized.matched) {
+            this.showSuccess(normalized.message);
+        } else {
+            this.showError(normalized.message);
+        }
+
+        this.identificationState = normalized.matched ? 'identified' : 'not_found';
+        this.emit('identified', { ...resultData, bestMatches: normalized.bestMatches, source: fromEvent ? 'event' : 'api' });
+        this._updateButtonStates();
+    }
+
+    _normalizeIdentificationPayload(payload) {
+        const matched = typeof payload.matched === 'boolean'
+            ? payload.matched
+            : (typeof payload.match === 'boolean' ? payload.match : !!payload.success);
+        const topMatches = Array.isArray(payload.topMatches) ? payload.topMatches : (Array.isArray(payload.topK) ? payload.topK : []);
+        const bestMatch = payload.bestMatch || (topMatches.length > 0 ? topMatches[0] : null);
+        const user = matched
+            ? (payload.bestTag || (bestMatch ? (bestMatch.userId || bestMatch.tag) : null) || 'Identificado')
+            : 'No identificado';
+        const score = matched
+            ? (payload.bestScore !== undefined ? payload.bestScore : (bestMatch && bestMatch.score !== undefined ? bestMatch.score : 0))
+            : 0;
+        const message = payload.message || (matched ? 'Identificacion completada' : 'Sin coincidencias');
+        return { matched, user, score, message, bestMatches: topMatches };
+    }
+
     _showResult(resultData) {
         this.lastResult = resultData;
 
@@ -387,8 +495,9 @@ class VerificationControl extends BaseComponent {
      * Manejar estado de verificación desde backend
      */
     _handleVerificationStatus(data) {
-        if (data.msg && (data.msg.includes('Verificación') || data.msg.includes('Identificación'))) {
-            this.updateStatus('info', `👆 ${data.msg}`);
+        const message = data.message || data.msg;
+        if (message) {
+            this.updateStatus('info', message);
         }
     }
 
@@ -396,8 +505,9 @@ class VerificationControl extends BaseComponent {
      * Manejar imagen de verificación
      */
     _handleVerificationImage(data) {
-        if (data.imageBase64 && (this.verificationState === 'verifying' || this.identificationState === 'identifying')) {
-            this.displayImage(data.imageBase64);
+        const imageBase64 = (data && (data.imageBase64 || (data.data ? data.data.imageBase64 : null))) || null;
+        if (imageBase64 && (this.verificationState === 'verifying' || this.identificationState === 'identifying')) {
+            this.displayImage(imageBase64);
         }
     }
 

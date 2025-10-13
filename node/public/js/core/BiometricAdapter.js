@@ -138,14 +138,19 @@ class BiometricAdapter {
     }
 
     /**
-     * Manejar eventos del backend
+     * Manejar eventos del backend (CEDDFA-compliant)
      */
     _handleBackendEvent(event) {
         try {
             const data = JSON.parse(event.data);
 
+            // CEDDFA: usar eventType como prioridad, luego evt
+            const eventType = data.eventType || data.evt || 'unknown';
+
+            console.log(`[BiometricAdapter] 📨 Evento CEDDFA recibido: ${eventType}`, data);
+
             // Emitir evento específico según el tipo
-            this.emit(data.evt, data);
+            this.emit(eventType, data);
 
             // También emitir evento genérico
             this.emit('*', data);
@@ -169,38 +174,23 @@ class BiometricAdapter {
     // ========== MÉTODOS DE CONVENIENCIA PARA OPERACIONES COMUNES ==========
 
     /**
-     * Inicializar lector biométrico
+     * Inicializar lector biométrico (CEDDFA V2)
      */
     async initializeReader() {
-        console.log('[BiometricAdapter] 🚀 Iniciando secuencia de inicialización del lector...');
-        console.log('[BiometricAdapter] 📊 Estado actual - Conectado:', this.isConnected);
+        console.log('[BiometricAdapter CEDDFA] 🚀 Iniciando lector con arquitectura V2...');
+        console.log('[BiometricAdapter CEDDFA] 📊 Estado actual - Conectado:', this.isConnected);
 
         try {
-            // Bootstrap del sistema
-            console.log('[BiometricAdapter] 📦 Paso 1/3: Ejecutando bootstrap...');
-            const bootstrapResult = await this.apiCall('/api/bootstrap');
-            console.log('[BiometricAdapter] ✅ Bootstrap completado:', bootstrapResult);
+            // Inicializar lector V2
+            console.log('[BiometricAdapter CEDDFA] 🔌 Inicializando lector V2...');
+            const result = await this.apiCall('/api/v2/init');
+            console.log('[BiometricAdapter CEDDFA] ✅ Lector V2 CEDDFA inicializado:', result);
 
-            // Registrar callbacks
-            console.log('[BiometricAdapter] 📞 Paso 2/3: Registrando callbacks...');
-            const registerResult = await this.apiCall('/api/register');
-            console.log('[BiometricAdapter] ✅ Callbacks registrados:', registerResult);
-
-            // Inicializar lector
-            console.log('[BiometricAdapter] 🔌 Paso 3/3: Inicializando lector biométrico...');
-            const result = await this.apiCall('/api/init');
-            console.log('[BiometricAdapter] ✅ Lector inicializado exitosamente:', result);
-
-            console.log('[BiometricAdapter] 🎉 Secuencia de inicialización completada - Lector listo para uso');
+            console.log('[BiometricAdapter CEDDFA] 🎉 Lector listo - Arquitectura CEDDFA activa');
             return result;
         } catch (error) {
-            console.error('[BiometricAdapter] ❌ Error en inicialización del lector:', error);
-            console.error('[BiometricAdapter] 📋 Stack trace:', error.stack);
-            console.error('[BiometricAdapter] 🔍 Detalles del error:', {
-                message: error.message,
-                name: error.name,
-                cause: error.cause
-            });
+            console.error('[BiometricAdapter CEDDFA] ❌ Error en inicialización V2:', error);
+            console.error('[BiometricAdapter CEDDFA] 📋 Stack trace:', error.stack);
             throw error;
         }
     }
@@ -234,54 +224,45 @@ class BiometricAdapter {
     }
 
     /**
-     * Enrolar nueva huella
+     * Enrolar nueva huella (CEDDFA V2)
      */
     async enrollFingerprint(userId) {
-        console.log(`[BiometricAdapter] 👤 Iniciando enrollment para usuario: ${userId}`);
-        console.log('[BiometricAdapter] 🔍 Verificando estado antes del enrollment...');
-        console.log('[BiometricAdapter] 📊 Estado conexión:', this.isConnected);
+        console.log(`[BiometricAdapter CEDDFA] 👤 Iniciando enrollment V2 para: ${userId}`);
+        console.log('[BiometricAdapter CEDDFA] 📊 Estado conexión:', this.isConnected);
 
         try {
-            console.log(`[BiometricAdapter] 📞 Llamando API /api/enroll con payload:`, { tag: userId });
-            const result = await this.apiCall('/api/enroll', { tag: userId });
-            console.log(`[BiometricAdapter] ✅ Enrollment exitoso para ${userId}:`, result);
+            console.log(`[BiometricAdapter CEDDFA] 📞 Llamando API V2 /api/v2/enroll`);
+            const result = await this.apiCall('/api/v2/enroll', { tag: userId });
+            console.log(`[BiometricAdapter CEDDFA] ✅ Enrollment V2 exitoso:`, result);
             return result;
         } catch (error) {
-            console.error(`[BiometricAdapter] ❌ Error enrolando huella para ${userId}:`, error);
-            console.error('[BiometricAdapter] 📋 Stack trace del error:', error.stack);
-            console.error('[BiometricAdapter] 🔍 Análisis del error:', {
-                message: error.message,
-                name: error.name,
-                isApiError: error.message?.includes('Reader not initialized'),
-                endpoint: '/api/enroll',
-                userId: userId
-            });
+            console.error(`[BiometricAdapter CEDDFA] ❌ Error en enrollment V2:`, error);
             throw error;
         }
     }
 
     /**
-     * Verificar huella
+     * Verificar huella (CEDDFA V2)
      */
     async verifyFingerprint(userId) {
-        console.log(`[BiometricAdapter] Verificando huella para ${userId}...`);
+        console.log(`[BiometricAdapter CEDDFA] 🔍 Verificación V2 para: ${userId}`);
         try {
-            return await this.apiCall('/api/verify', { tag: userId });
+            return await this.apiCall('/api/v2/verify', { tag: userId });
         } catch (error) {
-            console.error('[BiometricAdapter] Error verificando huella:', error);
+            console.error('[BiometricAdapter CEDDFA] Error en verificación V2:', error);
             throw error;
         }
     }
 
     /**
-     * Identificar huella (1:N)
+     * Identificar huella 1:N (CEDDFA V2)
      */
     async identifyFingerprint() {
-        console.log('[BiometricAdapter] Identificando huella 1:N...');
+        console.log('[BiometricAdapter CEDDFA] 🔎 Identificación 1:N V2...');
         try {
-            return await this.apiCall('/api/identify1n');
+            return await this.apiCall('/api/v2/identify1n');
         } catch (error) {
-            console.error('[BiometricAdapter] Error identificando huella:', error);
+            console.error('[BiometricAdapter CEDDFA] Error en identificación V2:', error);
             throw error;
         }
     }

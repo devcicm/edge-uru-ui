@@ -322,26 +322,35 @@ class BiometricApiClient {
     _dispatchEvent(data) {
         const eventType = data.eventType || data.evt || 'unknown';
 
+        console.log(`[BiometricAPI] 🔄 Dispatching event: "${eventType}"`);
+        console.log(`[BiometricAPI] 📦 Event data:`, data);
+        console.log(`[BiometricAPI] 📋 Registered handlers:`, Array.from(this.eventHandlers.keys()));
+
         // Call specific handlers
         if (this.eventHandlers.has(eventType)) {
             const handlers = this.eventHandlers.get(eventType);
-            handlers.forEach(handler => {
+            console.log(`[BiometricAPI] ✅ Found ${handlers.length} handler(s) for "${eventType}"`);
+            handlers.forEach((handler, index) => {
                 try {
+                    console.log(`[BiometricAPI] 🎯 Calling handler #${index + 1} for "${eventType}"`);
                     handler(data);
                 } catch (e) {
-                    console.error(`[BiometricAPI] Error in handler for ${eventType}:`, e);
+                    console.error(`[BiometricAPI] ❌ Error in handler for ${eventType}:`, e);
                 }
             });
+        } else {
+            console.log(`[BiometricAPI] ⚠️ NO handlers registered for "${eventType}"`);
         }
 
         // Call wildcard handlers
         if (this.eventHandlers.has('*')) {
             const handlers = this.eventHandlers.get('*');
+            console.log(`[BiometricAPI] 🌟 Calling ${handlers.length} wildcard handler(s)`);
             handlers.forEach(handler => {
                 try {
                     handler(data);
                 } catch (e) {
-                    console.error('[BiometricAPI] Error in wildcard handler:', e);
+                    console.error('[BiometricAPI] ❌ Error in wildcard handler:', e);
                 }
             });
         }
@@ -363,6 +372,7 @@ const BiometricEventTypes = {
     CAPTURE_PROGRESS: 'CAPTURE_PROGRESS',
     CAPTURE_COMPLETED: 'CAPTURE_COMPLETED',
     CAPTURE_FAILED: 'CAPTURE_FAILED',
+    CAPTURE_QUALITY_LOW: 'CAPTURE_QUALITY_LOW',
     IMAGE_CAPTURED: 'IMAGE_CAPTURED',
 
     // Enrollment events

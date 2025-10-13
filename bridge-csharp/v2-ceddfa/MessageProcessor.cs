@@ -237,6 +237,86 @@ namespace EdgeBridge.Processing
             PublishEvent(dto, BiometricEventTypes.IMAGE_CAPTURED);
         }
 
+        /// <summary>
+        /// Procesa inicio de captura
+        /// </summary>
+        public void ProcessCaptureStarted(string message = "Esperando dedo en el lector")
+        {
+            var dto = new BiometricEventDto
+            {
+                Type = BiometricEventTypes.CAPTURE_STARTED,
+                EventType = BiometricEventTypes.CAPTURE_STARTED,
+                Message = message,
+                Severity = "INFO",
+                Timestamp = DateTime.UtcNow
+            };
+
+            PublishEvent(dto, BiometricEventTypes.CAPTURE_STARTED);
+        }
+
+        /// <summary>
+        /// Procesa captura completada
+        /// </summary>
+        public void ProcessCaptureCompleted()
+        {
+            var dto = new BiometricEventDto
+            {
+                Type = BiometricEventTypes.CAPTURE_COMPLETED,
+                EventType = BiometricEventTypes.CAPTURE_COMPLETED,
+                Message = "Captura completada exitosamente",
+                Severity = "SUCCESS",
+                Timestamp = DateTime.UtcNow
+            };
+
+            PublishEvent(dto, BiometricEventTypes.CAPTURE_COMPLETED);
+        }
+
+        /// <summary>
+        /// Procesa calidad baja en captura
+        /// </summary>
+        public void ProcessCaptureQualityLow(int attemptNumber, int maxAttempts, string reason = "Calidad insuficiente")
+        {
+            var dto = new BiometricEventDto
+            {
+                Type = BiometricEventTypes.CAPTURE_QUALITY_LOW,
+                EventType = BiometricEventTypes.CAPTURE_QUALITY_LOW,
+                Message = $"Calidad baja - Intento {attemptNumber}/{maxAttempts}: {reason}",
+                Severity = "WARNING",
+                Data = new System.Collections.Generic.Dictionary<string, object>
+                {
+                    ["attemptNumber"] = attemptNumber,
+                    ["maxAttempts"] = maxAttempts,
+                    ["reason"] = reason
+                },
+                Timestamp = DateTime.UtcNow
+            };
+
+            PublishEvent(dto, BiometricEventTypes.CAPTURE_QUALITY_LOW);
+        }
+
+        /// <summary>
+        /// Procesa intento de captura
+        /// </summary>
+        public void ProcessCaptureAttempt(int attemptNumber, int maxAttempts, bool success, string message)
+        {
+            var dto = new BiometricEventDto
+            {
+                Type = BiometricEventTypes.SYSTEM_STATUS,
+                EventType = BiometricEventTypes.SYSTEM_STATUS,
+                Message = message,
+                Severity = success ? "SUCCESS" : "WARNING",
+                Data = new System.Collections.Generic.Dictionary<string, object>
+                {
+                    ["attemptNumber"] = attemptNumber,
+                    ["maxAttempts"] = maxAttempts,
+                    ["success"] = success
+                },
+                Timestamp = DateTime.UtcNow
+            };
+
+            PublishEvent(dto, BiometricEventTypes.SYSTEM_STATUS);
+        }
+
         // ============================================================
         // READER MESSAGES
         // ============================================================

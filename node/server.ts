@@ -47,15 +47,6 @@ function sseBroadcast(ev: any) {
   for (const c of clients) c.res.write(line);
 }
 
-// Always serve from source public directory to ensure we use the latest files
-const sourcePublicDir = path.join(__dirname, "..", "public");
-
-console.log(`[STATIC ROUTES] Serving static files from: ${sourcePublicDir}`);
-console.log(`[STATIC ROUTES] Source directory exists: ${fs.existsSync(sourcePublicDir)}`);
-
-app.use("/", express.static(sourcePublicDir));
-app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
-
 app.get("/events", (req, res) => {
   res.set({
     "Content-Type": "text/event-stream",
@@ -216,11 +207,17 @@ app.delete("/api/template/clear-all", async (_, res) => {
 // V2 ENDPOINTS - CEDDFA Architecture
 // ============================================================
 
+// V2: Initialize reader
+app.post("/api/v2/init", async (_, res) => {
+  try { res.json(await callV2({ op: "init" })); }
+  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
 // V2: Enroll with DTOs
 app.post("/api/v2/enroll", async (req, res) => {
   try {
     const tag = req.body?.tag || `User_${new Date().toISOString().replace(/[:.]/g, '-')}`;
-    const timeoutMs = req.body?.timeoutMs ?? 30000;
+    const timeoutMs = req.body?.timeoutMs ?? 60000;
     const targetFarn = req.body?.targetFarn ?? 21474;
     const maxRetriesPerSample = req.body?.maxRetriesPerSample ?? 3;
     const maxSamples = req.body?.maxSamples ?? 4;
@@ -263,18 +260,38 @@ app.delete("/api/v2/eventbus/history", async (_, res) => {
   catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
+// Static file serving - MUST be after API routes
+const sourcePublicDir = path.join(__dirname, "..", "public");
+console.log(`[STATIC ROUTES] Serving static files from: ${sourcePublicDir}`);
+console.log(`[STATIC ROUTES] Source directory exists: ${fs.existsSync(sourcePublicDir)}`);
+
+app.use("/", express.static(sourcePublicDir));
+app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
+
 (async () => {
   try {
+    // Inicializar Bridge V1 (legacy)
     await call({
       op: "registerCallback",
       callback: (eventData: any) => {
-        console.log("[C# Event]", eventData);
+        console.log("[C# Event V1]", eventData);
         sseBroadcast(eventData);
       }
     });
     const nativeDir = path.join(__dirname, "..", "..", "bin-deps");
     await call({ op: "bootstrap", searchPath: nativeDir });
-    console.log("[OK] Native bootstrap");
+    console.log("[OK] Bridge V1 bootstrap");
+
+    // Inicializar Bridge V2 (CEDDFA)
+    await callV2({
+      op: "registerCallback",
+      callback: (eventData: any) => {
+        console.log("[C# Event V2 CEDDFA]", eventData);
+        sseBroadcast(eventData);
+      }
+    });
+    await callV2({ op: "bootstrap", searchPath: nativeDir });
+    console.log("[OK] Bridge V2 CEDDFA bootstrap");
   } catch (e) {
     console.error("[WARN] Bootstrap/register failed:", e);
   }

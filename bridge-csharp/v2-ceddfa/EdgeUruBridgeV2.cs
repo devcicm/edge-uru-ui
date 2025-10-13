@@ -72,7 +72,7 @@ namespace EdgeBridge
 
             if (args.Dto is BiometricEventDto eventDto)
             {
-                baseData["evt"] = "biometric_event";
+                baseData["evt"] = args.EventType; // Use the actual event type, not generic "biometric_event"
                 baseData["message"] = eventDto.Message;
                 baseData["severity"] = eventDto.Severity;
                 if (eventDto.Data != null)
@@ -150,13 +150,35 @@ namespace EdgeBridge
 
                         // Conectar eventos del servicio con el Message Processor
                         _svc.OnStatus += msg => _messageProcessor?.ProcessStatusMessage(msg);
-                        _svc.OnSampleCountChanged += count => _messageProcessor?.ProcessSampleCollected(count, 4);
-                        _svc.OnAttemptResult += (i, ok, why) =>
+
+                        // Track sample count - emits ENROLLMENT_SAMPLE_COLLECTED
+                        _svc.OnSampleCountChanged += count =>
                         {
-                            var message = ok ? $"Intento {i} exitoso" : $"Intento {i} falló: {why}";
-                            _messageProcessor?.ProcessStatusMessage(message, ok ? "SUCCESS" : "WARNING");
+                            _messageProcessor?.ProcessSampleCollected(count, 4);
                         };
-                        _svc.OnImageCaptured += imageBase64 => _messageProcessor?.ProcessImageCaptured(imageBase64);
+
+                        // Track capture attempts - emits CAPTURE_QUALITY_LOW or success status
+                        _svc.OnAttemptResult += (attemptNum, success, reason) =>
+                        {
+                            if (success)
+                            {
+                                var message = $"Intento {attemptNum} exitoso - Captura válida";
+                                _messageProcessor?.ProcessStatusMessage(message, "SUCCESS");
+                            }
+                            else
+                            {
+                                _messageProcessor?.ProcessCaptureQualityLow(attemptNum, 3, reason ?? "Calidad insuficiente");
+                            }
+                        };
+
+                        // Track image captures - emits IMAGE_CAPTURED for EVERY sample
+                        _svc.OnImageCaptured += imageBase64 =>
+                        {
+                            if (!string.IsNullOrEmpty(imageBase64))
+                            {
+                                _messageProcessor?.ProcessImageCaptured(imageBase64);
+                            }
+                        };
 
                         _svc.Init();
 
@@ -200,6 +222,7 @@ namespace EdgeBridge
                     };
 
                     _messageProcessor?.ProcessEnrollmentStarted(request.UserId);
+                    _messageProcessor?.ProcessCaptureStarted("Coloque su dedo en el lector para iniciar el enrolamiento");
 
                     _cts?.Cancel();
                     _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(request.TimeoutMs));
@@ -286,6 +309,7 @@ namespace EdgeBridge
                     }
 
                     _messageProcessor?.ProcessVerificationStarted(request.UserId);
+                    _messageProcessor?.ProcessCaptureStarted("Coloque su dedo en el lector para verificar identidad");
 
                     _cts?.Cancel();
                     _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(request.TimeoutMs));
@@ -361,6 +385,7 @@ namespace EdgeBridge
 
                     var gallerySize = FingerprintTempStore.All().Count;
                     _messageProcessor?.ProcessIdentificationStarted(gallerySize);
+                    _messageProcessor?.ProcessCaptureStarted($"Coloque su dedo en el lector - Buscando en {gallerySize} usuarios");
 
                     _cts?.Cancel();
                     _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(request.TimeoutMs));

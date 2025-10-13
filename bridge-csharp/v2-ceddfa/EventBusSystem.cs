@@ -277,6 +277,7 @@ namespace EdgeBridge.EventBus
         public const string CAPTURE_PROGRESS = "CAPTURE_PROGRESS";
         public const string CAPTURE_COMPLETED = "CAPTURE_COMPLETED";
         public const string CAPTURE_FAILED = "CAPTURE_FAILED";
+        public const string CAPTURE_QUALITY_LOW = "CAPTURE_QUALITY_LOW";
         public const string IMAGE_CAPTURED = "IMAGE_CAPTURED";
 
         // Enrollment events

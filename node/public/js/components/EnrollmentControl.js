@@ -97,13 +97,77 @@ class EnrollmentControl extends BaseComponent {
     }
 
     /**
-     * Configurar eventos específicos para enrolamiento
+     * Configurar eventos CEDDFA para enrolamiento
      */
     _setupEnrollmentEvents() {
-        // Eventos del adapter específicos para enrolamiento
-        this.adapter.on('attempt', (data) => this._handleAttempt(data));
-        this.adapter.on('count', (data) => this._handleSampleCount(data));
-        this.adapter.on('status', (data) => this._handleEnrollmentStatus(data));
+        // Eventos CEDDFA especificos para enrolamiento
+        this.adapter.on('ENROLLMENT_STARTED', (data) => {
+            this.showLoading(data.message || 'Iniciando enrolamiento...');
+            this.sampleCount = 0;
+            this.attemptCount = 0;
+            this._updateProgress();
+        });
+
+        this.adapter.on('ENROLLMENT_SAMPLE_COLLECTED', (data) => {
+            this.sampleCount = data.data?.sampleNumber || this.sampleCount + 1;
+            const totalSamples = data.data?.totalSamples || this.maxSamples;
+            this.showInfo('Muestra ' + this.sampleCount + '/' + totalSamples + ' capturada');
+            this._updateProgress();
+        });
+
+        this.adapter.on('CAPTURE_QUALITY_LOW', (data) => {
+            const attempt = data.data?.attemptNumber || '?';
+            const maxAttempts = data.data?.maxAttempts || 3;
+            const reason = data.data?.reason || 'Calidad insuficiente';
+            this.showWarning('Intento ' + attempt + '/' + maxAttempts + ': ' + reason);
+        });
+
+        this.adapter.on('CAPTURE_STARTED', (data) => {
+            if (this.enrollmentState === 'enrolling') {
+                this.showLoading(data.message || 'Coloca el dedo en el lector');
+            }
+        });
+
+        this.adapter.on('CAPTURE_COMPLETED', (data) => {
+            if (this.enrollmentState === 'enrolling') {
+                this.showInfo(data.message || 'Captura completada');
+            }
+        });
+
+        this.adapter.on('IMAGE_CAPTURED', (data) => {
+            const image = data.data?.imageBase64 || data.imageBase64;
+            if (image) {
+                this._displayFingerprintImage(image);
+            }
+        });
+
+        this.adapter.on('ENROLLMENT_COMPLETED', (data) => {
+            this.enrollmentState = 'completed';
+            this.showSuccess(data.message || 'Enrolamiento completado exitosamente');
+        });
+
+        this.adapter.on('ENROLLMENT_FAILED', (data) => {
+            this.enrollmentState = 'error';
+            this.showError(data.message || 'Error en enrolamiento');
+        });
+
+        this.adapter.on('SYSTEM_STATUS', (data) => {
+            if (this.enrollmentState !== 'enrolling') {
+                return;
+            }
+
+            if (data.data && data.data.attemptNumber !== undefined) {
+                this._handleAttempt(data);
+            } else if (data.message) {
+                this.showInfo(data.message);
+            }
+        });
+
+        this.adapter.on('SYSTEM_ERROR', (data) => {
+            if (this.enrollmentState === 'enrolling') {
+                this.showError(data.message || 'Error del sistema durante el enrolamiento');
+            }
+        });
     }
 
     /**
@@ -187,18 +251,39 @@ class EnrollmentControl extends BaseComponent {
      * Manejar intento de captura
      */
     _handleAttempt(data) {
-        this.attemptCount++;
+        if (data?.data && data.data.attemptNumber !== undefined) {
+            const attempt = data.data.attemptNumber;
+            const maxAttempts = data.data.maxAttempts ?? this.maxSamples;
+            const success = data.data.success ?? false;
+            const baseMessage = 'Intento ' + attempt + '/' + maxAttempts;
+            const message = data.message || (success ? baseMessage + ' completado' : baseMessage + ' en progreso');
 
-        const success = data.ok;
-        const reason = data.why || '';
+            this.attemptCount = attempt;
 
-        if (success) {
-            this.updateStatus('success', `✅ Intento #${data.i}: Éxito`);
-        } else {
-            this.updateStatus('warning', `⚠️ Intento #${data.i}: ${reason}`);
+            if (success) {
+                this.showSuccess(message);
+            } else {
+                this.showWarning(message);
+            }
+
+            this.emit('attempt', { attempt, success, maxAttempts, message });
+            return;
         }
 
-        this.emit('attempt', { attempt: data.i, success, reason });
+        // Formato legacy (bridge v1)
+        this.attemptCount++;
+
+        const successLegacy = data.ok;
+        const reason = data.why || '';
+        const attemptLegacy = data.i ?? this.attemptCount;
+
+        if (successLegacy) {
+            this.showSuccess('Intento #' + attemptLegacy + ': exito');
+        } else {
+            this.showWarning('Intento #' + attemptLegacy + ': ' + reason);
+        }
+
+        this.emit('attempt', { attempt: attemptLegacy, success: successLegacy, reason });
     }
 
     /**
@@ -262,6 +347,13 @@ class EnrollmentControl extends BaseComponent {
                  style="max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain;"
                  alt="Huella en enrolamiento" />
         `;
+    }
+
+    /**
+     * Alias para compatibilidad CEDDFA
+     */
+    _displayFingerprintImage(imageBase64) {
+        this.displayImage(imageBase64);
     }
 
     /**
