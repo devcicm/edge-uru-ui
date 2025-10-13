@@ -90,7 +90,7 @@ class EnrollmentControl extends BaseComponent {
         this.startButton = this.container.querySelector('#startEnroll');
         this.clearButton = this.container.querySelector('#clearEnroll');
         this.cancelButton = this.container.querySelector('#cancelEnroll');
-        this.statusElement = this.container.querySelector('.enrollment-status');
+        // NO sobrescribir this.statusElement - BaseComponent lo usa para SSE display
         this.progressBar = this.container.querySelector('.progress-fill');
         this.progressText = this.container.querySelector('.progress-text');
         this.fingerprintArea = this.container.querySelector('.fingerprint-area');

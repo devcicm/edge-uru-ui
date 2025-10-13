@@ -141,7 +141,7 @@ class VerificationControl extends BaseComponent {
         this.verifyButton = this.container.querySelector('#verifyBtn');
         this.identifyButton = this.container.querySelector('#identifyBtn');
         this.clearButton = this.container.querySelector('#clearVerifyBtn');
-        this.statusElement = this.container.querySelector('.verification-status');
+        // NO sobrescribir this.statusElement - BaseComponent lo usa para SSE display
         this.fingerprintArea = this.container.querySelector('.fingerprint-area');
         this.resultPanel = this.container.querySelector('#resultPanel');
         this.userSelection = this.container.querySelector('#userSelection');
