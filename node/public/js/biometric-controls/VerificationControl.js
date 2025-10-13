@@ -56,6 +56,14 @@ class VerificationControl extends BaseComponent {
                     Selecciona un usuario y presiona "Verificar"
                 </div>
 
+                <!-- Área de estado SSE dedicada -->
+                <div class="sse-status-display sse-status-info" style="margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 8px; font-family: monospace; font-size: 13px;">
+                    <div class="sse-status-message">
+                        <span class="sse-timestamp">[--:--:--]</span>
+                        <span class="sse-text">Esperando eventos del backend...</span>
+                    </div>
+                </div>
+
                 <div class="verification-buttons component-buttons">
                     <button class="btn-primary" id="verifyBtn">Verificar 1:1</button>
                     <button class="btn-warning" id="identifyBtn">Identificar 1:N</button>
@@ -161,6 +169,13 @@ class VerificationControl extends BaseComponent {
         this.modeRadios.forEach(radio => {
             radio.onchange = () => this._onModeChanged();
         });
+
+        // Suscribirse al EventRouter si está disponible
+        if (this.eventRouter) {
+            this.eventRouter.subscribe('verification', this, this.componentId);
+            this.eventRouter.subscribe('identification', this, this.componentId);
+            console.log(`[${this.componentId}] Suscrito al EventRouter para eventos de verification e identification`);
+        }
     }
 
     /**
@@ -319,6 +334,11 @@ class VerificationControl extends BaseComponent {
             this._updateButtonStates();
             this.showLoading('Verificando ' + this.selectedUser + '... Coloca el dedo');
 
+            // Notificar al EventRouter que esta operación comenzó
+            if (this.eventRouter) {
+                this.eventRouter.startOperation('verification', this.componentId, { userId: this.selectedUser });
+            }
+
             const result = await this.adapter.verifyFingerprint(this.selectedUser);
 
             if (this.verificationState === 'verifying') {
@@ -335,6 +355,11 @@ class VerificationControl extends BaseComponent {
             this.verificationState = 'failed';
             this.showError('Error: ' + error.message);
             this._updateButtonStates();
+        } finally {
+            // Finalizar operación en el EventRouter
+            if (this.eventRouter) {
+                this.eventRouter.endOperation('verification');
+            }
         }
     }
 
@@ -351,6 +376,11 @@ class VerificationControl extends BaseComponent {
             this._updateButtonStates();
             this.showLoading('Identificacion 1:N... Coloca el dedo');
 
+            // Notificar al EventRouter que esta operación comenzó
+            if (this.eventRouter) {
+                this.eventRouter.startOperation('identification', this.componentId, {});
+            }
+
             const result = await this.adapter.identifyFingerprint();
 
             if (this.identificationState === 'identifying') {
@@ -366,6 +396,11 @@ class VerificationControl extends BaseComponent {
             this.identificationState = 'not_found';
             this.showError('Error: ' + error.message);
             this._updateButtonStates();
+        } finally {
+            // Finalizar operación en el EventRouter
+            if (this.eventRouter) {
+                this.eventRouter.endOperation('identification');
+            }
         }
     }
 

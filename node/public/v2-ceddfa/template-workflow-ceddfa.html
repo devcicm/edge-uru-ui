@@ -487,6 +487,7 @@
     <!-- Scripts -->
     <!-- Infrastructure (Base classes for building components) -->
     <script src="/js/infrastructure/BiometricAdapter.js"></script>
+    <script src="/js/infrastructure/EventRouter.js"></script>
     <script src="/js/infrastructure/BaseComponent.js"></script>
 
     <!-- Biometric UI Controls (Fingerprint reader-specific components) -->
@@ -556,11 +557,12 @@
 
         const ceddfaComponents = {
             enroll: null,
-            verify: null
+            verify: null,
+            eventRouter: null
         };
 
         function initCeddfaComponents() {
-            if (!window.BiometricAdapter || !window.EnrollmentControl || !window.VerificationControl) {
+            if (!window.BiometricAdapter || !window.EnrollmentControl || !window.VerificationControl || !window.EventRouter) {
                 console.warn('[CEDDFA UI] Componentes modulares no disponibles');
                 return;
             }
@@ -569,9 +571,34 @@
                 window.BiometricAdapter.connect().catch((error) => console.error('[CEDDFA UI] Error conectando BiometricAdapter', error));
             }
 
+            // Inicializar EventRouter middleware
+            if (!ceddfaComponents.eventRouter) {
+                try {
+                    ceddfaComponents.eventRouter = new EventRouter(window.BiometricAdapter);
+                    window.EventRouter = ceddfaComponents.eventRouter;  // Hacer disponible globalmente
+                    console.log('[CEDDFA UI] ✅ EventRouter middleware inicializado');
+
+                    // Mostrar estadísticas después de 2 segundos
+                    setTimeout(() => {
+                        ceddfaComponents.eventRouter.debugStatus();
+                    }, 2000);
+                } catch (error) {
+                    console.error('[CEDDFA UI] Error inicializando EventRouter', error);
+                }
+            }
+
+            // Inicializar componentes con EventRouter
             if (!ceddfaComponents.enroll) {
                 try {
-                    ceddfaComponents.enroll = new EnrollmentControl('ceddfa-enroll-component', window.BiometricAdapter, { isModal: false });
+                    ceddfaComponents.enroll = new EnrollmentControl(
+                        'ceddfa-enroll-component',
+                        window.BiometricAdapter,
+                        {
+                            isModal: false,
+                            eventRouter: ceddfaComponents.eventRouter
+                        }
+                    );
+                    console.log('[CEDDFA UI] ✅ EnrollmentControl inicializado con EventRouter');
                 } catch (error) {
                     console.error('[CEDDFA UI] Error inicializando EnrollmentControl', error);
                 }
@@ -579,7 +606,15 @@
 
             if (!ceddfaComponents.verify) {
                 try {
-                    ceddfaComponents.verify = new VerificationControl('ceddfa-verify-component', window.BiometricAdapter, { isModal: false });
+                    ceddfaComponents.verify = new VerificationControl(
+                        'ceddfa-verify-component',
+                        window.BiometricAdapter,
+                        {
+                            isModal: false,
+                            eventRouter: ceddfaComponents.eventRouter
+                        }
+                    );
+                    console.log('[CEDDFA UI] ✅ VerificationControl inicializado con EventRouter');
                 } catch (error) {
                     console.error('[CEDDFA UI] Error inicializando VerificationControl', error);
                 }

@@ -49,6 +49,14 @@ class EnrollmentControl extends BaseComponent {
                     Ingresa el ID del usuario y presiona "Iniciar Enrolamiento"
                 </div>
 
+                <!-- Área de estado SSE dedicada -->
+                <div class="sse-status-display sse-status-info" style="margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 8px; font-family: monospace; font-size: 13px;">
+                    <div class="sse-status-message">
+                        <span class="sse-timestamp">[--:--:--]</span>
+                        <span class="sse-text">Esperando eventos del backend...</span>
+                    </div>
+                </div>
+
                 <div class="enrollment-buttons component-buttons">
                     <button class="btn-primary" id="startEnroll">Iniciar Enrolamiento</button>
                     <button class="btn-secondary" id="clearEnroll">Limpiar</button>
@@ -94,6 +102,12 @@ class EnrollmentControl extends BaseComponent {
 
         // Validación en tiempo real del input
         this.userIdInput.oninput = () => this._validateInput();
+
+        // Suscribirse al EventRouter si está disponible
+        if (this.eventRouter) {
+            this.eventRouter.subscribe('enrollment', this, this.componentId);
+            console.log(`[${this.componentId}] Suscrito al EventRouter para eventos de enrollment`);
+        }
     }
 
     /**
@@ -191,6 +205,11 @@ class EnrollmentControl extends BaseComponent {
             this._updateUI();
             this.showLoading('Iniciando enrolamiento...');
 
+            // Notificar al EventRouter que esta operación comenzó
+            if (this.eventRouter) {
+                this.eventRouter.startOperation('enrollment', this.componentId, { userId });
+            }
+
             const result = await this.adapter.enrollFingerprint(userId);
 
             if (result.ok && result.enrolled) {
@@ -209,6 +228,11 @@ class EnrollmentControl extends BaseComponent {
             this.enrollmentState = 'error';
             this.showError(`Error: ${error.message}`);
         } finally {
+            // Finalizar operación en el EventRouter
+            if (this.eventRouter) {
+                this.eventRouter.endOperation('enrollment');
+            }
+
             this._updateUI();
         }
     }

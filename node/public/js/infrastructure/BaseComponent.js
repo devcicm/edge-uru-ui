@@ -15,6 +15,13 @@ class BaseComponent {
         this.isModal = config.isModal || false;
         this.modalContainer = config.modalContainer || null;
 
+        // EventRouter para manejo centralizado de eventos SSE
+        this.eventRouter = config.eventRouter || window.EventRouter || null;
+        this.componentId = `${this.constructor.name}_${containerId}_${Date.now()}`;
+
+        // Elemento de estado dedicado para mensajes SSE
+        this.statusElement = null;
+
         if (!this.container) {
             throw new Error(`Container con ID '${containerId}' no encontrado`);
         }
@@ -166,6 +173,76 @@ class BaseComponent {
             statusElement.className = `component-status status-${type}`;
             statusElement.textContent = message;
         }
+
+        // También actualizar área de estado SSE si existe
+        this._updateSSEStatus(type, message);
+    }
+
+    /**
+     * Actualizar área de estado dedicada para eventos SSE
+     */
+    _updateSSEStatus(type, message) {
+        if (!this.statusElement) {
+            // Crear área de estado SSE si no existe
+            this.statusElement = this.container.querySelector('.sse-status-display');
+            if (!this.statusElement) {
+                // No hay área dedicada, usar solo el status general
+                return;
+            }
+        }
+
+        // Actualizar con timestamp
+        const timestamp = new Date().toLocaleTimeString();
+        this.statusElement.className = `sse-status-display sse-status-${type}`;
+        this.statusElement.innerHTML = `
+            <div class="sse-status-message">
+                <span class="sse-timestamp">[${timestamp}]</span>
+                <span class="sse-text">${message}</span>
+            </div>
+        `;
+    }
+
+    /**
+     * Manejar evento enrutado desde EventRouter
+     * Este método es llamado por el EventRouter cuando hay eventos SSE relevantes
+     */
+    handleRouterEvent(eventType, eventData) {
+        console.log(`[${this.componentId}] 📨 Evento recibido del router: ${eventType}`, eventData);
+
+        // Extraer mensaje y severidad
+        const message = eventData.message || eventData.msg || eventType;
+        const severity = (eventData.severity || 'INFO').toUpperCase();
+
+        // Mapear severidad a tipo de estado
+        let statusType = 'info';
+        switch (severity) {
+            case 'SUCCESS':
+                statusType = 'success';
+                break;
+            case 'ERROR':
+                statusType = 'error';
+                break;
+            case 'WARNING':
+            case 'WARN':
+                statusType = 'warning';
+                break;
+            case 'LOADING':
+            case 'PENDING':
+                statusType = 'loading';
+                break;
+        }
+
+        // Actualizar estado
+        this.updateStatus(statusType, message);
+
+        // Manejar imágenes si están presentes
+        if (eventData.data?.imageBase64 || eventData.imageBase64) {
+            const imageBase64 = eventData.data?.imageBase64 || eventData.imageBase64;
+            this.displayImage(imageBase64);
+        }
+
+        // Emitir evento interno para que subclases puedan manejar específicamente
+        this.emit('routerEvent', { eventType, eventData });
     }
 
     /**

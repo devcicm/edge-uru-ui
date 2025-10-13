@@ -13,6 +13,7 @@ js/
 ├── infrastructure/          # Core infrastructure - DOM framework & communication
 │   ├── BaseComponent.js     # Base class for building UI components
 │   ├── BiometricAdapter.js  # Backend-frontend communication adapter
+│   ├── EventRouter.js       # Middleware for routing SSE events to components
 │   └── ComponentFactory.js  # Factory pattern for component creation
 │
 └── biometric-controls/      # Business logic - Fingerprint reader UI
@@ -98,6 +99,62 @@ adapter.on('enrollment:completed', (data) => {
 
 // Call backend API
 const result = await adapter.enrollV2({ userId: 'USER001' });
+```
+
+#### `EventRouter.js`
+
+**NEW**: Middleware for routing SSE events to components.
+
+**Purpose**: Solves the problem of event routing by directing backend SSE events to the correct component based on active operations.
+
+**Responsibilities**:
+- Capture all SSE events from BiometricAdapter
+- Route events to subscribed components based on operation type
+- Track active operations (enrollment, verification, identification)
+- Provide event history and statistics for debugging
+- Ensure events reach the correct component's status display
+
+**Key Features**:
+- **Context-aware routing**: Events like `CAPTURE_STARTED` are routed to the currently active operation
+- **Subscription model**: Components subscribe to specific event categories
+- **Operation tracking**: Knows which component is performing which operation
+- **Debugging tools**: Built-in statistics and event history
+
+**Usage**:
+```javascript
+// Initialize EventRouter
+const eventRouter = new EventRouter(biometricAdapter);
+
+// Subscribe a component to enrollment events
+const enrollCtrl = new EnrollmentControl('container', adapter, { eventRouter });
+eventRouter.subscribe('enrollment', enrollCtrl, enrollCtrl.componentId);
+
+// Start an operation (automatically routes future events)
+eventRouter.startOperation('enrollment', enrollCtrl.componentId, { userId: 'USER001' });
+
+// End operation when done
+eventRouter.endOperation('enrollment');
+
+// Debug: View routing statistics
+eventRouter.debugStatus();
+```
+
+**Event Categories**:
+- `enrollment` - ENROLLMENT_* events
+- `verification` - VERIFICATION_* events
+- `identification` - IDENTIFICATION_* events
+- `reader` - READER_*, DEVICE_STATUS events
+- `system` - SYSTEM_* events
+- `all` - All events (for logging components)
+
+**How it works**:
+```
+Backend SSE → BiometricAdapter → EventRouter → Subscribed Components
+                                      ↓
+                                 [Routes based on:
+                                  - Event type prefix
+                                  - Active operation
+                                  - Subscription list]
 ```
 
 #### `ComponentFactory.js`
