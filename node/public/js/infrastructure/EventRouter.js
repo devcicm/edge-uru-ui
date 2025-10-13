@@ -1,378 +1,175 @@
 /**
- * EventRouter - Middleware dedicado para enrutamiento de eventos SSE CEDDFA
+ * EventRouter - Middleware ultra simple para enrutar eventos SSE
  *
- * Propósito:
- * - Capturar eventos SSE del backend (vía BiometricAdapter)
- * - Enrutar eventos específicamente a componentes suscritos según su contexto
- * - Mantener estado de operaciones activas para dirigir eventos apropiadamente
- * - Proporcionar trazabilidad de eventos para debugging
+ * Responsabilidades:
+ * - Capturar eventos del BiometricAdapter
+ * - Enrutar eventos SOLO al componente con operación activa
+ * - Mantener aislamiento entre componentes
  *
- * Arquitectura:
- * Backend SSE → BiometricAdapter → EventRouter → Componentes Específicos
+ * Principio: UN componente activo por operación a la vez
  */
 class EventRouter {
     constructor(adapter) {
         this.adapter = adapter;
 
-        // Registro de componentes suscritos por tipo de operación
+        // Componentes suscritos por categoría
         this.subscribers = {
-            enrollment: new Set(),      // Componentes suscritos a enrolamiento
-            verification: new Set(),    // Componentes suscritos a verificación
-            identification: new Set(),  // Componentes suscritos a identificación
-            reader: new Set(),          // Componentes suscritos a eventos del lector
-            system: new Set(),          // Componentes suscritos a eventos del sistema
-            all: new Set()              // Componentes suscritos a todos los eventos
+            enrollment: [],
+            verification: [],
+            identification: [],
+            reader: [],
+            all: []
         };
 
-        // Estado de operaciones activas
+        // Operación activa actual (SOLO UNA a la vez por tipo)
         this.activeOperations = {
-            enrollment: null,       // { componentId, userId, startTime }
-            verification: null,     // { componentId, userId, startTime }
-            identification: null    // { componentId, startTime }
+            enrollment: null,      // { componentId, startTime }
+            verification: null,    // { componentId, startTime }
+            identification: null   // { componentId, startTime }
         };
 
-        // Historial de eventos para trazabilidad
-        this.eventHistory = [];
-        this.maxHistorySize = 100;
-
-        // Estadísticas de enrutamiento
-        this.stats = {
-            totalEvents: 0,
-            routedEvents: 0,
-            droppedEvents: 0,
-            eventsByType: {}
-        };
-
-        this._setupEventListeners();
+        this._setupListeners();
+        console.log('[EventRouter] ✅ Inicializado');
     }
 
     /**
-     * Configurar listeners del adapter para capturar todos los eventos SSE
+     * Capturar todos los eventos del adapter
      */
-    _setupEventListeners() {
-        // Capturar TODOS los eventos del backend usando wildcard
+    _setupListeners() {
+        // Capturar todos los eventos con wildcard
         this.adapter.on('*', (data) => this._routeEvent(data));
-
-        console.log('[EventRouter] Middleware inicializado y escuchando eventos SSE');
     }
 
     /**
-     * Suscribir un componente a eventos de un tipo específico
-     * @param {string} operationType - 'enrollment', 'verification', 'identification', 'reader', 'system', 'all'
-     * @param {Object} component - Componente que se suscribe (debe tener método handleEvent)
-     * @param {string} componentId - ID único del componente
+     * Suscribir componente a una categoría
      */
-    subscribe(operationType, component, componentId) {
-        if (!this.subscribers[operationType]) {
-            console.warn(`[EventRouter] Tipo de operación desconocido: ${operationType}`);
+    subscribe(category, component, componentId) {
+        if (!this.subscribers[category]) {
+            console.warn(`[EventRouter] Categoría desconocida: ${category}`);
             return;
         }
 
-        const subscription = {
-            component,
-            componentId,
-            subscribedAt: new Date()
-        };
-
-        this.subscribers[operationType].add(subscription);
-
-        console.log(`[EventRouter] Componente ${componentId} suscrito a eventos de tipo: ${operationType}`);
-        console.log(`[EventRouter] Total suscriptores para ${operationType}:`, this.subscribers[operationType].size);
+        this.subscribers[category].push({ component, componentId });
+        console.log(`[EventRouter] 📋 ${componentId} suscrito a: ${category}`);
     }
 
     /**
-     * Desuscribir un componente
+     * Iniciar operación (marca componente como activo)
      */
-    unsubscribe(operationType, componentId) {
-        if (!this.subscribers[operationType]) return;
-
-        const subscription = Array.from(this.subscribers[operationType])
-            .find(sub => sub.componentId === componentId);
-
-        if (subscription) {
-            this.subscribers[operationType].delete(subscription);
-            console.log(`[EventRouter] Componente ${componentId} desuscrito de: ${operationType}`);
-        }
-    }
-
-    /**
-     * Registrar inicio de operación
-     */
-    startOperation(operationType, componentId, metadata = {}) {
+    startOperation(operationType, componentId) {
         this.activeOperations[operationType] = {
             componentId,
-            startTime: new Date(),
-            ...metadata
+            startTime: new Date()
         };
 
-        console.log(`[EventRouter] ▶️ Operación iniciada: ${operationType} por ${componentId}`, metadata);
+        console.log(`[EventRouter] ▶️ Operación iniciada: ${operationType} por ${componentId}`);
     }
 
     /**
-     * Finalizar operación activa
+     * Finalizar operación (libera componente activo)
      */
     endOperation(operationType) {
         if (this.activeOperations[operationType]) {
             const duration = Date.now() - this.activeOperations[operationType].startTime.getTime();
-            console.log(`[EventRouter] ⏹️ Operación finalizada: ${operationType} (duración: ${duration}ms)`);
+            console.log(`[EventRouter] ⏹️ Operación finalizada: ${operationType} (${duration}ms)`);
             this.activeOperations[operationType] = null;
         }
     }
 
     /**
-     * Enrutar evento a los componentes apropiados
+     * Enrutar evento al componente correcto
      */
     _routeEvent(eventData) {
-        this.stats.totalEvents++;
-
         const eventType = eventData.eventType || eventData.evt || 'UNKNOWN';
 
-        // Actualizar estadísticas por tipo
-        this.stats.eventsByType[eventType] = (this.stats.eventsByType[eventType] || 0) + 1;
+        console.log(`[EventRouter] 📨 Evento recibido: ${eventType}`);
 
-        // Agregar a historial
-        this._addToHistory({
-            eventType,
-            timestamp: new Date(),
-            data: eventData
-        });
-
-        console.log(`[EventRouter] 📨 Enrutando evento: ${eventType}`);
-
-        // Determinar categoría del evento y enrutar
-        const category = this._categorizeEvent(eventType);
-
-        if (category) {
-            this._dispatchToSubscribers(category, eventType, eventData);
+        // Categorizar evento
+        const category = this._categorize(eventType);
+        if (!category) {
+            console.log(`[EventRouter] ⚠️ Evento no categorizado: ${eventType}`);
+            return;
         }
 
-        // También enviar a suscriptores de 'all'
-        this._dispatchToSubscribers('all', eventType, eventData);
+        // Despachar
+        this._dispatch(category, eventType, eventData);
     }
 
     /**
-     * Categorizar evento según su tipo
+     * Categorizar evento por su tipo
      */
-    _categorizeEvent(eventType) {
-        // Eventos de enrolamiento
-        if (eventType.startsWith('ENROLLMENT_')) {
-            return 'enrollment';
-        }
+    _categorize(eventType) {
+        if (eventType.startsWith('ENROLLMENT_')) return 'enrollment';
+        if (eventType.startsWith('VERIFICATION_')) return 'verification';
+        if (eventType.startsWith('IDENTIFICATION_')) return 'identification';
+        if (eventType.startsWith('READER_') || eventType === 'DEVICE_STATUS') return 'reader';
 
-        // Eventos de verificación
-        if (eventType.startsWith('VERIFICATION_')) {
-            return 'verification';
-        }
-
-        // Eventos de identificación
-        if (eventType.startsWith('IDENTIFICATION_')) {
-            return 'identification';
-        }
-
-        // Eventos del lector
-        if (eventType.startsWith('READER_') || eventType === 'DEVICE_STATUS') {
-            return 'reader';
-        }
-
-        // Eventos de captura (pueden ser de cualquier operación activa)
+        // Eventos de captura: van al contexto activo
         if (eventType.startsWith('CAPTURE_') || eventType === 'IMAGE_CAPTURED') {
-            return this._determineCaptureContext();
-        }
-
-        // Eventos del sistema
-        if (eventType.startsWith('SYSTEM_')) {
-            return 'system';
+            if (this.activeOperations.enrollment) return 'enrollment';
+            if (this.activeOperations.verification) return 'verification';
+            if (this.activeOperations.identification) return 'identification';
+            return 'reader';
         }
 
         return null;
     }
 
     /**
-     * Determinar contexto de eventos de captura según operación activa
+     * Despachar evento al componente activo
      */
-    _determineCaptureContext() {
-        // Prioridad: enrollment > verification > identification
-        if (this.activeOperations.enrollment) {
-            console.log('[EventRouter] Evento de captura → contexto: enrollment');
-            return 'enrollment';
-        }
+    _dispatch(category, eventType, eventData) {
+        // Siempre enviar a suscriptores 'all' (para logging)
+        this._dispatchToAll(eventType, eventData);
 
-        if (this.activeOperations.verification) {
-            console.log('[EventRouter] Evento de captura → contexto: verification');
-            return 'verification';
-        }
+        // Para operaciones específicas, enviar SOLO al componente activo
+        if (category === 'enrollment' || category === 'verification' || category === 'identification') {
+            const activeOp = this.activeOperations[category];
 
-        if (this.activeOperations.identification) {
-            console.log('[EventRouter] Evento de captura → contexto: identification');
-            return 'identification';
-        }
-
-        // Sin contexto, enviar a todos los componentes reader
-        console.log('[EventRouter] Evento de captura → contexto: reader (sin operación activa)');
-        return 'reader';
-    }
-
-    /**
-     * Despachar evento a suscriptores de una categoría
-     * IMPORTANTE: Solo despacha al componente que tiene la operación activa
-     */
-    _dispatchToSubscribers(category, eventType, eventData) {
-        const subscribers = this.subscribers[category];
-
-        if (!subscribers || subscribers.size === 0) {
-            console.log(`[EventRouter] ⚠️ No hay suscriptores para categoría: ${category}`);
-            this.stats.droppedEvents++;
-            return;
-        }
-
-        let dispatched = 0;
-
-        // Si la categoría es 'all', enviar a todos (para componentes de logging)
-        if (category === 'all') {
-            subscribers.forEach(subscription => {
-                this._dispatchToComponent(subscription, eventType, eventData);
-                dispatched++;
-            });
-        } else {
-            // Para categorías específicas (enrollment, verification, identification),
-            // solo despachar al componente que tiene la operación activa
-            const activeOperation = this.activeOperations[category];
-
-            if (activeOperation) {
-                // Buscar el componente activo
-                const activeSubscription = Array.from(subscribers)
-                    .find(sub => sub.componentId === activeOperation.componentId);
-
-                if (activeSubscription) {
-                    console.log(`[EventRouter] 🎯 Despachando a componente activo: ${activeSubscription.componentId}`);
-                    this._dispatchToComponent(activeSubscription, eventType, eventData);
-                    dispatched++;
-                } else {
-                    console.warn(`[EventRouter] ⚠️ Componente activo ${activeOperation.componentId} no encontrado en suscriptores`);
-                }
-            } else {
-                // Sin operación activa, despachar a todos los suscriptores (para eventos reader/system)
-                console.log(`[EventRouter] 📢 Sin operación activa para ${category}, despachando a todos los suscriptores`);
-                subscribers.forEach(subscription => {
-                    this._dispatchToComponent(subscription, eventType, eventData);
-                    dispatched++;
-                });
-            }
-        }
-
-        if (dispatched > 0) {
-            this.stats.routedEvents++;
-            console.log(`[EventRouter] ✅ Evento ${eventType} despachado a ${dispatched} componente(s) en categoría ${category}`);
-        } else {
-            console.log(`[EventRouter] ⚠️ Evento ${eventType} no fue despachado a ningún componente`);
-            this.stats.droppedEvents++;
-        }
-    }
-
-    /**
-     * Despachar evento a un componente específico
-     */
-    _dispatchToComponent(subscription, eventType, eventData) {
-        try {
-            const { component, componentId } = subscription;
-
-            // Verificar si el componente tiene método handleRouterEvent
-            if (typeof component.handleRouterEvent === 'function') {
-                console.log(`[EventRouter] 📤 Despachando ${eventType} → ${componentId}`);
-                component.handleRouterEvent(eventType, eventData);
-            } else if (typeof component.updateStatus === 'function') {
-                // Fallback: usar updateStatus si existe
-                const message = eventData.message || eventData.msg || eventType;
-                component.updateStatus('info', message);
-            } else {
-                console.warn(`[EventRouter] Componente ${componentId} no tiene handleRouterEvent ni updateStatus`);
+            if (!activeOp) {
+                console.log(`[EventRouter] ⚠️ No hay operación activa para: ${category}`);
+                return;
             }
 
-        } catch (error) {
-            console.error(`[EventRouter] Error despachando a ${subscription.componentId}:`, error);
-        }
-    }
+            // Buscar componente activo
+            const subscriber = this.subscribers[category].find(sub => sub.componentId === activeOp.componentId);
 
-    /**
-     * Agregar evento al historial
-     */
-    _addToHistory(entry) {
-        this.eventHistory.push(entry);
-
-        // Mantener límite de historial
-        if (this.eventHistory.length > this.maxHistorySize) {
-            this.eventHistory.shift();
-        }
-    }
-
-    /**
-     * Obtener historial de eventos
-     */
-    getHistory(category = null, limit = 20) {
-        let history = this.eventHistory;
-
-        // Filtrar por categoría si se especifica
-        if (category) {
-            history = history.filter(entry => {
-                const eventCategory = this._categorizeEvent(entry.eventType);
-                return eventCategory === category;
+            if (subscriber) {
+                console.log(`[EventRouter] 🎯 Despachando ${eventType} → ${subscriber.componentId}`);
+                subscriber.component.handleRouterEvent(eventType, eventData);
+            } else {
+                console.warn(`[EventRouter] ⚠️ Componente activo no encontrado: ${activeOp.componentId}`);
+            }
+        } else {
+            // Para eventos reader, enviar a todos los suscritos
+            this.subscribers[category].forEach(sub => {
+                console.log(`[EventRouter] 📤 ${eventType} → ${sub.componentId}`);
+                sub.component.handleRouterEvent(eventType, eventData);
             });
         }
-
-        // Retornar últimos N eventos
-        return history.slice(-limit);
     }
 
     /**
-     * Obtener estadísticas de enrutamiento
+     * Despachar a suscriptores de 'all'
      */
-    getStats() {
-        return {
-            ...this.stats,
-            activeOperations: Object.keys(this.activeOperations).reduce((acc, key) => {
-                acc[key] = this.activeOperations[key] !== null;
-                return acc;
-            }, {}),
-            subscriberCounts: Object.keys(this.subscribers).reduce((acc, key) => {
-                acc[key] = this.subscribers[key].size;
-                return acc;
-            }, {})
-        };
+    _dispatchToAll(eventType, eventData) {
+        this.subscribers.all.forEach(sub => {
+            sub.component.handleRouterEvent(eventType, eventData);
+        });
     }
 
     /**
-     * Limpiar historial
-     */
-    clearHistory() {
-        this.eventHistory = [];
-        console.log('[EventRouter] Historial limpiado');
-    }
-
-    /**
-     * Resetear estadísticas
-     */
-    resetStats() {
-        this.stats = {
-            totalEvents: 0,
-            routedEvents: 0,
-            droppedEvents: 0,
-            eventsByType: {}
-        };
-        console.log('[EventRouter] Estadísticas reseteadas');
-    }
-
-    /**
-     * Debug: Mostrar estado actual del router
+     * Debug: mostrar estado
      */
     debugStatus() {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('📊 EventRouter - Estado Actual');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📊 EventRouter Estado');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         console.log('\n📝 Suscriptores:');
-        Object.keys(this.subscribers).forEach(category => {
-            console.log(`  ${category}: ${this.subscribers[category].size} componente(s)`);
-            this.subscribers[category].forEach(sub => {
+        Object.keys(this.subscribers).forEach(cat => {
+            console.log(`  ${cat}: ${this.subscribers[cat].length}`);
+            this.subscribers[cat].forEach(sub => {
                 console.log(`    - ${sub.componentId}`);
             });
         });
@@ -381,24 +178,13 @@ class EventRouter {
         Object.keys(this.activeOperations).forEach(op => {
             const active = this.activeOperations[op];
             if (active) {
-                console.log(`  ${op}: ${active.componentId} (iniciado: ${active.startTime.toLocaleTimeString()})`);
+                console.log(`  ${op}: ${active.componentId}`);
             } else {
                 console.log(`  ${op}: ninguna`);
             }
         });
 
-        console.log('\n📈 Estadísticas:');
-        console.log(`  Total eventos: ${this.stats.totalEvents}`);
-        console.log(`  Enrutados: ${this.stats.routedEvents}`);
-        console.log(`  Descartados: ${this.stats.droppedEvents}`);
-        console.log(`  Historial: ${this.eventHistory.length} eventos`);
-
-        console.log('\n🎯 Eventos por tipo:');
-        Object.keys(this.stats.eventsByType).forEach(type => {
-            console.log(`  ${type}: ${this.stats.eventsByType[type]}`);
-        });
-
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     }
 }
 

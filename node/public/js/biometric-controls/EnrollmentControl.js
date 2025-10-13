@@ -1,253 +1,155 @@
 /**
- * EnrollmentControl - Componente para enrolamiento de huellas dactilares
- * Inspirado en DPCtlUruNet.EnrollmentControl del SDK DigitalPersona
+ * EnrollmentControl - Componente ultra simple para enrolamiento
+ *
+ * Responsabilidades:
+ * - UI de enrolamiento con input de usuario
+ * - Capturar 4 muestras de huella
+ * - Mostrar progreso y estado
+ * - Mostrar imagen de huella
  */
 class EnrollmentControl extends BaseComponent {
     constructor(containerId, adapter, config = {}) {
         super(containerId, adapter, config);
 
-        this.currentUserId = '';
-        this.enrollmentState = 'idle'; // idle, enrolling, completed, error
-        this.attemptCount = 0;
-        this.sampleCount = 0;
-        this.maxSamples = 4;
+        // Estado
+        this.userId = '';
+        this.isEnrolling = false;
 
-        this._setupEnrollmentUI();
-        this._setupEnrollmentEvents();
+        // Suscribirse al EventRouter
+        if (this.eventRouter) {
+            this.eventRouter.subscribe('enrollment', this, this.componentId);
+            console.log(`[${this.componentId}] Suscrito a eventos de enrollment`);
+        }
     }
 
     /**
-     * Crear estructura específica para enrolamiento
+     * Crear estructura HTML
      */
-    _createBaseStructure() {
+    _createStructure() {
         this.container.innerHTML = `
             <div class="enrollment-control">
-                <div class="enrollment-header">
-                    <h3 class="enrollment-title">📝 Enrolamiento de Huella</h3>
-                    <div class="enrollment-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: 0%"></div>
-                        </div>
-                        <span class="progress-text">0/${this.maxSamples} muestras</span>
-                    </div>
+                <!-- Header -->
+                <div class="component-header">
+                    <h3>📝 Enrolamiento</h3>
+                    <p class="component-subtitle">Captura 4 muestras de huella dactilar</p>
                 </div>
 
-                <div class="enrollment-display">
-                    <div class="fingerprint-area">
-                        <div class="fingerprint-placeholder">👤</div>
-                    </div>
+                <!-- Input Usuario -->
+                <div class="component-input-group">
+                    <label for="userId-${this.containerId}">ID del Usuario:</label>
+                    <input type="text"
+                           id="userId-${this.containerId}"
+                           class="component-input"
+                           placeholder="Ej: Usuario001">
                 </div>
 
-                <div class="enrollment-inputs">
-                    <div class="input-group">
-                        <label for="userId">ID del Usuario:</label>
-                        <input type="text" id="userId" placeholder="Ej: Usuario001" class="component-input">
-                    </div>
+                <!-- Imagen de huella -->
+                <div class="fingerprint-image">
+                    <div class="image-placeholder">👤</div>
                 </div>
 
-                <div class="enrollment-status component-status status-info">
-                    Ingresa el ID del usuario y presiona "Iniciar Enrolamiento"
+                <!-- Estado con timestamp -->
+                <div class="component-status status-info">
+                    <span class="status-timestamp">[--:--:--]</span>
+                    <span class="status-icon">ℹ️</span>
+                    <span class="status-message">Ingresa el ID del usuario</span>
                 </div>
 
-                <!-- Área de estado SSE dedicada -->
-                <div class="sse-status-display sse-status-info" style="margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 8px; font-family: monospace; font-size: 13px;">
-                    <div class="sse-status-message">
-                        <span class="sse-timestamp">[--:--:--]</span>
-                        <span class="sse-text">Esperando eventos del backend...</span>
-                    </div>
+                <!-- Botones -->
+                <div class="component-buttons">
+                    <button class="btn-primary" id="btnEnroll-${this.containerId}">
+                        Iniciar Enrolamiento
+                    </button>
+                    <button class="btn-secondary" id="btnClear-${this.containerId}">
+                        Limpiar
+                    </button>
                 </div>
 
-                <div class="enrollment-buttons component-buttons">
-                    <button class="btn-primary" id="startEnroll">Iniciar Enrolamiento</button>
-                    <button class="btn-secondary" id="clearEnroll">Limpiar</button>
-                    <button class="btn-danger" id="cancelEnroll" style="display: none;">Cancelar</button>
-                </div>
-
-                <div class="enrollment-instructions">
+                <!-- Instrucciones -->
+                <div class="component-instructions">
                     <div class="instruction-item">
-                        <span class="instruction-icon">1️⃣</span>
-                        <span class="instruction-text">Ingresa un ID único para el usuario</span>
+                        <span class="instruction-number">1</span>
+                        <span class="instruction-text">Ingresa un ID único</span>
                     </div>
                     <div class="instruction-item">
-                        <span class="instruction-icon">2️⃣</span>
-                        <span class="instruction-text">Coloca el dedo cuando se solicite</span>
+                        <span class="instruction-number">2</span>
+                        <span class="instruction-text">Presiona "Iniciar Enrolamiento"</span>
                     </div>
                     <div class="instruction-item">
-                        <span class="instruction-icon">3️⃣</span>
-                        <span class="instruction-text">Levanta y recoloca ${this.maxSamples} veces</span>
+                        <span class="instruction-number">3</span>
+                        <span class="instruction-text">Coloca el dedo 4 veces cuando se solicite</span>
                     </div>
                 </div>
             </div>
         `;
-    }
 
-    /**
-     * Configurar UI específica para enrolamiento
-     */
-    _setupEnrollmentUI() {
         // Referencias a elementos
-        this.userIdInput = this.container.querySelector('#userId');
-        this.startButton = this.container.querySelector('#startEnroll');
-        this.clearButton = this.container.querySelector('#clearEnroll');
-        this.cancelButton = this.container.querySelector('#cancelEnroll');
-        // NO sobrescribir this.statusElement - BaseComponent lo usa para SSE display
-        this.progressBar = this.container.querySelector('.progress-fill');
-        this.progressText = this.container.querySelector('.progress-text');
-        this.fingerprintArea = this.container.querySelector('.fingerprint-area');
+        this.userIdInput = this.container.querySelector(`#userId-${this.containerId}`);
+        this.btnEnroll = this.container.querySelector(`#btnEnroll-${this.containerId}`);
+        this.btnClear = this.container.querySelector(`#btnClear-${this.containerId}`);
 
-        // Eventos de botones
-        this.startButton.onclick = () => this.startEnrollment();
-        this.clearButton.onclick = () => this.clear();
-        this.cancelButton.onclick = () => this.cancelEnrollment();
-
-        // Validación en tiempo real del input
+        // Eventos
+        this.btnEnroll.onclick = () => this.startEnrollment();
+        this.btnClear.onclick = () => this.clear();
         this.userIdInput.oninput = () => this._validateInput();
 
-        // Suscribirse al EventRouter si está disponible
-        if (this.eventRouter) {
-            this.eventRouter.subscribe('enrollment', this, this.componentId);
-            console.log(`[${this.componentId}] Suscrito al EventRouter para eventos de enrollment`);
-        }
+        this._validateInput();
     }
 
     /**
-     * Configurar eventos CEDDFA para enrolamiento
+     * Validar input del usuario
      */
-    _setupEnrollmentEvents() {
-        // Eventos CEDDFA especificos para enrolamiento
-        this.adapter.on('ENROLLMENT_STARTED', (data) => {
-            this.showLoading(data.message || 'Iniciando enrolamiento...');
-            this.sampleCount = 0;
-            this.attemptCount = 0;
-            this._updateProgress();
-        });
-
-        this.adapter.on('ENROLLMENT_SAMPLE_COLLECTED', (data) => {
-            this.sampleCount = data.data?.sampleNumber || this.sampleCount + 1;
-            const totalSamples = data.data?.totalSamples || this.maxSamples;
-            this.showInfo('Muestra ' + this.sampleCount + '/' + totalSamples + ' capturada');
-            this._updateProgress();
-        });
-
-        this.adapter.on('CAPTURE_QUALITY_LOW', (data) => {
-            const attempt = data.data?.attemptNumber || '?';
-            const maxAttempts = data.data?.maxAttempts || 3;
-            const reason = data.data?.reason || 'Calidad insuficiente';
-            this.showWarning('Intento ' + attempt + '/' + maxAttempts + ': ' + reason);
-        });
-
-        this.adapter.on('CAPTURE_STARTED', (data) => {
-            if (this.enrollmentState === 'enrolling') {
-                this.showLoading(data.message || 'Coloca el dedo en el lector');
-            }
-        });
-
-        this.adapter.on('CAPTURE_COMPLETED', (data) => {
-            if (this.enrollmentState === 'enrolling') {
-                this.showInfo(data.message || 'Captura completada');
-            }
-        });
-
-        this.adapter.on('IMAGE_CAPTURED', (data) => {
-            const image = data.data?.imageBase64 || data.imageBase64;
-            if (image) {
-                this._displayFingerprintImage(image);
-            }
-        });
-
-        this.adapter.on('ENROLLMENT_COMPLETED', (data) => {
-            this.enrollmentState = 'completed';
-            this.showSuccess(data.message || 'Enrolamiento completado exitosamente');
-        });
-
-        this.adapter.on('ENROLLMENT_FAILED', (data) => {
-            this.enrollmentState = 'error';
-            this.showError(data.message || 'Error en enrolamiento');
-        });
-
-        this.adapter.on('SYSTEM_STATUS', (data) => {
-            if (this.enrollmentState !== 'enrolling') {
-                return;
-            }
-
-            if (data.data && data.data.attemptNumber !== undefined) {
-                this._handleAttempt(data);
-            } else if (data.message) {
-                this.showInfo(data.message);
-            }
-        });
-
-        this.adapter.on('SYSTEM_ERROR', (data) => {
-            if (this.enrollmentState === 'enrolling') {
-                this.showError(data.message || 'Error del sistema durante el enrolamiento');
-            }
-        });
+    _validateInput() {
+        const isValid = this.userIdInput.value.trim().length > 0;
+        this.btnEnroll.disabled = !isValid || this.isEnrolling;
     }
 
     /**
-     * Iniciar proceso de enrolamiento
+     * Iniciar enrolamiento
      */
     async startEnrollment() {
-        const userId = this.userIdInput.value.trim();
+        this.userId = this.userIdInput.value.trim();
 
-        if (!userId) {
-            this.showError('Debe ingresar un ID de usuario válido');
-            this.userIdInput.focus();
+        if (!this.userId) {
+            this.showError('Ingresa un ID de usuario válido');
             return;
         }
 
         try {
-            this.enrollmentState = 'enrolling';
-            this.currentUserId = userId;
-            this.attemptCount = 0;
-            this.sampleCount = 0;
-
+            this.isEnrolling = true;
             this._updateUI();
+
             this.showLoading('Iniciando enrolamiento...');
 
             // Notificar al EventRouter que esta operación comenzó
             if (this.eventRouter) {
-                this.eventRouter.startOperation('enrollment', this.componentId, { userId });
+                this.eventRouter.startOperation('enrollment', this.componentId);
             }
 
-            const result = await this.adapter.enrollFingerprint(userId);
+            // Llamar al backend
+            const result = await this.adapter.enrollFingerprint(this.userId);
 
+            // Procesar resultado
             if (result.ok && result.enrolled) {
-                this.enrollmentState = 'completed';
-                this.showSuccess(`Usuario ${userId} enrolado exitosamente`);
-                this.emit('enrolled', { userId, result });
+                this.showSuccess(`Usuario ${this.userId} enrolado exitosamente`);
 
-                // Limpiar después de 3 segundos
+                // Auto-limpiar después de 3 segundos
                 setTimeout(() => this.clear(), 3000);
             } else {
-                this.enrollmentState = 'error';
                 this.showError(result.msg || 'Error en el enrolamiento');
             }
 
         } catch (error) {
-            this.enrollmentState = 'error';
             this.showError(`Error: ${error.message}`);
         } finally {
+            this.isEnrolling = false;
+            this._updateUI();
+
             // Finalizar operación en el EventRouter
             if (this.eventRouter) {
                 this.eventRouter.endOperation('enrollment');
             }
-
-            this._updateUI();
         }
-    }
-
-    /**
-     * Cancelar enrolamiento
-     */
-    async cancelEnrollment() {
-        this.enrollmentState = 'idle';
-        this.currentUserId = '';
-        this.attemptCount = 0;
-        this.sampleCount = 0;
-
-        this._updateUI();
-        this.updateStatus('info', 'Enrolamiento cancelado');
     }
 
     /**
@@ -256,154 +158,26 @@ class EnrollmentControl extends BaseComponent {
     clear() {
         super.clear();
 
-        this.enrollmentState = 'idle';
-        this.currentUserId = '';
-        this.attemptCount = 0;
-        this.sampleCount = 0;
-
+        this.userId = '';
+        this.isEnrolling = false;
         this.userIdInput.value = '';
-        this._updateProgress(0);
+
         this._updateUI();
-
-        // Limpiar imagen
-        this.fingerprintArea.innerHTML = '<div class="fingerprint-placeholder">👤</div>';
-
-        this.updateStatus('info', 'Ingresa el ID del usuario y presiona "Iniciar Enrolamiento"');
+        this.showInfo('Ingresa el ID del usuario');
     }
 
     /**
-     * Manejar intento de captura
-     */
-    _handleAttempt(data) {
-        if (data?.data && data.data.attemptNumber !== undefined) {
-            const attempt = data.data.attemptNumber;
-            const maxAttempts = data.data.maxAttempts ?? this.maxSamples;
-            const success = data.data.success ?? false;
-            const baseMessage = 'Intento ' + attempt + '/' + maxAttempts;
-            const message = data.message || (success ? baseMessage + ' completado' : baseMessage + ' en progreso');
-
-            this.attemptCount = attempt;
-
-            if (success) {
-                this.showSuccess(message);
-            } else {
-                this.showWarning(message);
-            }
-
-            this.emit('attempt', { attempt, success, maxAttempts, message });
-            return;
-        }
-
-        // Formato legacy (bridge v1)
-        this.attemptCount++;
-
-        const successLegacy = data.ok;
-        const reason = data.why || '';
-        const attemptLegacy = data.i ?? this.attemptCount;
-
-        if (successLegacy) {
-            this.showSuccess('Intento #' + attemptLegacy + ': exito');
-        } else {
-            this.showWarning('Intento #' + attemptLegacy + ': ' + reason);
-        }
-
-        this.emit('attempt', { attempt: attemptLegacy, success: successLegacy, reason });
-    }
-
-    /**
-     * Manejar conteo de muestras
-     */
-    _handleSampleCount(data) {
-        this.sampleCount = data.n;
-        this._updateProgress(this.sampleCount);
-
-        this.updateStatus('success', `✅ Muestras capturadas: ${this.sampleCount}/${this.maxSamples}`);
-        this.emit('sampleCount', { count: this.sampleCount, total: this.maxSamples });
-    }
-
-    /**
-     * Manejar estado de enrolamiento
-     */
-    _handleEnrollmentStatus(data) {
-        if (data.msg && data.msg.includes('muestra')) {
-            this.updateStatus('info', `👆 ${data.msg}`);
-        }
-    }
-
-    /**
-     * Actualizar barra de progreso
-     */
-    _updateProgress(samples) {
-        const percentage = (samples / this.maxSamples) * 100;
-        this.progressBar.style.width = `${percentage}%`;
-        this.progressText.textContent = `${samples}/${this.maxSamples} muestras`;
-    }
-
-    /**
-     * Validar entrada del usuario
-     */
-    _validateInput() {
-        const isValid = this.userIdInput.value.trim().length > 0;
-        this.startButton.disabled = !isValid || this.enrollmentState === 'enrolling';
-    }
-
-    /**
-     * Actualizar UI según el estado
+     * Actualizar UI según estado
      */
     _updateUI() {
-        const isEnrolling = this.enrollmentState === 'enrolling';
+        this.userIdInput.disabled = this.isEnrolling;
+        this.btnEnroll.disabled = this.isEnrolling || !this.userIdInput.value.trim();
+        this.btnClear.disabled = this.isEnrolling;
 
-        this.startButton.style.display = isEnrolling ? 'none' : 'inline-block';
-        this.cancelButton.style.display = isEnrolling ? 'inline-block' : 'none';
-
-        this.userIdInput.disabled = isEnrolling;
-        this.clearButton.disabled = isEnrolling;
-
-        this._validateInput();
-    }
-
-    /**
-     * Mostrar imagen específica para enrolamiento
-     */
-    displayImage(imageBase64) {
-        this.fingerprintArea.innerHTML = `
-            <img src="data:image/png;base64,${imageBase64}"
-                 style="max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain;"
-                 alt="Huella en enrolamiento" />
-        `;
-    }
-
-    /**
-     * Alias para compatibilidad CEDDFA
-     */
-    _displayFingerprintImage(imageBase64) {
-        this.displayImage(imageBase64);
-    }
-
-    /**
-     * Obtener estado actual del enrolamiento
-     */
-    getEnrollmentState() {
-        return {
-            state: this.enrollmentState,
-            userId: this.currentUserId,
-            attemptCount: this.attemptCount,
-            sampleCount: this.sampleCount,
-            progress: (this.sampleCount / this.maxSamples) * 100
-        };
-    }
-
-    /**
-     * Configurar máximo de muestras
-     */
-    setMaxSamples(maxSamples) {
-        this.maxSamples = maxSamples;
-        this._updateProgress(this.sampleCount);
-
-        // Actualizar instrucciones
-        const instruction = this.container.querySelector('.instruction-item:nth-child(3) .instruction-text');
-        if (instruction) {
-            instruction.textContent = `Levanta y recoloca ${this.maxSamples} veces`;
+        if (this.isEnrolling) {
+            this.btnEnroll.textContent = 'Enrolando...';
+        } else {
+            this.btnEnroll.textContent = 'Iniciar Enrolamiento';
         }
     }
 }
