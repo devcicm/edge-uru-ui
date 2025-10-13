@@ -118,6 +118,7 @@ const result = await adapter.enrollV2({ userId: 'USER001' });
 - **Context-aware routing**: Events like `CAPTURE_STARTED` are routed to the currently active operation
 - **Subscription model**: Components subscribe to specific event categories
 - **Operation tracking**: Knows which component is performing which operation
+- **Isolated dispatch**: Events are dispatched ONLY to the component with active operation (prevents cross-component contamination)
 - **Debugging tools**: Built-in statistics and event history
 
 **Usage**:
@@ -149,12 +150,19 @@ eventRouter.debugStatus();
 
 **How it works**:
 ```
-Backend SSE → BiometricAdapter → EventRouter → Subscribed Components
+Backend SSE → BiometricAdapter → EventRouter → Active Component ONLY
                                       ↓
                                  [Routes based on:
-                                  - Event type prefix
-                                  - Active operation
-                                  - Subscription list]
+                                  - Event type prefix (ENROLLMENT_*, VERIFICATION_*, etc.)
+                                  - Active operation tracking
+                                  - Component isolation (1 active component per operation type)]
+
+Example Flow:
+1. EnrollmentControl calls eventRouter.startOperation('enrollment', componentId)
+2. Backend sends ENROLLMENT_STARTED event
+3. EventRouter dispatches to EnrollmentControl ONLY (not VerificationControl)
+4. Event displays in EnrollmentControl's SSE status area
+5. VerificationControl remains clean (no cross-contamination)
 ```
 
 #### `ComponentFactory.js`

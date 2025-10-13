@@ -214,6 +214,7 @@ class EventRouter {
 
     /**
      * Despachar evento a suscriptores de una categoría
+     * IMPORTANTE: Solo despacha al componente que tiene la operación activa
      */
     _dispatchToSubscribers(category, eventType, eventData) {
         const subscribers = this.subscribers[category];
@@ -226,32 +227,69 @@ class EventRouter {
 
         let dispatched = 0;
 
-        subscribers.forEach(subscription => {
-            try {
-                const { component, componentId } = subscription;
+        // Si la categoría es 'all', enviar a todos (para componentes de logging)
+        if (category === 'all') {
+            subscribers.forEach(subscription => {
+                this._dispatchToComponent(subscription, eventType, eventData);
+                dispatched++;
+            });
+        } else {
+            // Para categorías específicas (enrollment, verification, identification),
+            // solo despachar al componente que tiene la operación activa
+            const activeOperation = this.activeOperations[category];
 
-                // Verificar si el componente tiene método handleEvent
-                if (typeof component.handleRouterEvent === 'function') {
-                    console.log(`[EventRouter] 📤 Despachando ${eventType} → ${componentId}`);
-                    component.handleRouterEvent(eventType, eventData);
-                    dispatched++;
-                } else if (typeof component.updateStatus === 'function') {
-                    // Fallback: usar updateStatus si existe
-                    const message = eventData.message || eventData.msg || eventType;
-                    component.updateStatus('info', message);
+            if (activeOperation) {
+                // Buscar el componente activo
+                const activeSubscription = Array.from(subscribers)
+                    .find(sub => sub.componentId === activeOperation.componentId);
+
+                if (activeSubscription) {
+                    console.log(`[EventRouter] 🎯 Despachando a componente activo: ${activeSubscription.componentId}`);
+                    this._dispatchToComponent(activeSubscription, eventType, eventData);
                     dispatched++;
                 } else {
-                    console.warn(`[EventRouter] Componente ${componentId} no tiene handleRouterEvent ni updateStatus`);
+                    console.warn(`[EventRouter] ⚠️ Componente activo ${activeOperation.componentId} no encontrado en suscriptores`);
                 }
-
-            } catch (error) {
-                console.error(`[EventRouter] Error despachando a ${subscription.componentId}:`, error);
+            } else {
+                // Sin operación activa, despachar a todos los suscriptores (para eventos reader/system)
+                console.log(`[EventRouter] 📢 Sin operación activa para ${category}, despachando a todos los suscriptores`);
+                subscribers.forEach(subscription => {
+                    this._dispatchToComponent(subscription, eventType, eventData);
+                    dispatched++;
+                });
             }
-        });
+        }
 
         if (dispatched > 0) {
             this.stats.routedEvents++;
             console.log(`[EventRouter] ✅ Evento ${eventType} despachado a ${dispatched} componente(s) en categoría ${category}`);
+        } else {
+            console.log(`[EventRouter] ⚠️ Evento ${eventType} no fue despachado a ningún componente`);
+            this.stats.droppedEvents++;
+        }
+    }
+
+    /**
+     * Despachar evento a un componente específico
+     */
+    _dispatchToComponent(subscription, eventType, eventData) {
+        try {
+            const { component, componentId } = subscription;
+
+            // Verificar si el componente tiene método handleRouterEvent
+            if (typeof component.handleRouterEvent === 'function') {
+                console.log(`[EventRouter] 📤 Despachando ${eventType} → ${componentId}`);
+                component.handleRouterEvent(eventType, eventData);
+            } else if (typeof component.updateStatus === 'function') {
+                // Fallback: usar updateStatus si existe
+                const message = eventData.message || eventData.msg || eventType;
+                component.updateStatus('info', message);
+            } else {
+                console.warn(`[EventRouter] Componente ${componentId} no tiene handleRouterEvent ni updateStatus`);
+            }
+
+        } catch (error) {
+            console.error(`[EventRouter] Error despachando a ${subscription.componentId}:`, error);
         }
     }
 
