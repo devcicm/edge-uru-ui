@@ -485,10 +485,15 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/js/core/BiometricAdapter.js"></script>
-    <script src="/js/core/BaseComponent.js"></script>
-    <script src="/js/components/EnrollmentControl.js"></script>
-    <script src="/js/components/VerificationControl.js"></script>
+    <!-- Infrastructure (Base classes for building components) -->
+    <script src="/js/infrastructure/BiometricAdapter.js"></script>
+    <script src="/js/infrastructure/BaseComponent.js"></script>
+
+    <!-- Biometric UI Controls (Fingerprint reader-specific components) -->
+    <script src="/js/biometric-controls/EnrollmentControl.js"></script>
+    <script src="/js/biometric-controls/VerificationControl.js"></script>
+
+    <!-- V2 CEDDFA API Client -->
     <script src="/v2-ceddfa/biometric-dtos.js"></script>
     <script>
         // ====================================================
