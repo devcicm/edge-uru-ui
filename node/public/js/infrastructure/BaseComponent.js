@@ -72,6 +72,9 @@ class BaseComponent {
             <span class="status-icon">${icon}</span>
             <span class="status-message">${message}</span>
         `;
+
+        // LOG PARA DEBUG: Mostrar mensaje en consola
+        console.log(`[${this.componentId}] 📊 STATUS UPDATE: [${type.toUpperCase()}] ${message}`);
     }
 
     /**
@@ -86,6 +89,9 @@ class BaseComponent {
                  style="max-width: 100%; height: auto; border-radius: 8px;"
                  alt="Huella dactilar" />
         `;
+
+        // LOG PARA DEBUG: Notificar cuando se muestra imagen
+        console.log(`[${this.componentId}] 🖼️ IMAGE DISPLAYED: ${imageBase64.substring(0, 50)}...`);
     }
 
     /**
@@ -93,8 +99,6 @@ class BaseComponent {
      * Este método es llamado por EventRouter cuando hay eventos SSE
      */
     handleRouterEvent(eventType, eventData) {
-        console.log(`[${this.componentId}] 📨 Evento: ${eventType}`, eventData);
-
         // Extraer mensaje
         const message = eventData.message || eventData.msg || eventType;
 
@@ -109,6 +113,16 @@ class BaseComponent {
         else if (severity === 'LOADING' || eventType.includes('STARTED')) type = 'loading';
         else if (eventType.includes('COMPLETED')) type = 'success';
         else if (eventType.includes('FAILED')) type = 'error';
+
+        // LOG DETALLADO PARA DEBUG
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`[${this.componentId}] 📨 SSE EVENT RECEIVED:`);
+        console.log(`   Event Type: ${eventType}`);
+        console.log(`   Severity: ${severity} → UI Type: ${type}`);
+        console.log(`   Message: "${message}"`);
+        console.log(`   Has Image: ${!!(eventData.data?.imageBase64 || eventData.imageBase64)}`);
+        console.log(`   Raw Data:`, eventData);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
         // Actualizar estado
         this.updateStatus(message, type);
