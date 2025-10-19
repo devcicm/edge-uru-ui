@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Biométrico DP4500 - Simple</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background: #dc3545;
+        }
+
+        .status-dot.connected {
+            background: #28a745;
+            box-shadow: 0 0 10px #28a745;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #5a6268;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+            min-height: 60px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 35px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 35px;
+            min-height: 35px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .samples-container {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+            min-height: 150px !important;
+        }
+
+        .samples-container[style*="display: block"] {
+            display: block !important;
+        }
+
+        .samples-container h4 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .sample-item {
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            background: white;
+            border-left: 4px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sample-item.collected {
+            border-left-color: #28a745;
+            background: #d4edda;
+            animation: highlightSample 0.5s ease-in-out;
+        }
+
+        .sample-item.pending {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+
+        .sample-item.capturing {
+            border-left-color: #17a2b8;
+            background: #d1ecf1;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .sample-icon {
+            font-size: 16px;
+        }
+
+        @keyframes highlightSample {
+            0% {
+                transform: scale(1);
+                background: #fff3cd;
+            }
+            50% {
+                transform: scale(1.05);
+                background: #28a745;
+                box-shadow: 0 0 20px rgba(40, 167, 69, 0.5);
+            }
+            100% {
+                transform: scale(1);
+                background: #d4edda;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .fingerprint-display {
+            width: 100%;
+            max-width: 300px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fingerprint-display img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .placeholder {
+            font-size: 80px;
+            opacity: 0.3;
+        }
+
+        .message-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .message-box.info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            color: #0c5460;
+        }
+
+        .message-box.success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+        }
+
+        .message-box.error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+
+        .message-box.warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+
+        .log-container {
+            max-height: 250px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            padding: 5px;
+            margin-bottom: 5px;
+            border-left: 3px solid #667eea;
+            padding-left: 10px;
+        }
+
+        .log-entry.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+
+        .log-entry.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="card">
+            <h1>🔐 Sistema Biométrico DP4500</h1>
+            <p class="subtitle">Sistema Simple y Robusto - Enrolamiento y Verificación</p>
+            <div class="status-bar">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Desconectado</span>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Enrolamiento -->
+            <div class="card">
+                <h2 style="color: #667eea; margin-bottom: 20px;">📝 Enrolamiento</h2>
+
+                <div class="input-group">
+                    <label for="enrollUserId">ID del Usuario:</label>
+                    <input type="text" id="enrollUserId" placeholder="Ej: USUARIO001">
+                </div>
+
+                <div class="message-box" id="enrollMessage"></div>
+
+                <div class="progress-container" id="enrollProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="enrollProgressFill">0%</div>
+                    </div>
+                    <div class="progress-text" id="enrollProgressText">Esperando...</div>
+                </div>
+
+                <!-- Contenedor de intentos individuales -->
+                <div class="samples-container" id="samplesContainer">
+                    <h4>📋 Capturas de Muestras</h4>
+                    <div id="samplesList">
+                        <!-- Los intentos se insertan aquí dinámicamente -->
+                    </div>
+                </div>
+
+                <div class="fingerprint-display" id="enrollFingerprint">
+                    <div class="placeholder">👤</div>
+                </div>
+
+                <button class="btn btn-primary" id="btnEnroll">Iniciar Enrolamiento</button>
+                <button class="btn btn-secondary" id="btnEnrollClear">Limpiar</button>
+            </div>
+
+            <!-- Verificación -->
+            <div class="card">
+                <h2 style="color: #667eea; margin-bottom: 20px;">✅ Verificación</h2>
+
+                <div class="input-group">
+                    <label for="verifyUserId">ID del Usuario:</label>
+                    <input type="text" id="verifyUserId" placeholder="Ej: USUARIO001">
+                </div>
+
+                <div class="message-box" id="verifyMessage"></div>
+
+                <div class="fingerprint-display" id="verifyFingerprint">
+                    <div class="placeholder">🔍</div>
+                </div>
+
+                <button class="btn btn-primary" id="btnVerify">Verificar Huella</button>
+                <button class="btn btn-secondary" id="btnVerifyClear">Limpiar</button>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="card">
+            <h2 style="color: #667eea; margin-bottom: 15px;">📊 Registro de Eventos</h2>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry">Sistema iniciado. Esperando conexión...</div>
+            </div>
+        </div>
+
+        <!-- Botones de Sistema -->
+        <div class="card">
+            <div class="grid">
+                <button class="btn btn-primary" id="btnInit">🔌 Inicializar Lector</button>
+                <button class="btn btn-secondary" id="btnClearLogs">🗑️ Limpiar Logs</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // SISTEMA BIOMÉTRICO SIMPLE
+        // ============================================
+
+        console.log('[Sistema] Iniciando...');
+
+        // Estado global
+        const state = {
+            connected: false,
+            enrolling: false,
+            verifying: false,
+            eventSource: null,
+            currentProgress: 0,
+            expectedSamples: 4,
+            currentSample: 0
+        };
+
+        // Referencias DOM
+        const dom = {
+            statusDot: document.getElementById('statusDot'),
+            statusText: document.getElementById('statusText'),
+            enrollUserId: document.getElementById('enrollUserId'),
+            enrollMessage: document.getElementById('enrollMessage'),
+            enrollProgress: document.getElementById('enrollProgress'),
+            enrollProgressFill: document.getElementById('enrollProgressFill'),
+            enrollProgressText: document.getElementById('enrollProgressText'),
+            samplesContainer: document.getElementById('samplesContainer'),
+            samplesList: document.getElementById('samplesList'),
+            enrollFingerprint: document.getElementById('enrollFingerprint'),
+            btnEnroll: document.getElementById('btnEnroll'),
+            btnEnrollClear: document.getElementById('btnEnrollClear'),
+            verifyUserId: document.getElementById('verifyUserId'),
+            verifyMessage: document.getElementById('verifyMessage'),
+            verifyFingerprint: document.getElementById('verifyFingerprint'),
+            btnVerify: document.getElementById('btnVerify'),
+            btnVerifyClear: document.getElementById('btnVerifyClear'),
+            btnInit: document.getElementById('btnInit'),
+            btnClearLogs: document.getElementById('btnClearLogs'),
+            logContainer: document.getElementById('logContainer')
+        };
+
+        // ============================================
+        // FUNCIONES DE UTILIDAD
+        // ============================================
+
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            dom.logContainer.appendChild(entry);
+            dom.logContainer.scrollTop = dom.logContainer.scrollHeight;
+        }
+
+        function updateStatus(connected) {
+            state.connected = connected;
+            dom.statusDot.className = `status-dot ${connected ? 'connected' : ''}`;
+            dom.statusText.textContent = connected ? 'Conectado' : 'Desconectado';
+        }
+
+        function showMessage(element, message, type) {
+            console.log('[showMessage] EJECUTANDO - message:', message, 'type:', type);
+            console.log('[showMessage] Element:', element, 'exists:', !!element);
+
+            if (element) {
+                element.textContent = message;
+                element.className = `message-box ${type}`;
+                element.style.display = 'block';
+                console.log('[showMessage] ✅ Mensaje mostrado');
+            } else {
+                console.error('[showMessage] ❌ Element NO EXISTE');
+            }
+        }
+
+        function hideMessage(element) {
+            element.style.display = 'none';
+        }
+
+        function updateProgress(percent, text) {
+            console.log('[updateProgress] EJECUTANDO - percent:', percent, 'text:', text);
+            console.log('[updateProgress] DOM elements:', {
+                fill: dom.enrollProgressFill,
+                fillExists: !!dom.enrollProgressFill,
+                text: dom.enrollProgressText,
+                textExists: !!dom.enrollProgressText
+            });
+
+            state.currentProgress = percent;
+
+            if (dom.enrollProgressFill) {
+                dom.enrollProgressFill.style.width = `${percent}%`;
+                dom.enrollProgressFill.textContent = `${percent}%`;
+                console.log('[updateProgress] ✅ Barra actualizada a', percent + '%');
+            } else {
+                console.error('[updateProgress] ❌ enrollProgressFill NO EXISTE');
+            }
+
+            if (dom.enrollProgressText) {
+                dom.enrollProgressText.textContent = text;
+                console.log('[updateProgress] ✅ Texto actualizado a:', text);
+            } else {
+                console.error('[updateProgress] ❌ enrollProgressText NO EXISTE');
+            }
+        }
+
+        function showProgress() {
+            console.log('[showProgress] Mostrando barra de progreso');
+            if (dom.enrollProgress) {
+                dom.enrollProgress.style.display = 'block';
+                console.log('[showProgress] ✅ Barra visible');
+            }
+            updateProgress(0, 'Iniciando...');
+        }
+
+        function hideProgress() {
+            dom.enrollProgress.style.display = 'none';
+        }
+
+        function initializeSamples(totalSamples = 4) {
+            const timestamp = new Date().toLocaleTimeString();
+            console.log(`[initializeSamples] [${timestamp}] Inicializando lista de muestras`);
+            console.log('[initializeSamples] samplesList element:', dom.samplesList);
+            console.log('[initializeSamples] samplesList existe?:', !!dom.samplesList);
+
+            if (!dom.samplesList) {
+                console.error('[initializeSamples] ❌ ERROR: dom.samplesList es NULL!');
+            return;
+        }
+
+        state.expectedSamples = Number(totalSamples) || 4;
+        state.currentSample = 0;
+
+        // Limpiar lista anterior
+            dom.samplesList.innerHTML = '';
+            console.log('[initializeSamples] Lista limpiada');
+
+            // Crear items para cada muestra
+            for (let i = 1; i <= totalSamples; i++) {
+                const item = document.createElement('div');
+                item.className = 'sample-item pending';
+                item.id = `sample-${i}`;
+
+                // Forzar estilos inline para garantizar visibilidad
+                item.style.display = 'flex';
+                item.style.alignItems = 'center';
+                item.style.gap = '10px';
+                item.style.padding = '8px 12px';
+                item.style.marginBottom = '6px';
+                item.style.background = '#fff3cd';
+                item.style.borderLeft = '4px solid #ffc107';
+                item.style.borderRadius = '4px';
+                item.style.fontSize = '13px';
+                item.style.minHeight = '35px';
+                item.style.visibility = 'visible';
+                item.style.opacity = '1';
+
+                item.innerHTML = `
+                    <span class="sample-icon" style="font-size: 16px;">⏳</span>
+                    <span>Muestra ${i}/${totalSamples} - Esperando...</span>
+                `;
+                dom.samplesList.appendChild(item);
+                console.log(`[initializeSamples] ✅ Item creado y agregado: sample-${i}`, item);
+            }
+
+            // Forzar visibilidad del contenedor con estilos inline
+            dom.samplesContainer.style.display = 'block';
+            dom.samplesContainer.style.minHeight = '150px';
+            dom.samplesContainer.style.visibility = 'visible';
+            dom.samplesContainer.style.opacity = '1';
+            dom.samplesContainer.style.margin = '15px 0';
+            dom.samplesContainer.style.padding = '15px';
+
+            console.log('[initializeSamples] ✅ Contenedor mostrado - display:', dom.samplesContainer.style.display);
+
+            // Verificar que se crearon
+            const itemsCreados = document.querySelectorAll('.sample-item');
+            console.log('[initializeSamples] ✅ Total items en DOM:', itemsCreados.length);
+            console.log('[initializeSamples] Items:', itemsCreados);
+
+            // Verificar HTML del contenedor
+            console.log('[initializeSamples] HTML del samplesList:', dom.samplesList.innerHTML);
+
+            // Verificar estilos computados del primer item
+            if (itemsCreados.length > 0) {
+                const computedStyle = window.getComputedStyle(itemsCreados[0]);
+                console.log('[initializeSamples] 🎨 Estilos computados del primer item:');
+                console.log('  - display:', computedStyle.display);
+                console.log('  - visibility:', computedStyle.visibility);
+                console.log('  - opacity:', computedStyle.opacity);
+                console.log('  - height:', computedStyle.height);
+                console.log('  - minHeight:', computedStyle.minHeight);
+            }
+        }
+
+        function updateSampleStatus(sampleNumber, status = 'collected', totalSamples = state.expectedSamples || 4) {
+            const timestamp = new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds();
+            const normalizedSample = Number(sampleNumber);
+            const normalizedTotal = Number(totalSamples) || state.expectedSamples || 4;
+            const displaySample = Number.isFinite(normalizedSample) ? Math.min(Math.max(Math.trunc(normalizedSample), 1), normalizedTotal) : 1;
+            const targetId = `sample-${displaySample}`;
+            console.log(`? [updateSampleStatus] [${timestamp}] ACTUALIZANDO AHORA - Muestra ${displaySample} <- ${status}`);
+
+            const sampleItem = document.getElementById(targetId);
+            if (!sampleItem) {
+                console.error('? [updateSampleStatus] Sample item NO encontrado:', targetId, { sampleNumber, totalSamples });
+                console.log('?? [updateSampleStatus] Items disponibles:', document.querySelectorAll('.sample-item'));
+                return;
+            }
+
+            // Verificar estado del DOM antes
+            console.log('?? [updateSampleStatus] ANTES - className:', sampleItem.className);
+
+            // Remover animación anterior para resetearla
+            sampleItem.style.animation = 'none';
+            sampleItem.offsetHeight; // Trigger reflow
+
+            if (status === 'collected') {
+                sampleItem.className = 'sample-item collected';
+
+                // Forzar estilos inline para estado collected
+                sampleItem.style.display = 'flex';
+                sampleItem.style.alignItems = 'center';
+                sampleItem.style.gap = '10px';
+                sampleItem.style.padding = '8px 12px';
+                sampleItem.style.marginBottom = '6px';
+                sampleItem.style.background = '#d4edda';
+                sampleItem.style.borderLeft = '4px solid #28a745';
+                sampleItem.style.borderRadius = '4px';
+                sampleItem.style.fontSize = '13px';
+                sampleItem.style.minHeight = '35px';
+                sampleItem.style.visibility = 'visible';
+                sampleItem.style.opacity = '1';
+
+                sampleItem.innerHTML = `
+                    <span class="sample-icon" style="font-size: 16px;">?</span>
+                    <span><strong>Muestra ${displaySample}/${normalizedTotal}</strong> - Capturada exitosamente <small>[${timestamp}]</small></span>
+                `;
+            } else if (status === 'capturing') {
+                sampleItem.className = 'sample-item capturing';
+
+                // Forzar estilos inline para estado capturing
+                sampleItem.style.display = 'flex';
+                sampleItem.style.alignItems = 'center';
+                sampleItem.style.gap = '10px';
+                sampleItem.style.padding = '8px 12px';
+                sampleItem.style.marginBottom = '6px';
+                sampleItem.style.background = '#d1ecf1';
+                sampleItem.style.borderLeft = '4px solid #17a2b8';
+                sampleItem.style.borderRadius = '4px';
+                sampleItem.style.fontSize = '13px';
+                sampleItem.style.minHeight = '35px';
+                sampleItem.style.visibility = 'visible';
+                sampleItem.style.opacity = '1';
+
+                sampleItem.innerHTML = `
+                    <span class="sample-icon" style="font-size: 16px;">??</span>
+                    <span><strong>Muestra ${displaySample}/${normalizedTotal}</strong> - Capturando ahora... <small>[${timestamp}]</small></span>
+                `;
+            }
+
+            // Reactivar animación
+            sampleItem.style.animation = '';
+
+            // Verificar estado del DOM después
+            console.log('? [updateSampleStatus] DESPUÉS - className:', sampleItem.className);
+            console.log('?? [updateSampleStatus] DOM ACTUALIZADO INMEDIATAMENTE');
+
+            // Verificar estilos computados después de actualizar
+            const computedStyle = window.getComputedStyle(sampleItem);
+            console.log('[updateSampleStatus] ?? Estilos computados DESPUÉS de actualizar:');
+            console.log('  - display:', computedStyle.display);
+            console.log('  - visibility:', computedStyle.visibility);
+            console.log('  - opacity:', computedStyle.opacity);
+            console.log('  - background:', computedStyle.background);
+            console.log('  - borderLeft:', computedStyle.borderLeft);
+
+            // Scroll al item actualizado
+            sampleItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            // Forzar repaint del navegador
+            void sampleItem.offsetHeight;
+        }
+
+        function resolveSampleInfo(eventPayload, { advanceWhenMissing = false } = {}) {
+            const payload = eventPayload || {};
+            const dataBlock = payload.data || {};
+            const message = payload.message || '';
+
+            let sampleNumber = Number(dataBlock.sampleNumber);
+            let totalSamples = Number(dataBlock.totalSamples);
+
+            const messageMatch = message.match(/muestra\s*(\d+)\s*\/\s*(\d+)/i);
+            if (messageMatch) {
+                if (!Number.isFinite(sampleNumber)) {
+                    sampleNumber = Number(messageMatch[1]);
+                }
+                if (!Number.isFinite(totalSamples)) {
+                    totalSamples = Number(messageMatch[2]);
+                }
+            }
+
+            if (!Number.isFinite(totalSamples)) {
+                totalSamples = state.expectedSamples || (dom.samplesList ? dom.samplesList.children.length : 4) || 4;
+            }
+
+            if (!Number.isFinite(sampleNumber)) {
+                const fallbackFromPayload = Number(payload.sampleNumber ?? dataBlock.nextSampleNumber ?? payload.nextSampleNumber);
+                if (Number.isFinite(fallbackFromPayload)) {
+                    sampleNumber = fallbackFromPayload;
+                } else {
+                    const nextCandidate = state.currentSample + (advanceWhenMissing ? 1 : 0);
+                    sampleNumber = nextCandidate > 0 ? nextCandidate : 1;
+                }
+            }
+
+            if (!Number.isFinite(sampleNumber) || sampleNumber < 1) {
+                sampleNumber = 1;
+            }
+
+            if (!Number.isFinite(totalSamples) || totalSamples < 1) {
+                totalSamples = 1;
+            }
+
+            state.expectedSamples = Number.isFinite(totalSamples) && totalSamples > 0 ? totalSamples : state.expectedSamples;
+
+            return {
+                sampleNumber: Math.min(Math.max(Math.trunc(sampleNumber), 1), totalSamples),
+                totalSamples: Math.trunc(totalSamples)
+            };
+        }
+
+        function announceCaptureStart(sampleNumber, totalSamples, message, progressText) {
+            let displayText = message || '';
+            if (!displayText || !/muestra\s*\d/i.test(displayText)) {
+                const base = displayText ? `${displayText.trim()} ` : '';
+                displayText = `${base}(muestra ${sampleNumber}/${totalSamples})`.trim();
+            }
+            showMessage(dom.enrollMessage, displayText, 'info');
+            updateSampleStatus(sampleNumber, 'capturing', totalSamples);
+            updateProgress(state.currentProgress, progressText || `Preparando muestra ${sampleNumber}/${totalSamples}`);
+        }
+        function hideSamplesContainer() {
+            dom.samplesContainer.style.display = 'none';
+        }
+
+        function displayFingerprint(element, imageBase64) {
+            if (imageBase64) {
+                element.innerHTML = `<img src="data:image/png;base64,${imageBase64}" alt="Huella">`;
+            } else {
+                element.innerHTML = '<div class="placeholder">👤</div>';
+            }
+        }
+
+        // ============================================
+        // FUNCIONES DE DEBUG
+        // ============================================
+
+        // Función de debug para inspeccionar el estado del contenedor de muestras
+        window.debugSamplesContainer = function() {
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🔍 DEBUG: Estado del Contenedor de Muestras');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+            if (!dom.samplesContainer) {
+                console.error('❌ samplesContainer NO EXISTE en el DOM');
+                return;
+            }
+
+            console.log('✅ samplesContainer existe');
+            console.log('ID:', dom.samplesContainer.id);
+
+            const containerStyle = window.getComputedStyle(dom.samplesContainer);
+            console.log('\n📐 Estilos Computados del Contenedor:');
+            console.log('  - display:', containerStyle.display);
+            console.log('  - visibility:', containerStyle.visibility);
+            console.log('  - opacity:', containerStyle.opacity);
+            console.log('  - height:', containerStyle.height);
+            console.log('  - minHeight:', containerStyle.minHeight);
+            console.log('  - overflow:', containerStyle.overflow);
+            console.log('  - position:', containerStyle.position);
+
+            console.log('\n📋 Contenido HTML del samplesContainer:');
+            console.log(dom.samplesContainer.innerHTML);
+
+            const items = document.querySelectorAll('.sample-item');
+            console.log(`\n📦 Total items .sample-item encontrados: ${items.length}`);
+
+            items.forEach((item, index) => {
+                const itemStyle = window.getComputedStyle(item);
+                console.log(`\n  Item ${index + 1} (${item.id}):`);
+                console.log('    - display:', itemStyle.display);
+                console.log('    - visibility:', itemStyle.visibility);
+                console.log('    - opacity:', itemStyle.opacity);
+                console.log('    - height:', itemStyle.height);
+                console.log('    - className:', item.className);
+                console.log('    - innerHTML:', item.innerHTML.substring(0, 100));
+            });
+
+            console.log('\n🧭 Rectángulos de renderizado (getBoundingClientRect):');
+            const containerRect = dom.samplesContainer.getBoundingClientRect();
+            console.log('  Container:', containerRect);
+
+            items.forEach((item, index) => {
+                const rect = item.getBoundingClientRect();
+                console.log(`  Item ${index + 1}:`, rect);
+                if (rect.height === 0) {
+                    console.warn(`    ⚠️ Item ${index + 1} tiene height = 0!`);
+                }
+            });
+
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        };
+
+        // ============================================
+        // CONEXIÓN SSE
+        // ============================================
+
+        function connectSSE() {
+            console.log('[SSE] Conectando...');
+
+            state.eventSource = new EventSource('/events');
+
+            state.eventSource.onopen = () => {
+                console.log('[SSE] Conectado');
+                addLog('✓ Conectado al servidor', 'success');
+            };
+
+            state.eventSource.onmessage = (event) => {
+                const arrivalTime = new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds();
+                console.log(`🔔 [SSE] [${arrivalTime}] EVENTO RECIBIDO EN TIEMPO REAL`);
+
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log(`📦 [SSE] [${arrivalTime}] Datos:`, data);
+                    handleSSEEvent(data);
+                } catch (error) {
+                    console.error('[SSE] Error parseando evento:', error);
+                }
+            };
+
+            state.eventSource.onerror = () => {
+                console.error('[SSE] Error de conexión');
+                addLog('✗ Error de conexión SSE', 'error');
+                setTimeout(connectSSE, 3000); // Reconectar
+            };
+        }
+
+        // ============================================
+        // MANEJO DE EVENTOS SSE
+        // ============================================
+
+        function handleSSEEvent(data) {
+            const eventType = data.eventType || data.evt;
+
+            console.log('[SSE]', eventType, data);
+
+            // Eventos del lector
+            if (eventType === 'READER_INITIALIZED') {
+                updateStatus(true);
+                addLog('[Lector] ✓ Inicializado', 'success');
+                return;
+            }
+
+            if (eventType === 'READER_ERROR') {
+                addLog(`[Lector] ✗ Error: ${data.message}`, 'error');
+                return;
+            }
+
+            // DEBUG: Mostrar estado actual
+            console.log('[DEBUG] Estado actual - enrolling:', state.enrolling, 'verifying:', state.verifying);
+
+            // Eventos de enrolamiento - MANEJAR TODOS LOS EVENTOS RELACIONADOS
+            if (eventType.startsWith('ENROLLMENT_') ||
+                eventType === 'CAPTURE_STARTED' ||
+                eventType === 'CAPTURE_PROGRESS' ||
+                eventType === 'IMAGE_CAPTURED' ||
+                eventType === 'SYSTEM_STATUS') {
+
+                console.log('[DEBUG] Evento de enrolamiento detectado, llamando a handleEnrollmentEvent');
+                handleEnrollmentEvent(eventType, data);
+            }
+
+            // Eventos de verificación
+            if (eventType.startsWith('VERIFICATION_')) {
+                console.log('[DEBUG] Evento de verificación detectado');
+                handleVerificationEvent(eventType, data);
+            }
+        }
+
+        function handleEnrollmentEvent(eventType, data) {
+            console.log('[handleEnrollmentEvent] Procesando:', eventType);
+
+            // Inicio de enrolamiento
+            if (eventType === 'ENROLLMENT_STARTED') {
+                console.log('[handleEnrollmentEvent] ENROLLMENT_STARTED recibido');
+                return;
+            }
+
+            if (eventType === 'CAPTURE_STARTED') {
+                const { sampleNumber, totalSamples } = resolveSampleInfo(data, { advanceWhenMissing: true });
+                state.currentSample = Math.max(sampleNumber - 1, 0);
+                announceCaptureStart(sampleNumber, totalSamples, data.message);
+                return;
+            }
+
+            if (eventType === 'ENROLLMENT_SAMPLE_COLLECTED') {
+                const receivedTimestamp = new Date().toLocaleTimeString();
+                console.log(`[DEBUG] [${receivedTimestamp}] ENROLLMENT_SAMPLE_COLLECTED recibido:`, data);
+
+                const { sampleNumber, totalSamples } = resolveSampleInfo(data);
+                if (!Number.isFinite(sampleNumber)) {
+                    console.warn('[DEBUG] sampleNumber invalido, no se puede actualizar lista de muestras:', data);
+                    return;
+                }
+
+                const rawProgress = Number(data.data?.progress ?? data.progress);
+                const progressPercent = Number.isFinite(rawProgress)
+                    ? Math.max(0, Math.min(Math.round(rawProgress), 100))
+                    : Math.round((sampleNumber / totalSamples) * 100);
+
+                state.currentSample = Math.max(sampleNumber, state.currentSample);
+
+                console.log('[DEBUG] Llamando updateProgress con:', progressPercent);
+                updateProgress(progressPercent, `Muestra ${sampleNumber}/${totalSamples} capturada`);
+
+                console.log('[DEBUG] Actualizando estado de muestra en lista');
+                updateSampleStatus(sampleNumber, 'collected', totalSamples);
+
+                console.log('[DEBUG] Llamando showMessage');
+                showMessage(dom.enrollMessage,
+                    `Muestra ${sampleNumber}/${totalSamples} recolectada exitosamente (${progressPercent}%)`,
+                    'success'
+                );
+
+                console.log('[DEBUG] Llamando addLog');
+                addLog(`[Enrolamiento] Muestra ${sampleNumber}/${totalSamples} (${progressPercent}%)`, 'success');
+
+                console.log('[DEBUG] o. Actualizacion de progreso completada');
+                return;
+            }
+
+            if (eventType === 'CAPTURE_PROGRESS') {
+                const { sampleNumber, totalSamples } = resolveSampleInfo(data, { advanceWhenMissing: true });
+                const rawProgress = Number(data.data?.progress ?? data.progress);
+                const progressPercent = Number.isFinite(rawProgress) ? Math.max(0, Math.min(Math.round(rawProgress), 100)) : null;
+                const message = data.message || `Capturando muestra ${sampleNumber}/${totalSamples}...`;
+                const progressText = progressPercent !== null
+                    ? `Capturando muestra ${sampleNumber}/${totalSamples} (${progressPercent}%)`
+                    : `Capturando muestra ${sampleNumber}/${totalSamples}`;
+                state.currentSample = Math.max(sampleNumber - 1, state.currentSample);
+                announceCaptureStart(sampleNumber, totalSamples, message, progressText);
+                return;
+            }
+
+            if (eventType === 'SYSTEM_STATUS') {
+                if (data.message) {
+                    addLog(`[Sistema] ${data.message}`, 'info');
+
+                    if (/muestra\s*\d+\s*\/\s*\d+/i.test(data.message)) {
+                        const { sampleNumber, totalSamples } = resolveSampleInfo(data, { advanceWhenMissing: true });
+                        state.currentSample = Math.max(sampleNumber - 1, state.currentSample);
+                        announceCaptureStart(sampleNumber, totalSamples, data.message);
+                    }
+                }
+                return;
+            }
+
+            if (eventType === 'IMAGE_CAPTURED') {
+                console.log('[DEBUG] IMAGE_CAPTURED recibido:', data);
+                const imageBase64 = data.data?.imageBase64 || data.imageBase64;
+                if (imageBase64) {
+                    console.log('[DEBUG] Mostrando imagen de huella');
+                    displayFingerprint(dom.enrollFingerprint, imageBase64);
+                }
+                return;
+            }
+
+            if (eventType === 'ENROLLMENT_COMPLETED') {
+                console.log('[DEBUG] ENROLLMENT_COMPLETED recibido:', data);
+                updateProgress(100, 'Completado!');
+                showMessage(dom.enrollMessage,
+                    `Enrolamiento completado exitosamente para ${dom.enrollUserId.value}`,
+                    'success'
+                );
+                addLog(`[Enrolamiento] Completado: ${dom.enrollUserId.value}`, 'success');
+
+                const imageBase64 = data.data?.imageBase64 || data.imageBase64;
+                if (imageBase64) {
+                    console.log('[DEBUG] Mostrando imagen final');
+                    displayFingerprint(dom.enrollFingerprint, imageBase64);
+                }
+
+                setTimeout(() => {
+                    state.enrolling = false;
+                    dom.btnEnroll.disabled = false;
+                    dom.enrollUserId.disabled = false;
+                }, 8000);
+                return;
+            }
+
+            if (eventType === 'ENROLLMENT_FAILED') {
+                showMessage(dom.enrollMessage,
+                    `Error: ${data.message || 'Enrolamiento fallido'}`,
+                    'error'
+                );
+                addLog(`[Enrolamiento] Error: ${data.message}`, 'error');
+
+                state.enrolling = false;
+                dom.btnEnroll.disabled = false;
+                dom.enrollUserId.disabled = false;
+                hideProgress();
+                hideSamplesContainer();
+            }
+        }
+        function handleVerificationEvent(eventType, data) {
+            // Inicio de verificación
+            if (eventType === 'VERIFICATION_STARTED') {
+                showMessage(dom.verifyMessage, '🔄 Verificación iniciada...', 'info');
+                addLog('[Verificación] Iniciada', 'info');
+            }
+
+            // Imagen capturada
+            else if (eventType === 'IMAGE_CAPTURED') {
+                const imageBase64 = data.data?.imageBase64 || data.imageBase64;
+                if (imageBase64) {
+                    displayFingerprint(dom.verifyFingerprint, imageBase64);
+                }
+            }
+
+            // Verificación completada
+            else if (eventType === 'VERIFICATION_COMPLETED') {
+                console.log('[DEBUG] VERIFICATION_COMPLETED recibido:', data);
+
+                // Extraer datos correctamente
+                const verified = data.verified !== undefined ? data.verified : data.data?.verified;
+                const score = data.score !== undefined ? data.score : data.data?.score;
+
+                console.log('[DEBUG] Verificación - verified:', verified, 'score:', score);
+
+                if (verified) {
+                    showMessage(dom.verifyMessage,
+                        `✅ VERIFICADO - Score: ${score}`,
+                        'success'
+                    );
+                    addLog(`[Verificación] ✅ VERIFICADO - Score: ${score}`, 'success');
+                } else {
+                    showMessage(dom.verifyMessage,
+                        `❌ NO VERIFICADO - Score: ${score}`,
+                        'error'
+                    );
+                    addLog(`[Verificación] ❌ NO VERIFICADO - Score: ${score}`, 'error');
+                }
+
+                const imageBase64 = data.imageBase64 || data.data?.imageBase64;
+                if (imageBase64) {
+                    displayFingerprint(dom.verifyFingerprint, imageBase64);
+                }
+
+                state.verifying = false;
+                dom.btnVerify.disabled = false;
+                dom.verifyUserId.disabled = false;
+            }
+
+            // Verificación fallida
+            else if (eventType === 'VERIFICATION_FAILED') {
+                showMessage(dom.verifyMessage,
+                    `❌ Error: ${data.message || 'Verificación fallida'}`,
+                    'error'
+                );
+                addLog(`[Verificación] ❌ Error: ${data.message}`, 'error');
+
+                state.verifying = false;
+                dom.btnVerify.disabled = false;
+                dom.verifyUserId.disabled = false;
+            }
+        }
+
+        // ============================================
+        // OPERACIONES
+        // ============================================
+
+        async function initializeReader() {
+            dom.btnInit.disabled = true;
+            addLog('[Sistema] Inicializando lector...', 'info');
+
+            try {
+                const response = await fetch('/api/v2/init', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.ok) {
+                    updateStatus(true);
+                    addLog('[Sistema] ✓ Lector inicializado', 'success');
+                } else {
+                    throw new Error(result.error || 'Error desconocido');
+                }
+            } catch (error) {
+                addLog(`[Sistema] ✗ Error: ${error.message}`, 'error');
+                updateStatus(false);
+            } finally {
+                dom.btnInit.disabled = false;
+            }
+        }
+
+        async function startEnrollment() {
+            const userId = dom.enrollUserId.value.trim();
+
+            if (!userId) {
+                showMessage(dom.enrollMessage, '⚠️ Ingresa un ID de usuario válido', 'warning');
+                return;
+            }
+
+            if (!state.connected) {
+                showMessage(dom.enrollMessage, '⚠️ Lector no conectado. Inicializa primero.', 'warning');
+                return;
+            }
+
+            state.enrolling = true;
+            state.currentSample = 0;
+            dom.btnEnroll.disabled = true;
+            dom.enrollUserId.disabled = true;
+            hideMessage(dom.enrollMessage);
+            displayFingerprint(dom.enrollFingerprint, null);
+
+            // Mostrar UI inmediatamente
+            showProgress();
+            initializeSamples(4);
+            showMessage(dom.enrollMessage, '🔄 Enrolamiento iniciado...', 'info');
+            addLog('[Enrolamiento] Iniciado', 'info');
+
+            try {
+                const response = await fetch('/api/v2/enroll', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tag: userId,
+                        timeoutMs: 60000,
+                        targetFarn: 21474,
+                        maxSamples: 4
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!result.ok) {
+                    throw new Error(result.error || 'Error en enrolamiento');
+                }
+            } catch (error) {
+                showMessage(dom.enrollMessage, `❌ Error: ${error.message}`, 'error');
+                addLog(`[Enrolamiento] ❌ Error: ${error.message}`, 'error');
+
+                state.enrolling = false;
+                dom.btnEnroll.disabled = false;
+                dom.enrollUserId.disabled = false;
+                hideProgress();
+                hideSamplesContainer();
+            }
+        }
+
+        async function startVerification() {
+            const userId = dom.verifyUserId.value.trim();
+
+            if (!userId) {
+                showMessage(dom.verifyMessage, '⚠️ Ingresa un ID de usuario válido', 'warning');
+                return;
+            }
+
+            if (!state.connected) {
+                showMessage(dom.verifyMessage, '⚠️ Lector no conectado. Inicializa primero.', 'warning');
+                return;
+            }
+
+            state.verifying = true;
+            dom.btnVerify.disabled = true;
+            dom.verifyUserId.disabled = true;
+            hideMessage(dom.verifyMessage);
+            displayFingerprint(dom.verifyFingerprint, null);
+
+            try {
+                const response = await fetch('/api/v2/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tag: userId,
+                        timeoutMs: 15000,
+                        targetFarn: 21474
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!result.ok) {
+                    throw new Error(result.error || 'Error en verificación');
+                }
+            } catch (error) {
+                showMessage(dom.verifyMessage, `❌ Error: ${error.message}`, 'error');
+                addLog(`[Verificación] ❌ Error: ${error.message}`, 'error');
+
+                state.verifying = false;
+                dom.btnVerify.disabled = false;
+                dom.verifyUserId.disabled = false;
+            }
+        }
+
+        function clearEnrollment() {
+            dom.enrollUserId.value = '';
+            hideMessage(dom.enrollMessage);
+            hideProgress();
+            hideSamplesContainer();
+            displayFingerprint(dom.enrollFingerprint, null);
+            state.enrolling = false;
+            state.currentSample = 0;
+            dom.btnEnroll.disabled = false;
+            dom.enrollUserId.disabled = false;
+        }
+
+        function clearVerification() {
+            dom.verifyUserId.value = '';
+            hideMessage(dom.verifyMessage);
+            displayFingerprint(dom.verifyFingerprint, null);
+            state.verifying = false;
+            dom.btnVerify.disabled = false;
+            dom.verifyUserId.disabled = false;
+        }
+
+        function clearLogs() {
+            dom.logContainer.innerHTML = '';
+            addLog('Logs limpiados', 'info');
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+
+        dom.btnInit.addEventListener('click', initializeReader);
+        dom.btnEnroll.addEventListener('click', startEnrollment);
+        dom.btnEnrollClear.addEventListener('click', clearEnrollment);
+        dom.btnVerify.addEventListener('click', startVerification);
+        dom.btnVerifyClear.addEventListener('click', clearVerification);
+        dom.btnClearLogs.addEventListener('click', clearLogs);
+
+        // Enter key para iniciar operaciones
+        dom.enrollUserId.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !dom.btnEnroll.disabled) {
+                startEnrollment();
+            }
+        });
+
+        dom.verifyUserId.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !dom.btnVerify.disabled) {
+                startVerification();
+            }
+        });
+
+        // ============================================
+        // INICIALIZACIÓN
+        // ============================================
+
+        window.addEventListener('load', async () => {
+            console.log('[Sistema] Cargado');
+            addLog('🚀 Sistema iniciado', 'info');
+
+            // Conectar SSE
+            connectSSE();
+
+            // Verificar servidor
+            try {
+                const response = await fetch('/api/store');
+                if (response.ok) {
+                    addLog('✓ Servidor disponible', 'success');
+
+                    // Auto-inicializar lector
+                    setTimeout(() => {
+                        addLog('🔌 Auto-inicializando lector...', 'info');
+                        initializeReader();
+                    }, 1000);
+                }
+            } catch (error) {
+                addLog('✗ Servidor no disponible', 'error');
+            }
+        });
+
+        // Cleanup
+        window.addEventListener('beforeunload', () => {
+            if (state.eventSource) {
+                state.eventSource.close();
+            }
+        });
+
+        console.log('[Sistema] Script cargado');
+    </script>
+</body>
+</html>

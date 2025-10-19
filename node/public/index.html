@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Biometrico</title>
+    <style>
+        :root {
+            color-scheme: light;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #eef1f6;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #1f2933;
+            padding: 20px;
+        }
+
+        .panel-biometrico {
+            width: min(460px, 100%);
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.09);
+            border: 1px solid #d9dce3;
+            padding: 24px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .panel-biometrico__fingerprint {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            border: 2px dashed #c0cad8;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .panel-biometrico__fingerprint img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .panel-biometrico__block {
+            padding: 14px 16px;
+            border-radius: 10px;
+            background: #f4f6fb;
+            border: 1px solid #d7dce6;
+            display: grid;
+            gap: 6px;
+        }
+
+        .panel-biometrico__label {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #44505f;
+        }
+
+        .panel-biometrico__value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #233047;
+        }
+
+        .panel-biometrico__button {
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #2563eb, #1d48d0);
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+        }
+
+        .panel-biometrico__button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 22px rgba(37, 99, 235, 0.24);
+        }
+
+        .panel-biometrico__button:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        .panel-biometrico__button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel-biometrico" id="biometricContainer">
+        <div class="panel-biometrico__fingerprint">
+            <img id="imageFingerBase64" alt="Huella dactilar" />
+        </div>
+
+        <div class="panel-biometrico__block">
+            <span class="panel-biometrico__label">Estado actual</span>
+            <span class="panel-biometrico__value" id="stateProgress">Sin iniciar</span>
+        </div>
+
+        <div class="panel-biometrico__block">
+            <span class="panel-biometrico__label">Muestras capturadas</span>
+            <span class="panel-biometrico__value" id="sampleCaptureCount">0 / 0</span>
+        </div>
+
+        <button id="btnInitOperation" class="panel-biometrico__button" type="button">
+            Iniciar simulacion de captura
+        </button>
+    </div>
+
+    <script>
+        class BiometricPanel {
+            constructor(rootElement) {
+                if (!rootElement) {
+                    throw new Error('Elemento raiz invalido');
+                }
+
+                this.root = rootElement;
+                this.imageEl = rootElement.querySelector('#imageFingerBase64');
+                this.stateEl = rootElement.querySelector('#stateProgress');
+                this.samplesEl = rootElement.querySelector('#sampleCaptureCount');
+            }
+
+            setState(text) {
+                this.stateEl.textContent = text;
+            }
+
+            setSamples(current, total) {
+                this.samplesEl.textContent = `${current} / ${total}`;
+            }
+
+            setFingerprint(dataUrl) {
+                if (dataUrl) {
+                    this.imageEl.src = dataUrl;
+                    this.imageEl.alt = 'Huella capturada';
+                } else {
+                    this.imageEl.removeAttribute('src');
+                    this.imageEl.alt = 'Huella sin capturar';
+                }
+            }
+        }
+
+        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('biometricContainer');
+            const initButton = document.getElementById('btnInitOperation');
+            const panel = new BiometricPanel(container);
+
+            // Pequeños png base64 (1x1) para emular cambios en pantalla
+            const sampleFingerprints = [
+                // Tiny base64 png samples (1x1) to emulate visual changes
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADklEQVR4AWP4+/9PQAIJgQBGoQmBHgAAAABJRU5ErkJggg==',
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWP4z/C/HgAGgwIQtydIRwAAAABJRU5ErkJggg==',
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWOMjIwMDAABhgF8SnybvwAAAABJRU5ErkJggg==',
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWP4//9/AwAIgwNIvP2vVQAAAABJRU5ErkJggg=='
+            ];
+
+            let isRunning = false;
+            const totalSamples = 4;
+
+            async function emulateCaptureSequence() {
+                if (isRunning) {
+                    return;
+                }
+
+                isRunning = true;
+                initButton.disabled = true;
+
+                panel.setState('Inicializando lector biometrico...');
+                panel.setSamples(0, totalSamples);
+                panel.setFingerprint('');
+                await delay(600);
+
+                for (let idx = 1; idx <= totalSamples; idx += 1) {
+                    panel.setState(`Coloca el dedo (muestra ${idx}/${totalSamples})`);
+                    panel.setFingerprint('');
+                    await delay(900);
+
+                    panel.setState(`Capturando muestra ${idx}/${totalSamples}`);
+                    panel.setSamples(idx, totalSamples);
+                    panel.setFingerprint(sampleFingerprints[(idx - 1) % sampleFingerprints.length]);
+                    await delay(1000);
+
+                    if (idx < totalSamples) {
+                        panel.setState(`Muestra ${idx} confirmada. Retira el dedo.`);
+                        await delay(700);
+                    }
+                }
+
+                panel.setState('Captura completada. Huella lista para usar.');
+                initButton.disabled = false;
+                isRunning = false;
+            }
+
+            initButton.addEventListener('click', emulateCaptureSequence);
+
+            // Exponer para pruebas manuales en consola
+            window.biometricPanel = panel;
+            window.emulateCaptureSequence = emulateCaptureSequence;
+        });
+    </script>
+</body>
+</html>
