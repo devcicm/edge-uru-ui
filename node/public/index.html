@@ -310,8 +310,11 @@
                         break;
 
                     case 'READER_INITIALIZED':
+                    case 'READER_STATUS_CHANGED':
+                        // Ambos eventos indican que el lector está listo
                         state.isConnected = true;
-                        updateStatus('✅ Lector biométrico listo', 'success');
+                        const statusMsg = data.message || data.Status || 'Lector biométrico listo';
+                        updateStatus(`✅ ${statusMsg}`, 'success');
                         dom.btnEnroll.disabled = false;
                         break;
 
