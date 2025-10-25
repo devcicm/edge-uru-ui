@@ -89,12 +89,22 @@ export class SseBridge {
       const payload = `data: ${JSON.stringify(finalEvent)}\n\n`;
       for (const { res } of this.clients.values()) {
         res.write(payload);
+
+        // 🔥 FLUSH inmediato para enviar eventos en tiempo real (sin buffering)
+        if (typeof (res as any).flush === "function") {
+          (res as any).flush();
+        }
       }
     }
   }
 
   private send(res: express.Response, event: RawBiometricEvent): void {
     res.write(`data: ${JSON.stringify(event)}\n\n`);
+
+    // Flush inmediato
+    if (typeof (res as any).flush === "function") {
+      (res as any).flush();
+    }
   }
 
   private ensureEventType(event: RawBiometricEvent): RawBiometricEvent {
