@@ -21,8 +21,62 @@ class EnrollmentControl extends BaseComponent {
             console.log(`[${this.componentId}] Suscrito a eventos de enrollment`);
         }
 
+        // Escuchar DIRECTAMENTE al adapter para eventos en tiempo real
+        this._setupDirectListener();
+
         // Escuchar evento de finalización
         this._setupCompletionListener();
+    }
+
+    /**
+     * Configurar listener directo al adapter para eventos en tiempo real
+     * Esto asegura que recibimos TODOS los eventos SSE instantáneamente,
+     * sin pasar por el filtro del EventRouter
+     */
+    _setupDirectListener() {
+        // Escuchar TODOS los eventos del adapter con wildcard
+        this.adapter.on('*', (data) => {
+            // Solo procesar si estamos en proceso de enrolamiento
+            if (!this.isEnrolling) return;
+
+            const eventType = data.eventType || data.evt || '';
+
+            // Eventos de progreso de captura que queremos mostrar en tiempo real
+            const realtimeEvents = [
+                'SYSTEM_STATUS',
+                'SYSTEM_MESSAGE',
+                'CAPTURE_PROGRESS',
+                'CAPTURE_STARTED',
+                'CAPTURE_QUALITY_LOW',
+                'IMAGE_CAPTURED',
+                'ENROLLMENT_SAMPLE_COLLECTED',
+                'ENROLLMENT_SAMPLE_SUCCESS',
+                'ENROLLMENT_SAMPLE_STATUS'
+            ];
+
+            // Si es un evento de tiempo real, mostrarlo inmediatamente
+            if (realtimeEvents.some(evt => eventType.includes(evt))) {
+                const message = data.message || data.msg || eventType;
+                const severity = (data.severity || 'INFO').toUpperCase();
+
+                console.log(`[${this.componentId}] 📨 Evento directo: ${eventType} - ${message}`);
+
+                // Actualizar status en tiempo real
+                let statusType = 'info';
+                if (severity === 'SUCCESS') statusType = 'success';
+                else if (severity === 'ERROR' || severity === 'WARNING') statusType = 'error';
+
+                this.updateStatus(message, statusType);
+
+                // Si hay imagen, mostrarla
+                const imageBase64 = data.data?.imageBase64 || data.imageBase64;
+                if (imageBase64) {
+                    this.displayImage(imageBase64);
+                }
+            }
+        });
+
+        console.log(`[${this.componentId}] ✅ Listener directo al adapter configurado`);
     }
 
     /**
@@ -183,7 +237,7 @@ class EnrollmentControl extends BaseComponent {
             }
 
             // Llamar al backend - NO esperamos resultado aquí
-            // Los eventos SSE nos notificarán del progreso y finalización
+            // Los eventos SSE nos notificarán del progreso y finalización en tiempo real
             await this.adapter.enrollFingerprint(this.userId);
 
             // NOTA: NO finalizamos aquí - esperamos evento ENROLLMENT_COMPLETED

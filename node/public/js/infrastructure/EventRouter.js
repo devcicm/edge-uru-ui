@@ -28,6 +28,9 @@ class EventRouter {
             identification: null   // { componentId, startTime }
         };
 
+        // Contador de eventos enrutados
+        this._eventsRouted = 0;
+
         this._setupListeners();
         console.log('[EventRouter] ✅ Inicializado');
     }
@@ -121,13 +124,15 @@ class EventRouter {
         }
 
         // Eventos de sistema: van al contexto activo
-        if (eventType === 'SYSTEM_STATUS') {
+        if (eventType === 'SYSTEM_STATUS' || eventType === 'SYSTEM_MESSAGE') {
             if (this.activeOperations.enrollment) return 'enrollment';
             if (this.activeOperations.verification) return 'verification';
             if (this.activeOperations.identification) return 'identification';
             return null; // Si no hay operación activa, ignorar
         }
 
+        // Log para eventos no categorizados
+        console.warn(`[EventRouter] ⚠️ Evento no categorizado: ${eventType}`);
         return null;
     }
 
@@ -135,8 +140,7 @@ class EventRouter {
      * Despachar evento al componente activo
      */
     _dispatch(category, eventType, eventData) {
-        // Siempre enviar a suscriptores 'all' (para logging)
-        this._dispatchToAll(eventType, eventData);
+        this._eventsRouted++;
 
         // Para operaciones específicas, enviar SOLO al componente activo
         if (category === 'enrollment' || category === 'verification' || category === 'identification') {
@@ -163,15 +167,20 @@ class EventRouter {
                 sub.component.handleRouterEvent(eventType, eventData);
             });
         }
+
+        // Nota: NO enviamos a 'all' para evitar duplicación de logs
+        // Los componentes activos ya reciben el evento y generan logs vía callback
     }
 
     /**
-     * Despachar a suscriptores de 'all'
+     * Obtener estadísticas del EventRouter
      */
-    _dispatchToAll(eventType, eventData) {
-        this.subscribers.all.forEach(sub => {
-            sub.component.handleRouterEvent(eventType, eventData);
-        });
+    getStats() {
+        return {
+            subscriptions: this.subscribers,
+            activeOperations: this.activeOperations,
+            totalEventsRouted: this._eventsRouted || 0
+        };
     }
 
     /**

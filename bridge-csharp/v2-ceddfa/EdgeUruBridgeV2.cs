@@ -45,7 +45,20 @@ namespace EdgeBridge
                         try
                         {
                             var eventData = CreateEventData(args);
-                            _jsCb.Invoke(eventData);
+
+                            // ⚡ CRÍTICO: Ejecutar callback en Task separado (fire-and-forget)
+                            // para NO BLOQUEAR el EventBus y enviar eventos en tiempo real
+                            Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await _jsCb.Invoke(eventData);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"[CEDDFA] Error en callback async: {ex.Message}");
+                                }
+                            });
                         }
                         catch (Exception ex)
                         {

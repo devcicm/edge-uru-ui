@@ -414,7 +414,8 @@
                         window.BiometricAdapter,
                         {
                             isModal: false,
-                            eventRouter: ceddfaComponents.eventRouter
+                            eventRouter: ceddfaComponents.eventRouter,
+                            onLog: (message, type) => addLog(`[Enrolamiento] ${message}`, type)
                         }
                     );
                     console.log('[CEDDFA UI] ✅ EnrollmentControl inicializado');
@@ -433,7 +434,8 @@
                         window.BiometricAdapter,
                         {
                             isModal: false,
-                            eventRouter: ceddfaComponents.eventRouter
+                            eventRouter: ceddfaComponents.eventRouter,
+                            onLog: (message, type) => addLog(`[Verificación] ${message}`, type)
                         }
                     );
                     console.log('[CEDDFA UI] ✅ VerificationControl inicializado');
@@ -448,50 +450,27 @@
         }
 
         // ====================================================
-        // EVENT HANDLERS - Solo para logs y estado global
-        // Los eventos biométricos son manejados por componentes
+        // EVENT HANDLERS - Solo logs críticos de sistema
+        // NOTA: Los eventos SSE fluyen a través del EventRouter
+        // NO suscribirse directamente aquí para evitar duplicación
         // ====================================================
 
-        // Eventos del sistema
-        bioApi.on(BiometricEventTypes.SYSTEM_STATUS, (data) => {
-            addLog(`[Sistema] ${data.message}`, data.severity?.toLowerCase() || 'info');
-        });
-
-        bioApi.on(BiometricEventTypes.SYSTEM_ERROR, (data) => {
-            addLog(`[Error] ${data.message}`, 'error');
-            if (data.message && data.message.includes('Reader not initialized')) {
-                updateStatus(false);
-            }
-        });
-
-        // Eventos del lector
-        bioApi.on(BiometricEventTypes.READER_INITIALIZED, (data) => {
+        // Solo eventos críticos del sistema (no biométricos)
+        window.BiometricAdapter.on('READER_INITIALIZED', (data) => {
             updateStatus(true);
             addLog('[Lector] Inicializado correctamente', 'success');
         });
 
-        bioApi.on(BiometricEventTypes.READER_STATUS_CHANGED, (data) => {
-            if (data.data && data.data.ready) {
-                updateStatus(true);
-            }
-        });
-
-        bioApi.on(BiometricEventTypes.READER_ERROR, (data) => {
+        window.BiometricAdapter.on('READER_ERROR', (data) => {
             addLog(`[Lector] Error: ${data.message}`, 'error');
             updateStatus(false);
         });
 
-        // Eventos biométricos completados (solo para logs globales)
-        bioApi.on(BiometricEventTypes.ENROLLMENT_COMPLETED, (data) => {
-            addLog('[Enrolamiento] ✓ Completado exitosamente', 'success');
-        });
-
-        bioApi.on(BiometricEventTypes.VERIFICATION_COMPLETED, (data) => {
-            addLog('[Verificación] ✓ Completada', 'success');
-        });
-
-        bioApi.on(BiometricEventTypes.IDENTIFICATION_COMPLETED, (data) => {
-            addLog('[Identificación] ✓ Completada', 'success');
+        window.BiometricAdapter.on('SYSTEM_ERROR', (data) => {
+            addLog(`[Error] ${data.message}`, 'error');
+            if (data.message && data.message.includes('Reader not initialized')) {
+                updateStatus(false);
+            }
         });
 
         // ====================================================

@@ -8,6 +8,7 @@
     "esModuleInterop": true
   },
   "include": [
-    "server.ts"
+    "server.ts",
+    "sseBridge.ts"
   ]
 }

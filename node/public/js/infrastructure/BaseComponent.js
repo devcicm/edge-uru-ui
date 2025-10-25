@@ -21,6 +21,9 @@ class BaseComponent {
         // EventRouter (si está disponible)
         this.eventRouter = config.eventRouter || null;
 
+        // Callback para agregar logs al sistema global
+        this.globalLogCallback = config.onLog || null;
+
         // Validación
         if (!this.container) {
             throw new Error(`Container #${containerId} no encontrado`);
@@ -99,11 +102,42 @@ class BaseComponent {
      * Este método es llamado por EventRouter cuando hay eventos SSE
      */
     handleRouterEvent(eventType, eventData) {
-        // Extraer mensaje
-        const message = eventData.message || eventData.msg || eventType;
+        // Extraer mensaje base
+        let message = eventData.message || eventData.msg || eventType;
 
         // Extraer severidad
         const severity = (eventData.severity || 'INFO').toUpperCase();
+
+        // Enriquecer mensaje con datos adicionales si están disponibles
+        if (eventData.data) {
+            // Para eventos de muestras recolectadas
+            if (eventType === 'ENROLLMENT_SAMPLE_COLLECTED' && eventData.data.sampleNumber) {
+                const { sampleNumber, totalSamples, progress } = eventData.data;
+                message = `✓ Muestra ${sampleNumber}/${totalSamples} recolectada (${progress}%)`;
+            }
+
+            // Para eventos de captura en progreso
+            else if (eventType === 'CAPTURE_PROGRESS' && eventData.data.quality !== undefined) {
+                const quality = eventData.data.quality;
+                message = `Capturando... Calidad: ${quality}%`;
+            }
+
+            // Para eventos de verificación
+            else if (eventType === 'VERIFICATION_COMPLETED' && eventData.data.verified !== undefined) {
+                const { verified, score } = eventData.data;
+                message = verified
+                    ? `✅ VERIFICADO - Score: ${score}`
+                    : `❌ NO VERIFICADO - Score: ${score}`;
+            }
+
+            // Para eventos de identificación
+            else if (eventType === 'IDENTIFICATION_COMPLETED' && eventData.data.matched !== undefined) {
+                const { matched, bestMatch } = eventData.data;
+                message = matched
+                    ? `✅ Identificado: ${bestMatch?.userId || 'Desconocido'}`
+                    : `❌ No se encontró coincidencia`;
+            }
+        }
 
         // Mapear a tipo de estado
         let type = 'info';
@@ -113,6 +147,7 @@ class BaseComponent {
         else if (severity === 'LOADING' || eventType.includes('STARTED')) type = 'loading';
         else if (eventType.includes('COMPLETED')) type = 'success';
         else if (eventType.includes('FAILED')) type = 'error';
+        else if (eventType.includes('SAMPLE_COLLECTED')) type = 'success';
 
         // LOG DETALLADO PARA DEBUG
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -124,13 +159,25 @@ class BaseComponent {
         console.log(`   Raw Data:`, eventData);
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
-        // Actualizar estado
+        // Actualizar estado en el componente
         this.updateStatus(message, type);
+
+        // Enviar log al sistema global
+        this.addGlobalLog(message, type);
 
         // Mostrar imagen si existe
         const imageBase64 = eventData.data?.imageBase64 || eventData.imageBase64;
         if (imageBase64) {
             this.displayImage(imageBase64);
+        }
+    }
+
+    /**
+     * Agregar log al sistema global (si callback está disponible)
+     */
+    addGlobalLog(message, type = 'info') {
+        if (this.globalLogCallback && typeof this.globalLogCallback === 'function') {
+            this.globalLogCallback(message, type);
         }
     }
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Biometrico</title>
+    <title>Panel Biométrico V3 - CEDDFA Direct Events</title>
     <style>
         :root {
             color-scheme: light;
@@ -36,6 +36,27 @@
             gap: 18px;
         }
 
+        .panel-biometrico__header {
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .panel-biometrico__title {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2933;
+        }
+
+        .panel-biometrico__subtitle {
+            margin: 0;
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         .panel-biometrico__fingerprint {
             aspect-ratio: 1;
             border-radius: 10px;
@@ -45,12 +66,18 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            position: relative;
         }
 
         .panel-biometrico__fingerprint img {
             width: 100%;
             height: 100%;
             object-fit: contain;
+        }
+
+        .panel-biometrico__fingerprint-placeholder {
+            font-size: 80px;
+            opacity: 0.3;
         }
 
         .panel-biometrico__block {
@@ -74,6 +101,29 @@
             font-size: 16px;
             font-weight: 600;
             color: #233047;
+        }
+
+        .panel-biometrico__status {
+            padding: 12px 16px;
+            border-radius: 8px;
+            background: #e0f2fe;
+            border: 1px solid #bae6fd;
+            color: #0369a1;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .panel-biometrico__status--success {
+            background: #dcfce7;
+            border-color: #bbf7d0;
+            color: #15803d;
+        }
+
+        .panel-biometrico__status--error {
+            background: #fee2e2;
+            border-color: #fecaca;
+            color: #b91c1c;
         }
 
         .panel-biometrico__button {
@@ -102,120 +152,336 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+
+        .panel-biometrico__debug {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #4b5563;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .panel-biometrico__debug-title {
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: #1f2933;
+        }
     </style>
 </head>
 <body>
     <div class="panel-biometrico" id="biometricContainer">
+        <!-- Header -->
+        <div class="panel-biometrico__header">
+            <h1 class="panel-biometrico__title">Panel Biométrico V3</h1>
+            <p class="panel-biometrico__subtitle">CEDDFA - Eventos Directos SSE</p>
+        </div>
+
+        <!-- Imagen de huella -->
         <div class="panel-biometrico__fingerprint">
-            <img id="imageFingerBase64" alt="Huella dactilar" />
+            <div class="panel-biometrico__fingerprint-placeholder" id="fingerprintPlaceholder">👤</div>
+            <img id="imageFingerBase64" alt="Huella dactilar" style="display: none;" />
         </div>
 
+        <!-- Estado actual -->
+        <div class="panel-biometrico__status" id="statusMessage">
+            Esperando conexión...
+        </div>
+
+        <!-- Muestras capturadas -->
         <div class="panel-biometrico__block">
-            <span class="panel-biometrico__label">Estado actual</span>
-            <span class="panel-biometrico__value" id="stateProgress">Sin iniciar</span>
+            <span class="panel-biometrico__label">Progreso de captura</span>
+            <span class="panel-biometrico__value" id="sampleProgress">0 / 4</span>
         </div>
 
-        <div class="panel-biometrico__block">
-            <span class="panel-biometrico__label">Muestras capturadas</span>
-            <span class="panel-biometrico__value" id="sampleCaptureCount">0 / 0</span>
-        </div>
-
-        <button id="btnInitOperation" class="panel-biometrico__button" type="button">
-            Iniciar simulacion de captura
+        <!-- Botón de acción -->
+        <button id="btnEnroll" class="panel-biometrico__button" type="button" disabled>
+            Iniciar Enrolamiento
         </button>
+
+        <!-- Debug log (opcional) -->
+        <div class="panel-biometrico__debug">
+            <div class="panel-biometrico__debug-title">Últimos eventos SSE:</div>
+            <div id="debugLog"></div>
+        </div>
     </div>
 
+    <!-- BiometricAdapter para manejar SSE y API -->
+    <script src="/js/infrastructure/BiometricAdapter.js"></script>
+
     <script>
-        class BiometricPanel {
-            constructor(rootElement) {
-                if (!rootElement) {
-                    throw new Error('Elemento raiz invalido');
+        /**
+         * Panel Biométrico V3 - CEDDFA Direct Events
+         *
+         * Arquitectura simplificada:
+         * C# Backend (CEDDFA EventBus) → Node.js (SSE Bridge) → BiometricAdapter → index.html
+         *
+         * Sin capas intermedias como EventRouter
+         * Eventos directos desde el backend
+         */
+        (() => {
+            // Referencias DOM
+            const dom = {
+                statusMessage: document.getElementById('statusMessage'),
+                sampleProgress: document.getElementById('sampleProgress'),
+                imageElement: document.getElementById('imageFingerBase64'),
+                placeholder: document.getElementById('fingerprintPlaceholder'),
+                btnEnroll: document.getElementById('btnEnroll'),
+                debugLog: document.getElementById('debugLog')
+            };
+
+            // Estado de la aplicación
+            const state = {
+                adapter: null,
+                isConnected: false,
+                isEnrolling: false,
+                currentSample: 0,
+                totalSamples: 4,
+                lastEventType: null,
+                eventCount: 0
+            };
+
+            // ============================================
+            // FUNCIONES DE UI
+            // ============================================
+
+            function updateStatus(message, type = 'info') {
+                dom.statusMessage.textContent = message;
+                dom.statusMessage.className = 'panel-biometrico__status';
+
+                if (type === 'success') {
+                    dom.statusMessage.classList.add('panel-biometrico__status--success');
+                } else if (type === 'error') {
+                    dom.statusMessage.classList.add('panel-biometrico__status--error');
                 }
-
-                this.root = rootElement;
-                this.imageEl = rootElement.querySelector('#imageFingerBase64');
-                this.stateEl = rootElement.querySelector('#stateProgress');
-                this.samplesEl = rootElement.querySelector('#sampleCaptureCount');
             }
 
-            setState(text) {
-                this.stateEl.textContent = text;
+            function updateProgress(current, total) {
+                state.currentSample = current;
+                state.totalSamples = total;
+                dom.sampleProgress.textContent = `${current} / ${total}`;
             }
 
-            setSamples(current, total) {
-                this.samplesEl.textContent = `${current} / ${total}`;
-            }
-
-            setFingerprint(dataUrl) {
-                if (dataUrl) {
-                    this.imageEl.src = dataUrl;
-                    this.imageEl.alt = 'Huella capturada';
+            function showFingerprint(base64) {
+                if (base64) {
+                    const src = base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`;
+                    dom.imageElement.src = src;
+                    dom.imageElement.style.display = 'block';
+                    dom.placeholder.style.display = 'none';
                 } else {
-                    this.imageEl.removeAttribute('src');
-                    this.imageEl.alt = 'Huella sin capturar';
+                    dom.imageElement.style.display = 'none';
+                    dom.placeholder.style.display = 'block';
                 }
             }
-        }
 
-        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+            function addDebugLog(eventType, data) {
+                state.eventCount++;
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = `[${timestamp}] ${eventType}: ${data.message || JSON.stringify(data).substring(0, 50)}...`;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const container = document.getElementById('biometricContainer');
-            const initButton = document.getElementById('btnInitOperation');
-            const panel = new BiometricPanel(container);
+                dom.debugLog.innerHTML = logEntry + '<br>' + dom.debugLog.innerHTML;
 
-            // Pequeños png base64 (1x1) para emular cambios en pantalla
-            const sampleFingerprints = [
-                // Tiny base64 png samples (1x1) to emulate visual changes
-                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADklEQVR4AWP4+/9PQAIJgQBGoQmBHgAAAABJRU5ErkJggg==',
-                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWP4z/C/HgAGgwIQtydIRwAAAABJRU5ErkJggg==',
-                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWOMjIwMDAABhgF8SnybvwAAAABJRU5ErkJggg==',
-                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWP4//9/AwAIgwNIvP2vVQAAAABJRU5ErkJggg=='
-            ];
+                // Mantener solo últimos 10 logs
+                const lines = dom.debugLog.innerHTML.split('<br>');
+                if (lines.length > 10) {
+                    dom.debugLog.innerHTML = lines.slice(0, 10).join('<br>');
+                }
+            }
 
-            let isRunning = false;
-            const totalSamples = 4;
+            // ============================================
+            // MANEJADOR DE EVENTOS SSE DIRECTO
+            // ============================================
 
-            async function emulateCaptureSequence() {
-                if (isRunning) {
+            function handleDirectEvent(data) {
+                const eventType = data.eventType || data.evt || 'UNKNOWN';
+
+                console.log(`[V3 Direct] 📨 Evento: ${eventType}`, data);
+                addDebugLog(eventType, data);
+
+                // Manejar eventos según tipo
+                switch (eventType) {
+                    // Eventos de conexión
+                    case 'hello':
+                        updateStatus('✅ Conectado al servidor SSE', 'success');
+                        break;
+
+                    case 'READER_INITIALIZED':
+                        state.isConnected = true;
+                        updateStatus('✅ Lector biométrico listo', 'success');
+                        dom.btnEnroll.disabled = false;
+                        break;
+
+                    case 'READER_ERROR':
+                        updateStatus(`❌ Error en lector: ${data.message}`, 'error');
+                        dom.btnEnroll.disabled = false;
+                        break;
+
+                    // Eventos de enrolamiento
+                    case 'ENROLLMENT_STARTED':
+                        state.isEnrolling = true;
+                        updateStatus('🚀 Enrolamiento iniciado', 'info');
+                        updateProgress(0, 4);
+                        showFingerprint(null);
+                        break;
+
+                    case 'CAPTURE_STARTED':
+                        const sampleNum = data.data?.sampleNumber || state.currentSample + 1;
+                        updateStatus(`👆 Coloca el dedo (muestra ${sampleNum}/4)`, 'info');
+                        break;
+
+                    case 'SYSTEM_STATUS':
+                        // Eventos de progreso del sistema
+                        if (data.message) {
+                            updateStatus(data.message, 'info');
+                        }
+                        break;
+
+                    case 'IMAGE_CAPTURED':
+                        const imageBase64 = data.data?.imageBase64 || data.imageBase64;
+                        if (imageBase64) {
+                            showFingerprint(imageBase64);
+                            updateStatus('📸 Imagen capturada', 'success');
+                        }
+                        break;
+
+                    case 'ENROLLMENT_SAMPLE_COLLECTED':
+                    case 'ENROLLMENT_SAMPLE_SUCCESS':
+                        const sample = data.sampleNumber || data.data?.sampleNumber || state.currentSample + 1;
+                        const total = data.totalSamples || data.data?.totalSamples || 4;
+                        updateProgress(sample, total);
+                        updateStatus(`✅ Muestra ${sample}/${total} capturada`, 'success');
+                        break;
+
+                    case 'CAPTURE_QUALITY_LOW':
+                        updateStatus(`⚠️ Calidad baja - ${data.message || 'Intenta de nuevo'}`, 'error');
+                        break;
+
+                    case 'ENROLLMENT_COMPLETED':
+                        state.isEnrolling = false;
+                        const userId = data.userId || data.data?.userId || 'Usuario';
+                        updateStatus(`🎉 Enrolamiento completado: ${userId}`, 'success');
+                        dom.btnEnroll.disabled = false;
+                        updateProgress(state.totalSamples, state.totalSamples);
+                        break;
+
+                    case 'ENROLLMENT_FAILED':
+                        state.isEnrolling = false;
+                        updateStatus(`❌ Enrolamiento fallido: ${data.message}`, 'error');
+                        dom.btnEnroll.disabled = false;
+                        break;
+
+                    case 'VERIFICATION_STARTED':
+                        updateStatus('🔍 Verificación iniciada', 'info');
+                        break;
+
+                    case 'VERIFICATION_RESULT':
+                        const success = data.success || data.data?.success;
+                        if (success) {
+                            updateStatus(`✅ Verificación exitosa`, 'success');
+                        } else {
+                            updateStatus(`❌ Verificación fallida`, 'error');
+                        }
+                        break;
+
+                    default:
+                        // Loggear eventos no manejados
+                        console.log(`[V3 Direct] ⚠️ Evento no manejado: ${eventType}`, data);
+                }
+
+                state.lastEventType = eventType;
+            }
+
+            // ============================================
+            // FUNCIONES DE API
+            // ============================================
+
+            async function initializeReader() {
+                try {
+                    updateStatus('🔌 Inicializando lector...', 'info');
+                    await state.adapter.initializeReader();
+                    console.log('[V3 Direct] ✅ Lector inicializado');
+                } catch (error) {
+                    console.error('[V3 Direct] ❌ Error inicializando lector:', error);
+                    updateStatus(`❌ Error: ${error.message}`, 'error');
+                }
+            }
+
+            async function startEnrollment() {
+                if (state.isEnrolling) {
+                    console.warn('[V3 Direct] Ya hay un enrolamiento en curso');
                     return;
                 }
 
-                isRunning = true;
-                initButton.disabled = true;
+                try {
+                    state.isEnrolling = true;
+                    dom.btnEnroll.disabled = true;
 
-                panel.setState('Inicializando lector biometrico...');
-                panel.setSamples(0, totalSamples);
-                panel.setFingerprint('');
-                await delay(600);
+                    const userId = `Usuario_${Date.now()}`;
+                    updateStatus('📞 Solicitando enrolamiento...', 'info');
 
-                for (let idx = 1; idx <= totalSamples; idx += 1) {
-                    panel.setState(`Coloca el dedo (muestra ${idx}/${totalSamples})`);
-                    panel.setFingerprint('');
-                    await delay(900);
+                    console.log(`[V3 Direct] 🚀 Iniciando enrolamiento para: ${userId}`);
+                    await state.adapter.enrollFingerprint(userId);
 
-                    panel.setState(`Capturando muestra ${idx}/${totalSamples}`);
-                    panel.setSamples(idx, totalSamples);
-                    panel.setFingerprint(sampleFingerprints[(idx - 1) % sampleFingerprints.length]);
-                    await delay(1000);
+                    // Los eventos SSE nos notificarán del progreso
+                    console.log('[V3 Direct] ✅ Solicitud de enrolamiento enviada');
 
-                    if (idx < totalSamples) {
-                        panel.setState(`Muestra ${idx} confirmada. Retira el dedo.`);
-                        await delay(700);
-                    }
+                } catch (error) {
+                    console.error('[V3 Direct] ❌ Error en enrolamiento:', error);
+                    updateStatus(`❌ Error: ${error.message}`, 'error');
+                    state.isEnrolling = false;
+                    dom.btnEnroll.disabled = false;
                 }
-
-                panel.setState('Captura completada. Huella lista para usar.');
-                initButton.disabled = false;
-                isRunning = false;
             }
 
-            initButton.addEventListener('click', emulateCaptureSequence);
+            // ============================================
+            // INICIALIZACIÓN
+            // ============================================
 
-            // Exponer para pruebas manuales en consola
-            window.biometricPanel = panel;
-            window.emulateCaptureSequence = emulateCaptureSequence;
-        });
+            function setup() {
+                console.log('[V3 Direct] 🚀 Inicializando Panel Biométrico V3...');
+
+                // Obtener instancia del BiometricAdapter
+                state.adapter = window.BiometricAdapter;
+
+                if (!state.adapter) {
+                    console.error('[V3 Direct] ❌ BiometricAdapter no encontrado');
+                    updateStatus('❌ Error: BiometricAdapter no disponible', 'error');
+                    return;
+                }
+
+                // Escuchar TODOS los eventos SSE directamente con wildcard '*'
+                state.adapter.on('*', handleDirectEvent);
+                console.log('[V3 Direct] ✅ Listener de eventos SSE configurado (wildcard *)');
+
+                // Configurar botón
+                dom.btnEnroll.addEventListener('click', startEnrollment);
+
+                // Inicializar lector
+                initializeReader();
+
+                // Cleanup al cerrar
+                window.addEventListener('beforeunload', () => {
+                    if (state.adapter) {
+                        state.adapter.disconnect();
+                    }
+                });
+
+                console.log('[V3 Direct] ✅ Panel Biométrico V3 listo');
+                console.log('[V3 Direct] 📡 Esperando eventos del backend C# (CEDDFA)...');
+            }
+
+            // Esperar a que BiometricAdapter esté disponible
+            if (window.BiometricAdapter) {
+                setup();
+            } else {
+                document.addEventListener('DOMContentLoaded', setup);
+            }
+
+        })();
     </script>
 </body>
 </html>

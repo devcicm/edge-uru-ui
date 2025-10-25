@@ -170,7 +170,8 @@ DELETE /api/v2/eventbus/history - Limpiar historial
 
 ### Frontend (JavaScript)
 
-#### 6. `biometric-dtos.js`
+#### 6. `
+-dtos.js`
 **Propósito:** Cliente API modular con tipado y manejo de eventos
 
 **Clase Principal: `BiometricApiClient`**

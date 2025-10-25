@@ -3,6 +3,7 @@ import path = require("path");
 import fs = require("fs");
 import express = require("express");
 import bodyParser = require("body-parser");
+import { RawBiometricEvent, SseBridge } from "./sseBridge";
 
 const edge = require("edge-js");
 type EdgeFunc = (payload: any, cb: (err: any, res: any) => void) => void;
@@ -39,28 +40,81 @@ const app = express();
 app.use(bodyParser.json());
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 
-type SseClient = { id: number; res: express.Response };
-const clients: SseClient[] = [];
-let nextId = 1;
-function sseBroadcast(ev: any) {
-  const line = `data: ${JSON.stringify(ev)}\n\n`;
-  for (const c of clients) c.res.write(line);
-}
+const sseBridge = new SseBridge((message, ...meta) => console.log(message, ...meta));
+const ATTEMPT_REGEX = /Intento\s+(\d+)/i;
+const SAMPLE_REGEX = /muestra\s*(\d+)\s*\/\s*(\d+)/i;
+
+sseBridge.registerProcessor((event: RawBiometricEvent) => {
+  const eventType = (event.eventType || "").toUpperCase();
+  const severity = (event.severity || "").toUpperCase();
+
+  if (eventType === "ENROLLMENT_SAMPLE_COLLECTED") {
+    const sampleNumber = Number(event.data?.sampleNumber);
+    const totalSamples = Number(event.data?.totalSamples);
+    const progress = Number(event.data?.progress);
+
+    if (Number.isFinite(sampleNumber)) {
+      event.sampleNumber = Math.trunc(sampleNumber);
+    }
+    if (Number.isFinite(totalSamples)) {
+      event.totalSamples = Math.trunc(totalSamples);
+    }
+    if (Number.isFinite(progress)) {
+      event.progress = progress;
+      event.progressPercent = Math.round(progress);
+    }
+
+    const derived: RawBiometricEvent = {
+      eventType: severity === "SUCCESS" ? "ENROLLMENT_SAMPLE_SUCCESS" : "ENROLLMENT_SAMPLE_STATUS",
+      originalEventType: event.eventType,
+      severity: event.severity,
+      origin: event.origin,
+      timestamp: event.timestamp,
+      message: event.message,
+      bridgeVersion: event.bridgeVersion,
+      sampleNumber: event.sampleNumber,
+      totalSamples: event.totalSamples,
+      progress: event.progress,
+      progressPercent: event.progressPercent
+    };
+
+    return [event, derived];
+  }
+
+  if (eventType === "SYSTEM_STATUS" && typeof event.message === "string") {
+    const attemptMatch = ATTEMPT_REGEX.exec(event.message);
+    const sampleMatch = SAMPLE_REGEX.exec(event.message);
+
+    if (attemptMatch || sampleMatch) {
+      const attempt = attemptMatch ? Number(attemptMatch[1]) : undefined;
+      const sampleNumber = sampleMatch ? Number(sampleMatch[1]) : attempt;
+      const totalSamples = sampleMatch ? Number(sampleMatch[2]) : event.totalSamples;
+
+      const derived: RawBiometricEvent = {
+        eventType: "SYSTEM_ATTEMPT_STATUS",
+        originalEventType: event.eventType,
+        severity: event.severity,
+        origin: event.origin,
+        timestamp: event.timestamp,
+        message: event.message,
+        bridgeVersion: event.bridgeVersion,
+        attempt: Number.isFinite(attempt) ? Math.trunc(attempt!) : undefined,
+        sampleNumber: Number.isFinite(sampleNumber) ? Math.trunc(sampleNumber!) : undefined,
+        totalSamples: Number.isFinite(totalSamples) ? Math.trunc(totalSamples!) : undefined
+      };
+
+      return [event, derived];
+    }
+  }
+
+  return event;
+});
 
 app.get("/events", (req, res) => {
-  res.set({
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive"
-  });
-  res.flushHeaders();
-  const id = nextId++;
-  clients.push({ id, res });
-  res.write(`data: ${JSON.stringify({ evt: "hello", id })}\n\n`);
-  req.on("close", () => {
-    const i = clients.findIndex((c) => c.id === id);
-    if (i >= 0) clients.splice(i, 1);
-  });
+  const detach = sseBridge.attachClient(res);
+
+  req.on("close", detach);
+  req.on("error", detach);
 });
 
 app.post("/api/bootstrap", async (req, res) => {
@@ -275,7 +329,7 @@ app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
       op: "registerCallback",
       callback: (eventData: any) => {
         console.log("[C# Event V1]", eventData);
-        sseBroadcast(eventData);
+        sseBridge.emit(eventData, { bridgeVersion: "v1" });
       }
     });
     const nativeDir = path.join(__dirname, "..", "..", "bin-deps");
@@ -287,7 +341,7 @@ app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
       op: "registerCallback",
       callback: (eventData: any) => {
         console.log("[C# Event V2 CEDDFA]", eventData);
-        sseBroadcast(eventData);
+        sseBridge.emit(eventData, { bridgeVersion: "v2" });
       }
     });
     await callV2({ op: "bootstrap", searchPath: nativeDir });
