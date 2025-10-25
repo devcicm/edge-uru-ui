@@ -327,9 +327,10 @@ app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
     // Inicializar Bridge V1 (legacy)
     await call({
       op: "registerCallback",
-      callback: (eventData: any) => {
+      callback: async (eventData: any) => {
         console.log("[C# Event V1]", eventData);
         sseBridge.emit(eventData, { bridgeVersion: "v1" });
+        return null; // ⚡ CRÍTICO: Retornar inmediatamente para no bloquear Edge.js
       }
     });
     const nativeDir = path.join(__dirname, "..", "..", "bin-deps");
@@ -339,9 +340,10 @@ app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
     // Inicializar Bridge V2 (CEDDFA)
     await callV2({
       op: "registerCallback",
-      callback: (eventData: any) => {
+      callback: async (eventData: any) => {
         console.log("[C# Event V2 CEDDFA]", eventData);
         sseBridge.emit(eventData, { bridgeVersion: "v2" });
+        return null; // ⚡ CRÍTICO: Retornar inmediatamente para no bloquear Edge.js
       }
     });
     await callV2({ op: "bootstrap", searchPath: nativeDir });
