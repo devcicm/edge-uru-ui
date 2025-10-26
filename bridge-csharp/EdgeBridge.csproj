@@ -22,21 +22,10 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 
-  <!-- Archivos compartidos entre V1 y V2 -->
-  <ItemGroup Label="Shared">
-    <Compile Include="shared\Dp4500Wrapper.cs" />
-  </ItemGroup>
-
-  <!-- Archivos V1 Legacy -->
-  <ItemGroup Label="V1 Legacy">
-    <Compile Include="v1-legacy\EdgeUruBridgeCSharp.cs" />
-  </ItemGroup>
-
-  <!-- Archivos V2 CEDDFA -->
-  <ItemGroup Label="V2 CEDDFA">
-    <Compile Include="v2-ceddfa\BiometricDtos.cs" />
-    <Compile Include="v2-ceddfa\EventBusSystem.cs" />
-    <Compile Include="v2-ceddfa\MessageProcessor.cs" />
-    <Compile Include="v2-ceddfa\EdgeUruBridgeV2.cs" />
+  <!-- Archivos del proyecto (estructura simple) -->
+  <ItemGroup Label="Source Files">
+    <Compile Include="src\Core\**\*.cs" />
+    <Compile Include="src\Bridge\**\*.cs" />
+    <Compile Include="src\Storage\**\*.cs" />
   </ItemGroup>
 </Project>

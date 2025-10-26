@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Biométrico V3 - CEDDFA Direct Events</title>
+    <title>Panel Biométrico DP4500</title>
     <style>
         :root {
             color-scheme: light;
@@ -177,8 +177,8 @@
     <div class="panel-biometrico" id="biometricContainer">
         <!-- Header -->
         <div class="panel-biometrico__header">
-            <h1 class="panel-biometrico__title">Panel Biométrico V3</h1>
-            <p class="panel-biometrico__subtitle">CEDDFA - Eventos Directos SSE</p>
+            <h1 class="panel-biometrico__title">Panel Biométrico DP4500</h1>
+            <p class="panel-biometrico__subtitle">Eventos en Tiempo Real</p>
         </div>
 
         <!-- Imagen de huella -->
@@ -215,13 +215,12 @@
 
     <script>
         /**
-         * Panel Biométrico V3 - CEDDFA Direct Events
+         * Panel Biométrico DP4500
          *
-         * Arquitectura simplificada:
-         * C# Backend (CEDDFA EventBus) → Node.js (SSE Bridge) → BiometricAdapter → index.html
+         * Arquitectura simple y directa:
+         * C# Backend (EdgeUruBridge) → Node.js (SSE Bridge) → BiometricAdapter → index.html
          *
-         * Sin capas intermedias como EventRouter
-         * Eventos directos desde el backend
+         * Eventos en tiempo real sin capas intermedias
          */
         (() => {
             // Referencias DOM
@@ -299,7 +298,7 @@
             function handleDirectEvent(data) {
                 const eventType = data.eventType || data.evt || 'UNKNOWN';
 
-                console.log(`[V3 Direct] 📨 Evento: ${eventType}`, data);
+                console.log(`[DP4500] 📨 Evento: ${eventType}`, data);
                 addDebugLog(eventType, data);
 
                 // Manejar eventos según tipo
@@ -309,17 +308,14 @@
                         updateStatus('✅ Conectado al servidor SSE', 'success');
                         break;
 
-                    case 'READER_INITIALIZED':
-                    case 'READER_STATUS_CHANGED':
-                        // Ambos eventos indican que el lector está listo
+                    case 'READER_READY':
                         state.isConnected = true;
-                        const statusMsg = data.message || data.Status || 'Lector biométrico listo';
-                        updateStatus(`✅ ${statusMsg}`, 'success');
+                        updateStatus('✅ Lector biométrico listo', 'success');
                         dom.btnEnroll.disabled = false;
                         break;
 
-                    case 'READER_ERROR':
-                        updateStatus(`❌ Error en lector: ${data.message}`, 'error');
+                    case 'SYSTEM_ERROR':
+                        updateStatus(`❌ Error: ${data.message}`, 'error');
                         dom.btnEnroll.disabled = false;
                         break;
 
@@ -336,13 +332,6 @@
                         updateStatus(`👆 Coloca el dedo (muestra ${sampleNum}/4)`, 'info');
                         break;
 
-                    case 'SYSTEM_STATUS':
-                        // Eventos de progreso del sistema
-                        if (data.message) {
-                            updateStatus(data.message, 'info');
-                        }
-                        break;
-
                     case 'IMAGE_CAPTURED':
                         const imageBase64 = data.data?.imageBase64 || data.imageBase64;
                         if (imageBase64) {
@@ -351,16 +340,15 @@
                         }
                         break;
 
-                    case 'ENROLLMENT_SAMPLE_COLLECTED':
-                    case 'ENROLLMENT_SAMPLE_SUCCESS':
+                    case 'SAMPLE_COLLECTED':
                         const sample = data.sampleNumber || data.data?.sampleNumber || state.currentSample + 1;
                         const total = data.totalSamples || data.data?.totalSamples || 4;
                         updateProgress(sample, total);
                         updateStatus(`✅ Muestra ${sample}/${total} capturada`, 'success');
                         break;
 
-                    case 'CAPTURE_QUALITY_LOW':
-                        updateStatus(`⚠️ Calidad baja - ${data.message || 'Intenta de nuevo'}`, 'error');
+                    case 'CAPTURE_FAILED':
+                        updateStatus(`⚠️ ${data.message || 'Intenta de nuevo'}`, 'error');
                         break;
 
                     case 'ENROLLMENT_COMPLETED':
@@ -381,18 +369,34 @@
                         updateStatus('🔍 Verificación iniciada', 'info');
                         break;
 
-                    case 'VERIFICATION_RESULT':
-                        const success = data.success || data.data?.success;
-                        if (success) {
-                            updateStatus(`✅ Verificación exitosa`, 'success');
-                        } else {
-                            updateStatus(`❌ Verificación fallida`, 'error');
-                        }
+                    case 'VERIFICATION_SUCCESS':
+                        updateStatus(`✅ Verificación exitosa`, 'success');
+                        break;
+
+                    case 'VERIFICATION_FAILED':
+                        updateStatus(`❌ Verificación fallida: ${data.message || ''}`, 'error');
+                        break;
+
+                    case 'IDENTIFICATION_STARTED':
+                        updateStatus('🔍 Identificación 1:N iniciada', 'info');
+                        break;
+
+                    case 'IDENTIFICATION_MATCH':
+                        const matchedUser = data.data?.userId || 'Usuario';
+                        updateStatus(`✅ Usuario identificado: ${matchedUser}`, 'success');
+                        break;
+
+                    case 'IDENTIFICATION_NO_MATCH':
+                        updateStatus('❌ Usuario no identificado', 'error');
+                        break;
+
+                    case 'USER_ENROLLED':
+                        console.log('[DP4500] Usuario registrado en almacenamiento', data);
                         break;
 
                     default:
                         // Loggear eventos no manejados
-                        console.log(`[V3 Direct] ⚠️ Evento no manejado: ${eventType}`, data);
+                        console.log(`[DP4500] ⚠️ Evento no manejado: ${eventType}`, data);
                 }
 
                 state.lastEventType = eventType;
@@ -406,16 +410,16 @@
                 try {
                     updateStatus('🔌 Inicializando lector...', 'info');
                     await state.adapter.initializeReader();
-                    console.log('[V3 Direct] ✅ Lector inicializado');
+                    console.log('[DP4500] ✅ Lector inicializado');
                 } catch (error) {
-                    console.error('[V3 Direct] ❌ Error inicializando lector:', error);
+                    console.error('[DP4500] ❌ Error inicializando lector:', error);
                     updateStatus(`❌ Error: ${error.message}`, 'error');
                 }
             }
 
             async function startEnrollment() {
                 if (state.isEnrolling) {
-                    console.warn('[V3 Direct] Ya hay un enrolamiento en curso');
+                    console.warn('[DP4500] Ya hay un enrolamiento en curso');
                     return;
                 }
 
@@ -426,14 +430,14 @@
                     const userId = `Usuario_${Date.now()}`;
                     updateStatus('📞 Solicitando enrolamiento...', 'info');
 
-                    console.log(`[V3 Direct] 🚀 Iniciando enrolamiento para: ${userId}`);
+                    console.log(`[DP4500] 🚀 Iniciando enrolamiento para: ${userId}`);
                     await state.adapter.enrollFingerprint(userId);
 
                     // Los eventos SSE nos notificarán del progreso
-                    console.log('[V3 Direct] ✅ Solicitud de enrolamiento enviada');
+                    console.log('[DP4500] ✅ Solicitud de enrolamiento enviada');
 
                 } catch (error) {
-                    console.error('[V3 Direct] ❌ Error en enrolamiento:', error);
+                    console.error('[DP4500] ❌ Error en enrolamiento:', error);
                     updateStatus(`❌ Error: ${error.message}`, 'error');
                     state.isEnrolling = false;
                     dom.btnEnroll.disabled = false;
@@ -445,20 +449,20 @@
             // ============================================
 
             function setup() {
-                console.log('[V3 Direct] 🚀 Inicializando Panel Biométrico V3...');
+                console.log('[DP4500] 🚀 Inicializando Panel Biométrico...');
 
                 // Obtener instancia del BiometricAdapter
                 state.adapter = window.BiometricAdapter;
 
                 if (!state.adapter) {
-                    console.error('[V3 Direct] ❌ BiometricAdapter no encontrado');
+                    console.error('[DP4500] ❌ BiometricAdapter no encontrado');
                     updateStatus('❌ Error: BiometricAdapter no disponible', 'error');
                     return;
                 }
 
                 // Escuchar TODOS los eventos SSE directamente con wildcard '*'
                 state.adapter.on('*', handleDirectEvent);
-                console.log('[V3 Direct] ✅ Listener de eventos SSE configurado (wildcard *)');
+                console.log('[DP4500] ✅ Listener de eventos SSE configurado');
 
                 // Configurar botón
                 dom.btnEnroll.addEventListener('click', startEnrollment);
@@ -473,8 +477,8 @@
                     }
                 });
 
-                console.log('[V3 Direct] ✅ Panel Biométrico V3 listo');
-                console.log('[V3 Direct] 📡 Esperando eventos del backend C# (CEDDFA)...');
+                console.log('[DP4500] ✅ Panel Biométrico listo');
+                console.log('[DP4500] 📡 Esperando eventos del backend...');
             }
 
             // Esperar a que BiometricAdapter esté disponible
