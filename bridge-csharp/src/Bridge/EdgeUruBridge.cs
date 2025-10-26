@@ -45,12 +45,15 @@ namespace EdgeBridge
             }
 
             Console.WriteLine($"[EVENT] {eventType}: {message}");
+            Console.WriteLine($"[DEBUG] Callback null: {_callback == null}, SyncContext null: {_syncContext == null}");
 
             // ⚡ CRÍTICO: Ejecutar callback en el thread correcto usando SynchronizationContext
             if (_syncContext != null)
             {
+                Console.WriteLine($"[DEBUG] Usando SynchronizationContext.Post");
                 _syncContext.Post(async state =>
                 {
+                    Console.WriteLine($"[DEBUG] Dentro de SyncContext.Post para {eventType}");
                     try
                     {
                         await _callback(eventData);
@@ -59,14 +62,17 @@ namespace EdgeBridge
                     catch (Exception ex)
                     {
                         Console.WriteLine($"[EVENT ERROR] {eventType}: {ex.Message}");
+                        Console.WriteLine($"[EVENT ERROR STACK] {ex.StackTrace}");
                     }
                 }, null);
             }
             else
             {
                 // Fallback: ejecutar directamente sin sincronización
+                Console.WriteLine($"[DEBUG] Usando Task.Run (fallback)");
                 Task.Run(async () =>
                 {
+                    Console.WriteLine($"[DEBUG] Dentro de Task.Run para {eventType}");
                     try
                     {
                         await _callback(eventData);
@@ -75,6 +81,7 @@ namespace EdgeBridge
                     catch (Exception ex)
                     {
                         Console.WriteLine($"[EVENT ERROR] {eventType}: {ex.Message}");
+                        Console.WriteLine($"[EVENT ERROR STACK] {ex.StackTrace}");
                     }
                 });
             }
@@ -187,9 +194,11 @@ namespace EdgeBridge
                     _cts?.Cancel();
                     _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
 
+                    // ⚡ EJECUTAR EN THREAD SEPARADO para no bloquear Edge.js
+                    var result = await Task.Run(() => _reader.Enroll3(_cts.Token, targetFarn, maxRetriesPerSample, maxSamples));
+
                     try
                     {
-                        var result = _reader.Enroll3(_cts.Token, targetFarn, maxRetriesPerSample, maxSamples);
 
                         string? imageBase64 = null;
                         string? templateBase64 = null;
@@ -272,7 +281,8 @@ namespace EdgeBridge
                             return new { ok = false, error = $"Fingerprint with tag '{userId}' not found" };
                         }
 
-                        var result = _reader.VerifyLiveAgainstReg(stored.Fmd, _cts.Token, targetFarn);
+                        // ⚡ EJECUTAR EN THREAD SEPARADO para no bloquear Edge.js
+                        var result = await Task.Run(() => _reader.VerifyLiveAgainstReg(stored.Fmd, _cts.Token, targetFarn));
 
                         string? imageBase64 = null;
                         if (result.ok && _reader.LastFid != null)
@@ -334,7 +344,8 @@ namespace EdgeBridge
 
                     try
                     {
-                        var result = _reader.IdentifyLive1N(_cts.Token, targetFarn, top);
+                        // ⚡ EJECUTAR EN THREAD SEPARADO para no bloquear Edge.js
+                        var result = await Task.Run(() => _reader.IdentifyLive1N(_cts.Token, targetFarn, top));
 
                         string? imageBase64 = null;
                         if (_reader.LastFid != null)
