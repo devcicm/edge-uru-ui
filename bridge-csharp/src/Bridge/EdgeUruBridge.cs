@@ -45,19 +45,19 @@ namespace EdgeBridge
 
             Console.WriteLine($"[EVENT] {eventType}: {message}");
 
-            // ⚡ CRÍTICO: Edge.js requiere ejecutar el callback en un contexto específico
-            // Usar Task.Run sin bloquear el thread actual
-            Task.Run(async () =>
+            // ⚡ Fire-and-forget sin bloquear (Edge.js maneja async callbacks)
+            // ContinueWith se ejecuta después de que Node.js procese el evento
+            var _ = _callback(eventData).ContinueWith(t =>
             {
-                try
+                if (t.IsFaulted)
                 {
-                    await _callback(eventData);
+                    Console.WriteLine($"[EVENT ERROR] {eventType}: {t.Exception?.GetBaseException().Message}");
                 }
-                catch (Exception ex)
+                else
                 {
-                    Console.WriteLine($"[EVENT ERROR] {ex.Message}");
+                    Console.WriteLine($"[EVENT SENT] {eventType}");
                 }
-            });
+            }, TaskScheduler.Default);
         }
 
         public async Task<object> Invoke(dynamic input)
