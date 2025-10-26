@@ -16,6 +16,7 @@ namespace EdgeBridge
         private static Dp4500Service? _reader;
         private static CancellationTokenSource? _cts;
         private static Func<object, Task<object>>? _callback;
+        private static SynchronizationContext? _syncContext;
 
         /// <summary>
         /// Envía evento al frontend en tiempo real
@@ -45,19 +46,38 @@ namespace EdgeBridge
 
             Console.WriteLine($"[EVENT] {eventType}: {message}");
 
-            // ⚡ Fire-and-forget sin bloquear (Edge.js maneja async callbacks)
-            // ContinueWith se ejecuta después de que Node.js procese el evento
-            var _ = _callback(eventData).ContinueWith(t =>
+            // ⚡ CRÍTICO: Ejecutar callback en el thread correcto usando SynchronizationContext
+            if (_syncContext != null)
             {
-                if (t.IsFaulted)
+                _syncContext.Post(async state =>
                 {
-                    Console.WriteLine($"[EVENT ERROR] {eventType}: {t.Exception?.GetBaseException().Message}");
-                }
-                else
+                    try
+                    {
+                        await _callback(eventData);
+                        Console.WriteLine($"[EVENT SENT] {eventType}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[EVENT ERROR] {eventType}: {ex.Message}");
+                    }
+                }, null);
+            }
+            else
+            {
+                // Fallback: ejecutar directamente sin sincronización
+                Task.Run(async () =>
                 {
-                    Console.WriteLine($"[EVENT SENT] {eventType}");
-                }
-            }, TaskScheduler.Default);
+                    try
+                    {
+                        await _callback(eventData);
+                        Console.WriteLine($"[EVENT SENT] {eventType}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[EVENT ERROR] {eventType}: {ex.Message}");
+                    }
+                });
+            }
         }
 
         public async Task<object> Invoke(dynamic input)
@@ -85,7 +105,8 @@ namespace EdgeBridge
                 case "registerCallback":
                 {
                     _callback = (Func<object, Task<object>>)input.callback;
-                    Console.WriteLine("[BRIDGE] Callback registered");
+                    _syncContext = SynchronizationContext.Current;
+                    Console.WriteLine($"[BRIDGE] Callback registered (SyncContext: {_syncContext?.GetType().Name ?? "null"})");
                     return new { ok = true, message = "Callback registered" };
                 }
 
