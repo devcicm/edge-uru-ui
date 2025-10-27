@@ -71,6 +71,16 @@ class ComponentFactory {
             }
         });
 
+        this.componentTypes.set('templatemanager', {
+            class: TemplateManagerControl,
+            description: 'Gestión y administración de plantillas biométricas',
+            defaultConfig: {
+                autoRefresh: true,
+                refreshInterval: 5000,
+                showHash: true
+            }
+        });
+
         console.log('[ComponentFactory] Componentes registrados:', Array.from(this.componentTypes.keys()));
     }
 
@@ -124,22 +134,15 @@ class ComponentFactory {
 
     /**
      * Aplicar configuración específica al componente
+     * NOTA: La mayoría de configuraciones se aplican en el constructor
+     * Este método está disponible para configuraciones post-construcción si son necesarias
      */
     _applyConfig(component, config) {
-        // Aplicar configuraciones específicas según el tipo de componente
-        if (component instanceof EnrollmentControl) {
-            if (config.maxSamples) component.setMaxSamples(config.maxSamples);
-        }
+        // La configuración ya se aplica en el constructor de cada componente
+        // Este método se puede usar para configuraciones post-construcción si es necesario
 
-        if (component instanceof SimpleCaptureControl) {
-            if (config.autoCapture) component.setAutoCapture(config.autoCapture, config.captureInterval);
-        }
-
-        if (component instanceof VerificationControl) {
-            if (config.scoreThreshold) component.setScoreThreshold(config.scoreThreshold);
-        }
-
-        // Configuraciones adicionales pueden agregarse aquí
+        // Por ahora, solo loguear que la configuración fue aplicada
+        console.log(`[ComponentFactory] Configuración aplicada a ${component.constructor.name}:`, config);
     }
 
     /**
@@ -178,7 +181,13 @@ class ComponentFactory {
             'techdevice': 'techdevice',
             'tech': 'techdevice',
             'technical': 'techdevice',
-            'info': 'techdevice'
+            'info': 'techdevice',
+
+            'templatemanager': 'templatemanager',
+            'template': 'templatemanager',
+            'templates': 'templatemanager',
+            'manager': 'templatemanager',
+            'store': 'templatemanager'
         };
 
         // Buscar coincidencia en el ID del contenedor
@@ -295,7 +304,8 @@ class ComponentFactory {
             'verification', 'verify', 'verificar',
             'readercontrol', 'reader', 'lector',
             'logdevice', 'log', 'logs',
-            'techdevice', 'tech', 'technical'
+            'techdevice', 'tech', 'technical',
+            'templatemanager', 'template', 'templates', 'manager', 'store'
         ];
 
         commonIds.forEach(id => {
@@ -340,12 +350,29 @@ class ComponentFactory {
     }
 }
 
-// Crear instancia global del factory
-window.ComponentFactory = new ComponentFactory();
+// Exponer la clase ComponentFactory globalmente
+window.ComponentFactoryClass = ComponentFactory;
 
-// Auto-inicializar cuando el DOM esté listo
+// Crear instancia global solo cuando el DOM esté listo
+// Esto garantiza que todos los scripts de controles ya se cargaron
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('[ComponentFactory] Creando instancia global...');
+
+    // Crear instancia del factory
+    window.ComponentFactory = new ComponentFactory();
+
+    // Emitir evento custom para notificar que ComponentFactory está listo
+    window.dispatchEvent(new CustomEvent('componentFactoryReady', {
+        detail: { factory: window.ComponentFactory }
+    }));
+
+    console.log('[ComponentFactory] ✅ Factory listo y evento emitido');
+
     // Permitir configuración global opcional
     const globalConfig = window.BiometricComponentConfig || {};
-    window.ComponentFactory.autoInit('', globalConfig);
+
+    // Auto-inicializar componentes si es necesario
+    if (globalConfig.autoInit !== false) {
+        window.ComponentFactory.autoInit('', globalConfig);
+    }
 });

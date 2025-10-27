@@ -19,8 +19,9 @@ class TechDeviceControl extends BaseComponent {
 
     /**
      * Crear estructura específica para información técnica
+     * Sobrescribe el método del padre BaseComponent
      */
-    _createBaseStructure() {
+    _createStructure() {
         this.container.innerHTML = `
             <div class="tech-control">
                 <div class="tech-header">

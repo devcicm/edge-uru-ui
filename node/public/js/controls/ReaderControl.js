@@ -14,8 +14,9 @@ class ReaderControl extends BaseComponent {
 
     /**
      * Crear estructura específica para control del lector
+     * Sobrescribe el método del padre BaseComponent
      */
-    _createBaseStructure() {
+    _createStructure() {
         this.container.innerHTML = `
             <div class="reader-control">
                 <div class="reader-header">

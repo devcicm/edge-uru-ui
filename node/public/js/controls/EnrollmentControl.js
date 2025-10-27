@@ -15,6 +15,11 @@ class EnrollmentControl extends BaseComponent {
         this.userId = '';
         this.isEnrolling = false;
 
+        // Progreso de enrolamiento
+        this.currentSample = 0;
+        this.totalSamples = 4;
+        this.progressPercentage = 0;
+
         // Escuchar directamente al adapter para eventos en tiempo real
         this._setupDirectListener();
 
@@ -42,6 +47,7 @@ class EnrollmentControl extends BaseComponent {
                 'CAPTURE_STARTED',
                 'CAPTURE_QUALITY_LOW',
                 'IMAGE_CAPTURED',
+                'SAMPLE_COLLECTED',  // Evento del backend C#
                 'ENROLLMENT_SAMPLE_COLLECTED',
                 'ENROLLMENT_SAMPLE_SUCCESS',
                 'ENROLLMENT_SAMPLE_STATUS'
@@ -60,6 +66,15 @@ class EnrollmentControl extends BaseComponent {
                 else if (severity === 'ERROR' || severity === 'WARNING') statusType = 'error';
 
                 this.updateStatus(message, statusType);
+
+                // Actualizar progreso si el evento contiene información de muestras
+                // Eventos posibles: SAMPLE_COLLECTED, ENROLLMENT_SAMPLE_COLLECTED
+                if ((eventType === 'SAMPLE_COLLECTED' || eventType === 'ENROLLMENT_SAMPLE_COLLECTED') && data.data) {
+                    const { sampleNumber, totalSamples, progress } = data.data;
+                    if (sampleNumber !== undefined && totalSamples !== undefined) {
+                        this._updateProgress(sampleNumber, totalSamples, progress || 0);
+                    }
+                }
 
                 // Si hay imagen, mostrarla
                 const imageBase64 = data.data?.imageBase64 || data.imageBase64;
@@ -98,11 +113,20 @@ class EnrollmentControl extends BaseComponent {
     _onEnrollmentCompleted(eventData) {
         console.log(`[${this.componentId}] ✅ Enrolamiento completado, finalizando operación`);
 
+        // Marcar progreso al 100% al completar
+        this._updateProgress(4, 4, 100);
+
         this.isEnrolling = false;
         this._updateUI();
 
-        // Auto-limpiar después de 3 segundos
-        setTimeout(() => this.clear(), 3000);
+        // Emitir evento 'enrolled' para que listeners externos puedan reaccionar
+        this.emit('enrolled', {
+            userId: this.userId,
+            eventData: eventData
+        });
+
+        // Auto-limpiar después de 5 segundos (dar tiempo a ver el progreso completo)
+        setTimeout(() => this.clear(), 5000);
     }
 
     /**
@@ -113,6 +137,9 @@ class EnrollmentControl extends BaseComponent {
 
         this.isEnrolling = false;
         this._updateUI();
+
+        // Dar tiempo para que el usuario vea el error antes de limpiar
+        setTimeout(() => this.clear(), 3000);
     }
 
     /**
@@ -134,6 +161,25 @@ class EnrollmentControl extends BaseComponent {
                            id="userId-${this.containerId}"
                            class="component-input"
                            placeholder="Ej: Usuario001">
+                </div>
+
+                <!-- Progreso de Enrolamiento -->
+                <div class="enrollment-progress" id="enrollmentProgress-${this.containerId}" style="display: none;">
+                    <div class="progress-header">
+                        <span class="progress-label">Progreso de Captura</span>
+                        <span class="progress-counter" id="progressCounter-${this.containerId}">0/4</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar-${this.containerId}" style="width: 0%;">
+                            <span class="progress-percentage" id="progressPercentage-${this.containerId}">0%</span>
+                        </div>
+                    </div>
+                    <div class="progress-samples" id="progressSamples-${this.containerId}">
+                        <span class="sample-indicator" data-sample="1">1</span>
+                        <span class="sample-indicator" data-sample="2">2</span>
+                        <span class="sample-indicator" data-sample="3">3</span>
+                        <span class="sample-indicator" data-sample="4">4</span>
+                    </div>
                 </div>
 
                 <!-- Imagen de huella -->
@@ -173,6 +219,105 @@ class EnrollmentControl extends BaseComponent {
                         <span class="instruction-text">Coloca el dedo 4 veces cuando se solicite</span>
                     </div>
                 </div>
+
+                <style>
+                    .enrollment-progress {
+                        background: #f8f9fa;
+                        border: 2px solid #e9ecef;
+                        border-radius: 10px;
+                        padding: 15px;
+                        margin-bottom: 15px;
+                    }
+
+                    .progress-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 10px;
+                    }
+
+                    .progress-label {
+                        font-weight: 600;
+                        color: #495057;
+                        font-size: 0.9rem;
+                    }
+
+                    .progress-counter {
+                        font-weight: 700;
+                        color: #667eea;
+                        font-size: 1.1rem;
+                    }
+
+                    .progress-bar-container {
+                        width: 100%;
+                        height: 30px;
+                        background: #e9ecef;
+                        border-radius: 15px;
+                        overflow: hidden;
+                        position: relative;
+                        margin-bottom: 12px;
+                        box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+                    }
+
+                    .progress-bar {
+                        height: 100%;
+                        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                        border-radius: 15px;
+                        transition: width 0.5s ease;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        position: relative;
+                    }
+
+                    .progress-percentage {
+                        color: white;
+                        font-weight: 700;
+                        font-size: 0.85rem;
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+                    }
+
+                    .progress-samples {
+                        display: flex;
+                        gap: 10px;
+                        justify-content: center;
+                    }
+
+                    .sample-indicator {
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        background: #e9ecef;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: 700;
+                        font-size: 1rem;
+                        color: #adb5bd;
+                        border: 2px solid #dee2e6;
+                        transition: all 0.3s ease;
+                    }
+
+                    .sample-indicator.captured {
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        border-color: #667eea;
+                        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+                        transform: scale(1.1);
+                    }
+
+                    .sample-indicator.active {
+                        background: #fff3cd;
+                        color: #856404;
+                        border-color: #ffc107;
+                        animation: pulse 1.5s infinite;
+                    }
+
+                    @keyframes pulse {
+                        0%, 100% { transform: scale(1); }
+                        50% { transform: scale(1.05); }
+                    }
+                </style>
             </div>
         `;
 
@@ -181,12 +326,74 @@ class EnrollmentControl extends BaseComponent {
         this.btnEnroll = this.container.querySelector(`#btnEnroll-${this.containerId}`);
         this.btnClear = this.container.querySelector(`#btnClear-${this.containerId}`);
 
+        // Referencias a elementos de progreso
+        this.progressContainer = this.container.querySelector(`#enrollmentProgress-${this.containerId}`);
+        this.progressCounter = this.container.querySelector(`#progressCounter-${this.containerId}`);
+        this.progressBar = this.container.querySelector(`#progressBar-${this.containerId}`);
+        this.progressPercentageEl = this.container.querySelector(`#progressPercentage-${this.containerId}`);
+        this.progressSamples = this.container.querySelector(`#progressSamples-${this.containerId}`);
+
         // Eventos
         this.btnEnroll.onclick = () => this.startEnrollment();
         this.btnClear.onclick = () => this.clear();
         this.userIdInput.oninput = () => this._validateInput();
 
         this._validateInput();
+    }
+
+    /**
+     * Actualizar progreso de enrolamiento
+     * @param {number} current - Muestra actual (1-4)
+     * @param {number} total - Total de muestras (4)
+     * @param {number} percentage - Porcentaje de progreso (0-100)
+     */
+    _updateProgress(current, total, percentage) {
+        console.log(`[${this.componentId}] 📊 Actualizando progreso: ${current}/${total} (${percentage}%)`);
+
+        // Guardar estado
+        this.currentSample = current;
+        this.totalSamples = total;
+        this.progressPercentage = percentage;
+
+        // Mostrar contenedor de progreso
+        if (this.progressContainer) {
+            this.progressContainer.style.display = 'block';
+        }
+
+        // Actualizar contador (ej: "2/4")
+        if (this.progressCounter) {
+            this.progressCounter.textContent = `${current}/${total}`;
+        }
+
+        // Actualizar barra de progreso
+        if (this.progressBar) {
+            this.progressBar.style.width = `${percentage}%`;
+        }
+
+        // Actualizar texto de porcentaje
+        if (this.progressPercentageEl) {
+            this.progressPercentageEl.textContent = `${Math.round(percentage)}%`;
+        }
+
+        // Actualizar indicadores de muestras
+        if (this.progressSamples) {
+            const indicators = this.progressSamples.querySelectorAll('.sample-indicator');
+            indicators.forEach((indicator, index) => {
+                const sampleNum = index + 1;
+
+                // Limpiar clases anteriores
+                indicator.classList.remove('captured', 'active');
+
+                // Marcar como capturada si ya se completó
+                if (sampleNum <= current) {
+                    indicator.classList.add('captured');
+                }
+                // Marcar como activa la siguiente muestra que se va a capturar
+                else if (sampleNum === current + 1 && current < total) {
+                    indicator.classList.add('active');
+                }
+            });
+        }
     }
 
     /**
@@ -201,6 +408,12 @@ class EnrollmentControl extends BaseComponent {
      * Iniciar enrolamiento
      */
     async startEnrollment() {
+        // Verificar que el lector esté encendido
+        if (window.checkReaderOrWarn && !window.checkReaderOrWarn('enrolar')) {
+            this.showError('⚠️ Enciende el lector primero desde ReaderControl');
+            return;
+        }
+
         this.userId = this.userIdInput.value.trim();
 
         if (!this.userId) {
@@ -212,13 +425,33 @@ class EnrollmentControl extends BaseComponent {
             this.isEnrolling = true;
             this._updateUI();
 
+            // Resetear progreso al inicio
+            this._updateProgress(0, 4, 0);
+
             this.showLoading('Iniciando enrolamiento...');
 
-            // Llamar al backend - NO esperamos resultado aquí
-            // Los eventos SSE nos notificarán del progreso y finalización en tiempo real
-            await this.adapter.enrollFingerprint(this.userId);
+            // Llamar al backend
+            const result = await this.adapter.enrollFingerprint(this.userId);
 
-            // NOTA: NO finalizamos aquí - esperamos evento ENROLLMENT_COMPLETED
+            // IMPORTANTE: Si la API retorna y los eventos SSE no manejaron la finalización,
+            // manejarla aquí como respaldo
+            if (this.isEnrolling) {
+                console.log(`[${this.componentId}] ⚠️ Enrolamiento finalizado por API response (respaldo)`);
+
+                if (result.ok) {
+                    this._updateProgress(4, 4, 100);
+                    this.showSuccess('✅ Enrolamiento completado exitosamente');
+                } else {
+                    this.showError(result.error || 'Error en enrolamiento');
+                }
+
+                // Finalizar operación
+                this.isEnrolling = false;
+                this._updateUI();
+
+                // Auto-limpiar después de 3 segundos
+                setTimeout(() => this.clear(), 3000);
+            }
 
         } catch (error) {
             this.showError(`Error: ${error.message}`);
@@ -238,6 +471,35 @@ class EnrollmentControl extends BaseComponent {
         this.userId = '';
         this.isEnrolling = false;
         this.userIdInput.value = '';
+
+        // Resetear progreso
+        this.currentSample = 0;
+        this.totalSamples = 4;
+        this.progressPercentage = 0;
+
+        // Ocultar contenedor de progreso
+        if (this.progressContainer) {
+            this.progressContainer.style.display = 'none';
+        }
+
+        // Resetear elementos de progreso
+        if (this.progressCounter) {
+            this.progressCounter.textContent = '0/4';
+        }
+        if (this.progressBar) {
+            this.progressBar.style.width = '0%';
+        }
+        if (this.progressPercentageEl) {
+            this.progressPercentageEl.textContent = '0%';
+        }
+
+        // Limpiar indicadores de muestras
+        if (this.progressSamples) {
+            const indicators = this.progressSamples.querySelectorAll('.sample-indicator');
+            indicators.forEach(indicator => {
+                indicator.classList.remove('captured', 'active');
+            });
+        }
 
         this._updateUI();
         this.showInfo('Ingresa el ID del usuario');

@@ -15,8 +15,9 @@ class LogDeviceControl extends BaseComponent {
 
     /**
      * Crear estructura específica para logs
+     * Sobrescribe el método del padre BaseComponent
      */
-    _createBaseStructure() {
+    _createStructure() {
         this.container.innerHTML = `
             <div class="log-control">
                 <div class="log-header">

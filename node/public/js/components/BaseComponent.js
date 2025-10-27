@@ -21,6 +21,9 @@ class BaseComponent {
         // Callback para agregar logs al sistema global
         this.globalLogCallback = config.onLog || null;
 
+        // Sistema de eventos interno
+        this.eventListeners = new Map();
+
         // Validación
         if (!this.container) {
             throw new Error(`Container #${containerId} no encontrado`);
@@ -199,6 +202,122 @@ class BaseComponent {
     showError(message) { this.updateStatus(message, 'error'); }
     showWarning(message) { this.updateStatus(message, 'warning'); }
     showInfo(message) { this.updateStatus(message, 'info'); }
+
+    /**
+     * ═══════════════════════════════════════════════════════════════════════════
+     * SISTEMA DE EVENTOS CUSTOM DEL COMPONENTE (NO confundir con BiometricAdapter)
+     * ═══════════════════════════════════════════════════════════════════════════
+     *
+     * Este sistema de eventos es DIFERENTE al de BiometricAdapter:
+     *
+     * 1. BiometricAdapter.on() → Eventos SSE del backend (bajo nivel)
+     *    - Eventos: READER_READY, ENROLLMENT_COMPLETED, IMAGE_CAPTURED, etc.
+     *    - Propósito: Transporte de eventos en tiempo real desde C#
+     *
+     * 2. BaseComponent.on() → Eventos custom del componente (alto nivel)
+     *    - Eventos: enrolled, verified, captured, templatesLoaded, etc.
+     *    - Propósito: Notificar listeners externos sobre operaciones completadas
+     *
+     * FLUJO DE EVENTOS (NO hay duplicación):
+     * Backend C# → SSE → BiometricAdapter → Component procesa → Component.emit() → Listeners externos
+     *
+     * EJEMPLO:
+     * ```
+     * // Backend envía: ENROLLMENT_COMPLETED (SSE)
+     * // ↓
+     * // BiometricAdapter.emit('ENROLLMENT_COMPLETED', data)
+     * // ↓
+     * // EnrollmentControl escucha y procesa internamente
+     * // ↓
+     * // EnrollmentControl.emit('enrolled', { userId }) ← Evento custom
+     * // ↓
+     * // demo-avance.html: components.enrollment.on('enrolled', handler) ← Listener externo
+     * ```
+     * ═══════════════════════════════════════════════════════════════════════════
+     */
+
+    /**
+     * Registrar listener para un evento custom del componente
+     * @param {string} eventType - Tipo de evento (ej: 'enrolled', 'verified', 'captured')
+     * @param {function} handler - Función que se ejecutará cuando ocurra el evento
+     */
+    on(eventType, handler) {
+        if (typeof handler !== 'function') {
+            throw new Error(`Handler debe ser una función para evento '${eventType}'`);
+        }
+
+        if (!this.eventListeners.has(eventType)) {
+            this.eventListeners.set(eventType, []);
+        }
+
+        this.eventListeners.get(eventType).push(handler);
+        console.log(`[${this.componentId}] 📡 Listener registrado para evento: ${eventType}`);
+    }
+
+    /**
+     * Remover listener de un evento
+     * @param {string} eventType - Tipo de evento
+     * @param {function} handler - Función a remover
+     */
+    off(eventType, handler) {
+        if (!this.eventListeners.has(eventType)) {
+            return;
+        }
+
+        const handlers = this.eventListeners.get(eventType);
+        const index = handlers.indexOf(handler);
+
+        if (index !== -1) {
+            handlers.splice(index, 1);
+            console.log(`[${this.componentId}] 🔕 Listener removido para evento: ${eventType}`);
+        }
+
+        // Si no quedan handlers, eliminar la entrada
+        if (handlers.length === 0) {
+            this.eventListeners.delete(eventType);
+        }
+    }
+
+    /**
+     * Emitir un evento
+     * @param {string} eventType - Tipo de evento
+     * @param {*} data - Datos del evento
+     */
+    emit(eventType, data = {}) {
+        console.log(`[${this.componentId}] 📤 Emitiendo evento: ${eventType}`, data);
+
+        if (!this.eventListeners.has(eventType)) {
+            console.log(`[${this.componentId}] ⚠️ No hay listeners para evento: ${eventType}`);
+            return;
+        }
+
+        const handlers = this.eventListeners.get(eventType);
+
+        handlers.forEach(handler => {
+            try {
+                handler(data);
+            } catch (error) {
+                console.error(`[${this.componentId}] ❌ Error ejecutando handler para '${eventType}':`, error);
+            }
+        });
+    }
+
+    /**
+     * Destruir componente y limpiar recursos
+     */
+    destroy() {
+        console.log(`[${this.componentId}] 🧹 Destruyendo componente...`);
+
+        // Limpiar todos los event listeners
+        this.eventListeners.clear();
+
+        // Limpiar contenedor DOM
+        if (this.container) {
+            this.container.innerHTML = '';
+        }
+
+        console.log(`[${this.componentId}] ✅ Componente destruido`);
+    }
 }
 
 // Registrar globalmente

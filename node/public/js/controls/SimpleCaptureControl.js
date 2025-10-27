@@ -14,8 +14,9 @@ class SimpleCaptureControl extends BaseComponent {
 
     /**
      * Crear estructura específica para captura simple
+     * Sobrescribe el método del padre BaseComponent
      */
-    _createBaseStructure() {
+    _createStructure() {
         this.container.innerHTML = `
             <div class="capture-control">
                 <div class="capture-header">
@@ -34,7 +35,6 @@ class SimpleCaptureControl extends BaseComponent {
 
                 <div class="capture-buttons component-buttons">
                     <button class="btn-primary" id="captureBtn">Capturar</button>
-                    <button class="btn-secondary" id="testBtn">🧪 Prueba</button>
                     <button class="btn-warning" id="clearBtn">🗑️ Limpiar</button>
                 </div>
 
@@ -73,7 +73,6 @@ class SimpleCaptureControl extends BaseComponent {
     _setupCaptureUI() {
         // Referencias a elementos
         this.captureButton = this.container.querySelector('#captureBtn');
-        this.testButton = this.container.querySelector('#testBtn');
         this.clearButton = this.container.querySelector('#clearBtn');
         this.statusElement = this.container.querySelector('.capture-status');
         this.fingerprintArea = this.container.querySelector('.fingerprint-area');
@@ -82,7 +81,6 @@ class SimpleCaptureControl extends BaseComponent {
 
         // Eventos de botones
         this.captureButton.onclick = () => this.capture();
-        this.testButton.onclick = () => this.testCapture();
         this.clearButton.onclick = () => this.clear();
     }
 
@@ -99,6 +97,12 @@ class SimpleCaptureControl extends BaseComponent {
      * Realizar captura de huella
      */
     async capture() {
+        // Verificar que el lector esté encendido
+        if (window.checkReaderOrWarn && !window.checkReaderOrWarn('capturar')) {
+            this.showError('⚠️ Enciende el lector primero desde ReaderControl');
+            return;
+        }
+
         try {
             this.captureState = 'capturing';
             this._updateState();
@@ -111,7 +115,12 @@ class SimpleCaptureControl extends BaseComponent {
                 this.captureState = 'captured';
                 this.lastCaptureTime = new Date();
 
-                this.showSuccess('Captura completada exitosamente');
+                // Mostrar imagen si está disponible
+                if (result.imageBase64) {
+                    this.displayImage(result.imageBase64);
+                }
+
+                this.showSuccess('✅ Captura completada exitosamente');
                 this.emit('captured', { result, timestamp: this.lastCaptureTime });
             } else {
                 this.captureState = 'error';
@@ -124,51 +133,6 @@ class SimpleCaptureControl extends BaseComponent {
         } finally {
             this._updateState();
         }
-    }
-
-    /**
-     * Realizar captura de prueba (imagen generada)
-     */
-    testCapture() {
-        this.showLoading('Generando imagen de prueba...');
-
-        // Crear imagen de prueba
-        const canvas = document.createElement('canvas');
-        canvas.width = 200;
-        canvas.height = 200;
-        const ctx = canvas.getContext('2d');
-
-        // Fondo gris
-        ctx.fillStyle = '#666666';
-        ctx.fillRect(0, 0, 200, 200);
-
-        // Patrón de huella simulado
-        ctx.strokeStyle = '#333333';
-        ctx.lineWidth = 2;
-        for (let i = 1; i <= 8; i++) {
-            ctx.beginPath();
-            ctx.arc(100, 100, i * 12, 0, 2 * Math.PI);
-            ctx.stroke();
-        }
-
-        // Texto
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('IMAGEN DE PRUEBA', 100, 180);
-
-        // Convertir a base64
-        const testImageBase64 = canvas.toDataURL('image/png').split(',')[1];
-
-        // Mostrar imagen
-        this.displayImage(testImageBase64);
-
-        this.captureState = 'captured';
-        this.lastCaptureTime = new Date();
-        this._updateState();
-
-        this.showSuccess('Imagen de prueba generada');
-        this.emit('testCaptured', { imageBase64: testImageBase64, timestamp: this.lastCaptureTime });
     }
 
     /**
@@ -243,7 +207,7 @@ class SimpleCaptureControl extends BaseComponent {
         // Habilitar/deshabilitar botones
         const isCapturing = this.captureState === 'capturing';
         this.captureButton.disabled = isCapturing;
-        this.testButton.disabled = isCapturing;
+        this.clearButton.disabled = isCapturing;
     }
 
     /**
