@@ -13,7 +13,18 @@ class BiometricAdapter {
      * Conectar al backend via Server-Sent Events
      */
     async connect() {
-        if (this.isConnected) return;
+        // Evitar múltiples conexiones: verificar si ya existe una conexión activa
+        if (this.eventSource && this.isConnected) {
+            console.log('[BiometricAdapter] Ya conectado, reutilizando conexión existente');
+            return;
+        }
+
+        // Cerrar conexión anterior si existe (cleanup)
+        if (this.eventSource) {
+            console.log('[BiometricAdapter] Cerrando conexión anterior antes de reconectar');
+            this.eventSource.close();
+            this.eventSource = null;
+        }
 
         return new Promise((resolve, reject) => {
             try {
@@ -21,7 +32,7 @@ class BiometricAdapter {
 
                 this.eventSource.onopen = () => {
                     this.isConnected = true;
-                    console.log('[BiometricAdapter] Conectado al backend');
+                    console.log('[BiometricAdapter] ✅ Conectado al backend SSE');
                     resolve(true);
                 };
 
@@ -29,10 +40,21 @@ class BiometricAdapter {
                     this._handleBackendEvent(event);
                 };
 
-                this.eventSource.onerror = () => {
+                this.eventSource.onerror = (error) => {
                     this.isConnected = false;
-                    console.error('[BiometricAdapter] Error de conexión');
-                    setTimeout(() => this.connect(), 3000); // Reconexión automática
+                    console.error('[BiometricAdapter] ❌ Error de conexión SSE');
+
+                    // Cerrar conexión fallida antes de reintentar
+                    if (this.eventSource) {
+                        this.eventSource.close();
+                        this.eventSource = null;
+                    }
+
+                    // Reconexión automática después de 3 segundos
+                    setTimeout(() => {
+                        console.log('[BiometricAdapter] 🔄 Reintentando conexión SSE...');
+                        this.connect().catch(console.error);
+                    }, 3000);
                 };
             } catch (error) {
                 reject(error);
@@ -166,8 +188,9 @@ class BiometricAdapter {
     disconnect() {
         if (this.eventSource) {
             this.eventSource.close();
+            this.eventSource = null;
             this.isConnected = false;
-            console.log('[BiometricAdapter] Desconectado del backend');
+            console.log('[BiometricAdapter] 🔌 Desconectado del backend SSE');
         }
     }
 
