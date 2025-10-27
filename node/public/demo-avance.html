@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Avance - Controles Biométricos DP4500</title>
+
+    <!-- Estilos de componentes -->
+    <link rel="stylesheet" href="/js/styles/components.css">
+
+    <style>
+        :root {
+            --primary-color: #4fd1c7;
+            --secondary-color: #06b6d4;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --border-radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1f2933;
+        }
+
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .demo-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .demo-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .demo-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .control-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .control-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-card h2::before {
+            content: '●';
+            color: var(--primary-color);
+            font-size: 0.8em;
+        }
+
+        .control-description {
+            color: #6b7280;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .control-container {
+            min-height: 200px;
+        }
+
+        .full-width-card {
+            grid-column: 1 / -1;
+        }
+
+        .status-bar {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-bar .status-text {
+            font-weight: 600;
+            color: #1f2933;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .section-divider {
+            grid-column: 1 / -1;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .demo-header h1 {
+                font-size: 1.8rem;
+            }
+        }
+
+        /* Animación de entrada */
+        .control-card {
+            animation: fadeInUp 0.5s ease-out forwards;
+            opacity: 0;
+        }
+
+        .control-card:nth-child(1) { animation-delay: 0.1s; }
+        .control-card:nth-child(2) { animation-delay: 0.2s; }
+        .control-card:nth-child(3) { animation-delay: 0.3s; }
+        .control-card:nth-child(4) { animation-delay: 0.4s; }
+        .control-card:nth-child(5) { animation-delay: 0.5s; }
+        .control-card:nth-child(6) { animation-delay: 0.6s; }
+        .control-card:nth-child(7) { animation-delay: 0.7s; }
+        .control-card:nth-child(8) { animation-delay: 0.8s; }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <!-- Header -->
+        <div class="demo-header">
+            <h1>🔐 Demo Avance - Controles Biométricos</h1>
+            <p>Sistema completo de gestión DigitalPersona DP4500</p>
+        </div>
+
+        <!-- Barra de estado global -->
+        <div class="status-bar">
+            <div class="status-text">
+                <span id="globalStatus">Inicializando sistema...</span>
+            </div>
+            <div class="status-indicator" id="statusIndicator"></div>
+        </div>
+
+        <!-- Grid de controles -->
+        <div class="controls-grid">
+            <!-- 1. Reader Control -->
+            <div class="control-card">
+                <h2>Reader Control</h2>
+                <p class="control-description">
+                    Gestión y estado del lector DP4500. Inicialización del dispositivo y monitoreo de conexión.
+                </p>
+                <div id="reader-control" class="control-container"></div>
+            </div>
+
+            <!-- 2. Enrollment Control -->
+            <div class="control-card">
+                <h2>Enrollment Control</h2>
+                <p class="control-description">
+                    Proceso de enrolamiento completo (4 muestras). Registro de nuevos usuarios en el sistema.
+                </p>
+                <div id="enrollment-control" class="control-container"></div>
+            </div>
+
+            <!-- 3. Verification Control -->
+            <div class="control-card">
+                <h2>Verification Control</h2>
+                <p class="control-description">
+                    Verificación 1:1 e Identificación 1:N. Autenticación y búsqueda de usuarios registrados.
+                </p>
+                <div id="verification-control" class="control-container"></div>
+            </div>
+
+            <!-- 4. Simple Capture Control -->
+            <div class="control-card">
+                <h2>Simple Capture Control</h2>
+                <p class="control-description">
+                    Captura básica de huellas dactilares sin proceso de enrolamiento. Útil para pruebas rápidas.
+                </p>
+                <div id="capture-control" class="control-container"></div>
+            </div>
+
+            <!-- Divider -->
+            <div class="section-divider"></div>
+
+            <!-- 5. Log Device Control -->
+            <div class="control-card full-width-card">
+                <h2>Log Device Control</h2>
+                <p class="control-description">
+                    Registro de eventos y debugging del dispositivo. Visualización de operaciones en tiempo real.
+                </p>
+                <div id="log-control" class="control-container"></div>
+            </div>
+
+            <!-- 6. Tech Device Control -->
+            <div class="control-card full-width-card">
+                <h2>Tech Device Control</h2>
+                <p class="control-description">
+                    Información técnica avanzada del dispositivo. SDK version, capabilities, hardware details.
+                </p>
+                <div id="tech-control" class="control-container"></div>
+            </div>
+
+            <!-- 7. Template Manager Control -->
+            <div class="control-card full-width-card">
+                <h2>Template Manager Control</h2>
+                <p class="control-description">
+                    Gestión y administración de plantillas biométricas almacenadas. Visualiza, busca y gestiona usuarios registrados.
+                </p>
+                <div id="template-manager" class="control-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts: Orden de dependencias -->
+
+    <!-- 1. Adapter (no dependencies) -->
+    <script src="/js/adapter/BiometricAdapter.js"></script>
+
+    <!-- 2. Component Framework (no dependencies) -->
+    <script src="/js/components/BaseComponent.js"></script>
+    <script src="/js/components/ComponentFactory.js"></script>
+
+    <!-- 3. Biometric Controls (depend on adapter + components) -->
+    <script src="/js/controls/EnrollmentControl.js"></script>
+    <script src="/js/controls/VerificationControl.js"></script>
+    <script src="/js/controls/SimpleCaptureControl.js"></script>
+    <script src="/js/controls/ReaderControl.js"></script>
+    <script src="/js/controls/LogDeviceControl.js"></script>
+    <script src="/js/controls/TechDeviceControl.js"></script>
+    <script src="/js/controls/TemplateManagerControl.js"></script>
+
+    <!-- 4. Aplicación principal -->
+    <script>
+        /**
+         * Demo Avance - Aplicación Principal
+         *
+         * Arquitectura:
+         * - BiometricAdapter: Gateway único para SSE + API REST
+         * - ComponentFactory: Factory para crear instancias de controles
+         * - Controles: Componentes biométricos especializados
+         */
+        (function() {
+            'use strict';
+
+            console.log('[DEMO] 🚀 Inicializando Demo Avance...');
+
+            // Referencias a componentes
+            const components = {
+                reader: null,
+                enrollment: null,
+                verification: null,
+                capture: null,
+                log: null,
+                tech: null,
+                templateManager: null
+            };
+
+            // Estado global
+            const state = {
+                adapter: null,
+                isReady: false,
+                readerInitialized: false, // Estado del lector DP4500
+                lastEvent: null
+            };
+
+            // Referencias DOM
+            const dom = {
+                globalStatus: document.getElementById('globalStatus'),
+                statusIndicator: document.getElementById('statusIndicator')
+            };
+
+            /**
+             * Actualizar estado global
+             */
+            function updateGlobalStatus(message, isConnected = false) {
+                dom.globalStatus.textContent = message;
+
+                if (isConnected) {
+                    dom.statusIndicator.style.background = '#10b981';
+                    dom.statusIndicator.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.5)';
+                } else {
+                    dom.statusIndicator.style.background = '#f59e0b';
+                    dom.statusIndicator.style.boxShadow = '0 0 10px rgba(245, 158, 11, 0.5)';
+                }
+            }
+
+            /**
+             * Verificar si el lector está inicializado
+             * @returns {boolean} true si el lector está encendido
+             */
+            function isReaderReady() {
+                return state.readerInitialized;
+            }
+
+            /**
+             * Mostrar alerta si el lector no está inicializado
+             * @param {string} operation - Nombre de la operación que se intentó ejecutar
+             */
+            function checkReaderOrWarn(operation = 'esta operación') {
+                if (!state.readerInitialized) {
+                    updateGlobalStatus(`⚠️ Enciende el lector primero para ${operation}`, false);
+                    return false;
+                }
+                return true;
+            }
+
+            // Exponer funciones globalmente para que los controles puedan usarlas
+            window.isReaderReady = isReaderReady;
+            window.checkReaderOrWarn = checkReaderOrWarn;
+
+            /**
+             * Inicializar BiometricAdapter
+             */
+            async function initializeAdapter() {
+                try {
+                    console.log('[DEMO] 📡 Inicializando BiometricAdapter...');
+                    updateGlobalStatus('Conectando al backend SSE...', false);
+
+                    state.adapter = window.BiometricAdapter;
+
+                    if (!state.adapter) {
+                        throw new Error('BiometricAdapter no disponible');
+                    }
+
+                    // Escuchar eventos globales
+                    state.adapter.on('*', (data) => {
+                        state.lastEvent = data;
+                        console.log('[DEMO] 📨 Evento global:', data);
+                    });
+
+                    // Evento específico: lector listo
+                    state.adapter.on('READER_READY', () => {
+                        state.isReady = true;
+                        updateGlobalStatus('✅ Sistema biométrico listo', true);
+                    });
+
+                    // Evento específico: error de sistema
+                    state.adapter.on('SYSTEM_ERROR', (data) => {
+                        updateGlobalStatus(`❌ Error: ${data.message}`, false);
+                    });
+
+                    console.log('[DEMO] ✅ BiometricAdapter inicializado');
+
+                } catch (error) {
+                    console.error('[DEMO] ❌ Error inicializando adapter:', error);
+                    updateGlobalStatus(`❌ Error: ${error.message}`, false);
+                }
+            }
+
+            /**
+             * Inicializar todos los controles usando ComponentFactory
+             */
+            function initializeControls() {
+                try {
+                    console.log('[DEMO] 🎮 Inicializando controles biométricos...');
+
+                    // Verificar que ComponentFactory esté disponible
+                    if (!window.ComponentFactory) {
+                        throw new Error('ComponentFactory no disponible');
+                    }
+
+                    // 1. Reader Control
+                    console.log('[DEMO] 📟 Creando ReaderControl...');
+                    components.reader = window.ComponentFactory.create(
+                        'readercontrol',
+                        'reader-control',
+                        { autoInit: false } // NO auto-inicializar
+                    );
+
+                    // Escuchar eventos del lector
+                    components.reader.on('readerInitialized', () => {
+                        console.log('[DEMO] ✅ Lector inicializado');
+                        state.readerInitialized = true;
+                        updateGlobalStatus('✅ Lector DP4500 encendido - Sistema listo', true);
+                    });
+
+                    components.reader.on('readerDisposed', () => {
+                        console.log('[DEMO] ⚠️ Lector apagado');
+                        state.readerInitialized = false;
+                        updateGlobalStatus('⚠️ Lector apagado - Enciende el lector para usar los controles', false);
+                    });
+
+                    // 2. Enrollment Control
+                    console.log('[DEMO] 📝 Creando EnrollmentControl...');
+                    components.enrollment = window.ComponentFactory.create(
+                        'enrollment',
+                        'enrollment-control',
+                        { maxSamples: 4, autoCancel: false }
+                    );
+
+                    // Escuchar evento de enrolamiento completado
+                    components.enrollment.on('enrolled', (data) => {
+                        console.log('[DEMO] ✅ Usuario enrolado:', data);
+                        updateGlobalStatus(`✅ Usuario enrolado: ${data.userId}`, true);
+
+                        // Refrescar lista de usuarios en verificación
+                        if (components.verification && components.verification._loadUsers) {
+                            components.verification._loadUsers();
+                        }
+
+                        // El TemplateManager se actualiza automáticamente vía eventos SSE
+                        // pero podemos forzar actualización si es necesario
+                    });
+
+                    // 3. Verification Control
+                    console.log('[DEMO] 🔍 Creando VerificationControl...');
+                    components.verification = window.ComponentFactory.create(
+                        'verification',
+                        'verification-control',
+                        { scoreThreshold: 60, autoRefreshUsers: true }
+                    );
+
+                    components.verification.on('verified', (result) => {
+                        console.log('[DEMO] ✅ Verificación completada:', result);
+                        const status = result.verified ? '✅ Verificación exitosa' : '❌ Verificación fallida';
+                        updateGlobalStatus(status, result.verified);
+                    });
+
+                    // 4. Simple Capture Control
+                    console.log('[DEMO] 📸 Creando SimpleCaptureControl...');
+                    components.capture = window.ComponentFactory.create(
+                        'simplecapture',
+                        'capture-control',
+                        { autoCapture: false }
+                    );
+
+                    components.capture.on('captured', (data) => {
+                        console.log('[DEMO] 📸 Huella capturada:', data);
+                        updateGlobalStatus('📸 Huella capturada exitosamente', true);
+                    });
+
+                    // 5. Log Device Control
+                    console.log('[DEMO] 📋 Creando LogDeviceControl...');
+                    components.log = window.ComponentFactory.create(
+                        'logdevice',
+                        'log-control',
+                        { maxLogs: 50 }
+                    );
+
+                    // 6. Tech Device Control
+                    console.log('[DEMO] 🔧 Creando TechDeviceControl...');
+                    components.tech = window.ComponentFactory.create(
+                        'techdevice',
+                        'tech-control',
+                        { showAdvancedInfo: true }
+                    );
+
+                    // 7. Template Manager Control
+                    console.log('[DEMO] 📦 Creando TemplateManagerControl...');
+                    components.templateManager = window.ComponentFactory.create(
+                        'templatemanager',
+                        'template-manager',
+                        { autoRefresh: true, refreshInterval: 5000, showHash: true }
+                    );
+
+                    // Escuchar eventos del TemplateManager
+                    components.templateManager.on('templatesLoaded', (data) => {
+                        console.log('[DEMO] 📦 Plantillas cargadas:', data.count);
+                    });
+
+                    components.templateManager.on('templatesCleared', (data) => {
+                        console.log('[DEMO] 🗑️ Plantillas eliminadas:', data.count);
+                        updateGlobalStatus('🗑️ Almacenamiento limpiado', true);
+
+                        // Refrescar lista de usuarios en verificación
+                        if (components.verification && components.verification._loadUsers) {
+                            components.verification._loadUsers();
+                        }
+                    });
+
+                    console.log('[DEMO] ✅ Todos los controles inicializados');
+                    console.log('[DEMO] 📊 Componentes activos:', window.ComponentFactory.getActiveComponents());
+
+                } catch (error) {
+                    console.error('[DEMO] ❌ Error inicializando controles:', error);
+                    updateGlobalStatus(`❌ Error: ${error.message}`, false);
+                }
+            }
+
+            /**
+             * Inicializar lector DP4500
+             */
+            async function initializeReader() {
+                try {
+                    console.log('[DEMO] 🔌 Inicializando lector DP4500...');
+                    updateGlobalStatus('🔌 Inicializando lector...', false);
+
+                    await state.adapter.initializeReader();
+
+                    console.log('[DEMO] ✅ Lector DP4500 inicializado');
+                } catch (error) {
+                    console.error('[DEMO] ❌ Error inicializando lector:', error);
+                    updateGlobalStatus(`❌ Error: ${error.message}`, false);
+                }
+            }
+
+            /**
+             * Setup principal
+             */
+            async function setup() {
+                console.log('[DEMO] 🚀 Iniciando setup...');
+
+                try {
+                    // 1. Inicializar adapter
+                    await initializeAdapter();
+
+                    // 2. Inicializar controles
+                    initializeControls();
+
+                    // 3. NO inicializar lector automáticamente - debe hacerse desde ReaderControl
+                    // await initializeReader();
+
+                    console.log('[DEMO] ✅ Setup completado (lector NO inicializado)');
+                    console.log('[DEMO] ⚠️ IMPORTANTE: Inicia el lector usando ReaderControl');
+                    updateGlobalStatus('⚠️ Lector apagado - Enciende el lector desde ReaderControl', false);
+
+                } catch (error) {
+                    console.error('[DEMO] ❌ Error en setup:', error);
+                    updateGlobalStatus(`❌ Error en setup: ${error.message}`, false);
+                }
+            }
+
+            /**
+             * Cleanup al cerrar ventana
+             */
+            window.addEventListener('beforeunload', () => {
+                console.log('[DEMO] 🧹 Limpiando recursos...');
+
+                if (state.adapter) {
+                    state.adapter.disconnect();
+                }
+
+                if (window.ComponentFactory) {
+                    window.ComponentFactory.destroyAll();
+                }
+            });
+
+            // Ejecutar setup cuando ComponentFactory esté listo
+            function waitForComponentFactory() {
+                if (window.ComponentFactory) {
+                    // ComponentFactory ya está disponible, ejecutar setup
+                    console.log('[DEMO] ✅ ComponentFactory disponible');
+                    setup();
+                } else {
+                    // Esperar al evento componentFactoryReady
+                    console.log('[DEMO] ⏳ Esperando a ComponentFactory...');
+                    window.addEventListener('componentFactoryReady', () => {
+                        console.log('[DEMO] ✅ ComponentFactory listo (evento recibido)');
+                        setup();
+                    }, { once: true });
+                }
+            }
+
+            // Ejecutar cuando el DOM esté listo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', waitForComponentFactory);
+            } else {
+                waitForComponentFactory();
+            }
+
+        })();
+    </script>
+</body>
+</html>
