@@ -87,17 +87,45 @@ A complete fingerprint enrollment, verification, and identification system using
 ## System Architecture
 
 ```
-┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
-│   Web Browser   │◄──►│  Node.js +   │◄──►│   C# Bridge     │
-│   (HTML/CSS/JS) │    │  Express     │    │  (.NET 4.7.2)  │
-└─────────────────┘    └──────────────┘    └─────────────────┘
-                                                     │
-                                                     ▼
-                                           ┌─────────────────┐
-                                           │   DPUruNet      │
-                                           │   (DP4500)      │
-                                           └─────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    FRONTEND (Browser)                        │
+│  index.html → BiometricAdapter → EventSource (/events)      │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         │ Server-Sent Events (SSE)
+                         │ Real-time biometric events
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│                   NODE.JS (server.ts)                        │
+│  Express + SseBridge + Edge.js Callback Handler             │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         │ Edge.js Bridge (V8 ↔ CLR)
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│              C# BACKEND (EdgeUruBridge.cs)                   │
+│  EdgeUruBridge → Dp4500Service → DPUruNet SDK               │
+│  • Async operations with Task.Run()                          │
+│  • Real-time event callbacks during capture                  │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+                  ┌──────────────┐
+                  │  DP4500      │
+                  │  Hardware    │
+                  └──────────────┘
 ```
+
+### Real-time Events Architecture
+
+This system implements **Server-Sent Events (SSE)** for real-time communication during biometric operations:
+
+- **Frontend** subscribes to `/events` endpoint via EventSource
+- **C# Backend** fires events during capture (images, progress, attempts)
+- **SseBridge** routes events to all connected clients instantly
+- **BiometricAdapter** handles events and updates UI in real-time
+
+**Technical Details:** See [SOLUCION-EVENTOS-TIEMPO-REAL.md](./SOLUCION-EVENTOS-TIEMPO-REAL.md) for the complete technical explanation of how we solved the real-time event delivery challenge.
 
 ## Configuration
 
@@ -121,9 +149,9 @@ A complete fingerprint enrollment, verification, and identification system using
 - `POST /api/dispose` - Clean up resources
 
 ### Fingerprint Operations
-- `POST /api/enroll` - Enroll new fingerprint
+- `POST /api/enroll` - Enroll new fingerprint (4 samples with real-time events)
 - `POST /api/verify` - Verify 1:1 against specific user
-- `POST /api/identify1n` - Identify 1:N against gallery
+- `POST /api/identify` - Identify 1:N against gallery
 - `POST /api/single` - Single capture without enrollment
 
 ### Gallery Management
@@ -170,26 +198,33 @@ A complete fingerprint enrollment, verification, and identification system using
 ### Project Structure
 ```
 edge-uru-ui/
-├── bridge-csharp/           # C# .NET bridge code
-│   ├── Dp4500Wrapper.cs     # Core fingerprint operations
-│   ├── EdgeUruBridgeCSharp.cs # Edge.js interface
-│   └── EdgeBridge.csproj    # Project file
-├── node/                    # Node.js server
+├── bridge-csharp/              # C# .NET bridge code
+│   ├── src/
+│   │   ├── Bridge/
+│   │   │   └── EdgeUruBridge.cs      # Edge.js interface & event handling
+│   │   └── Core/
+│   │       └── Dp4500Service.cs      # Core fingerprint operations
+│   └── EdgeBridge.csproj             # Project file
+├── node/                           # Node.js server
 │   ├── public/
-│   │   └── index.html       # Web UI
-│   ├── server.ts           # Express server
-│   ├── types.ts            # TypeScript definitions
-│   └── package.json        # Dependencies
-├── bin-deps/               # Native DLL files
-└── out/                    # Compiled output
+│   │   ├── index.html              # Web UI (simplified panel)
+│   │   └── js/                     # Frontend JavaScript modules
+│   │       ├── infrastructure/     # Core framework
+│   │       └── biometric-controls/ # UI components
+│   ├── server.ts                   # Express server + API endpoints
+│   ├── sseBridge.ts                # Server-Sent Events bridge
+│   └── package.json                # Dependencies
+├── bin-deps/                       # Native DLL files
+└── out/net472/                     # Compiled C# output
 ```
 
 ### Adding Features
 
-1. **New C# Operations**: Add to `EdgeUruBridgeCSharp.cs`
-2. **API Endpoints**: Add to `server.ts`
-3. **UI Components**: Modify `index.html`
-4. **Type Safety**: Update `types.ts`
+1. **New C# Operations**: Add to `src/Bridge/EdgeUruBridge.cs`
+2. **Core Biometric Logic**: Modify `src/Core/Dp4500Service.cs`
+3. **API Endpoints**: Add to `server.ts`
+4. **Real-time Events**: Configure in `sseBridge.ts`
+5. **UI Components**: Modify `index.html` or add to `public/js/biometric-controls/`
 
 ## License
 
