@@ -32,17 +32,20 @@ ComponentFactory.create('enrollment', 'myDiv', config)
 
 ```
 js/
-├── core/
+├── infrastructure/
 │   ├── BiometricAdapter.js      # Comunicación backend-frontend
-│   └── BaseComponent.js         # Clase base para componentes
-├── components/
+│   ├── BaseComponent.js         # Clase base para componentes
+│   ├── ComponentFactory.js      # Factory para crear componentes
+│   └── EventRouter.js           # Enrutador de eventos SSE
+├── biometric-controls/
 │   ├── EnrollmentControl.js     # Componente de enrolamiento
 │   ├── SimpleCaptureControl.js  # Componente de captura
-│   └── VerificationControl.js   # Componente de verificación
-├── factory/
-│   └── ComponentFactory.js     # Factory para crear componentes
+│   ├── VerificationControl.js   # Componente de verificación
+│   ├── ReaderControl.js         # Control del estado del lector
+│   ├── LogDeviceControl.js      # Logs del dispositivo
+│   └── TechDeviceControl.js     # Información técnica avanzada
 └── styles/
-    └── components.css          # Estilos modulares
+    └── components.css           # Estilos modulares
 ```
 
 ## 🚀 Uso Básico
@@ -270,11 +273,11 @@ ComponentFactory.autoInit('', {
     <div id="verification" data-component="verification"></div>
 
     <!-- Scripts -->
-    <script src="js/core/BiometricAdapter.js"></script>
-    <script src="js/core/BaseComponent.js"></script>
-    <script src="js/components/EnrollmentControl.js"></script>
-    <script src="js/components/VerificationControl.js"></script>
-    <script src="js/factory/ComponentFactory.js"></script>
+    <script src="js/infrastructure/BiometricAdapter.js"></script>
+    <script src="js/infrastructure/BaseComponent.js"></script>
+    <script src="js/biometric-controls/EnrollmentControl.js"></script>
+    <script src="js/biometric-controls/VerificationControl.js"></script>
+    <script src="js/infrastructure/ComponentFactory.js"></script>
 </body>
 </html>
 ```
