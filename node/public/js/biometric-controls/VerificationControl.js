@@ -17,13 +17,6 @@ class VerificationControl extends BaseComponent {
         this.availableUsers = [];
         this.isProcessing = false;
 
-        // Suscribirse al EventRouter
-        if (this.eventRouter) {
-            this.eventRouter.subscribe('verification', this, this.componentId);
-            this.eventRouter.subscribe('identification', this, this.componentId);
-            console.log(`[${this.componentId}] Suscrito a eventos de verification e identification`);
-        }
-
         // Cargar usuarios
         this._loadUsers();
     }
@@ -232,11 +225,6 @@ class VerificationControl extends BaseComponent {
 
             this.showLoading(`Verificando ${this.selectedUserId}...`);
 
-            // Notificar al EventRouter
-            if (this.eventRouter) {
-                this.eventRouter.startOperation('verification', this.componentId);
-            }
-
             // Llamar al backend
             const result = await this.adapter.verifyFingerprint(this.selectedUserId);
 
@@ -256,10 +244,6 @@ class VerificationControl extends BaseComponent {
         } finally {
             this.isProcessing = false;
             this._updateUI();
-
-            if (this.eventRouter) {
-                this.eventRouter.endOperation('verification');
-            }
         }
     }
 
@@ -273,10 +257,6 @@ class VerificationControl extends BaseComponent {
 
             this.showLoading('Buscando coincidencias...');
 
-            // Notificar al EventRouter
-            if (this.eventRouter) {
-                this.eventRouter.startOperation('identification', this.componentId);
-            }
 
             // Llamar al backend
             const result = await this.adapter.identifyFingerprint();
@@ -298,10 +278,6 @@ class VerificationControl extends BaseComponent {
         } finally {
             this.isProcessing = false;
             this._updateUI();
-
-            if (this.eventRouter) {
-                this.eventRouter.endOperation('identification');
-            }
         }
     }
 

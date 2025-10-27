@@ -33,10 +33,9 @@ ComponentFactory.create('enrollment', 'myDiv', config)
 ```
 js/
 ├── infrastructure/
-│   ├── BiometricAdapter.js      # Comunicación backend-frontend
+│   ├── BiometricAdapter.js      # Comunicación backend-frontend (gateway principal)
 │   ├── BaseComponent.js         # Clase base para componentes
-│   ├── ComponentFactory.js      # Factory para crear componentes
-│   └── EventRouter.js           # Enrutador de eventos SSE
+│   └── ComponentFactory.js      # Factory para crear componentes
 ├── biometric-controls/
 │   ├── EnrollmentControl.js     # Componente de enrolamiento
 │   ├── SimpleCaptureControl.js  # Componente de captura

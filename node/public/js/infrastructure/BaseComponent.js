@@ -5,7 +5,7 @@
  * - Crear estructura HTML base
  * - Actualizar mensajes de estado con timestamp
  * - Mostrar imágenes de huella
- * - Manejar eventos del EventRouter
+ * - Comunicarse con BiometricAdapter para eventos en tiempo real
  */
 class BaseComponent {
     constructor(containerId, adapter, config = {}) {
@@ -17,9 +17,6 @@ class BaseComponent {
 
         // Identificador único del componente
         this.componentId = `${this.constructor.name}_${containerId}_${Date.now()}`;
-
-        // EventRouter (si está disponible)
-        this.eventRouter = config.eventRouter || null;
 
         // Callback para agregar logs al sistema global
         this.globalLogCallback = config.onLog || null;
@@ -98,8 +95,9 @@ class BaseComponent {
     }
 
     /**
-     * Manejar evento desde EventRouter
-     * Este método es llamado por EventRouter cuando hay eventos SSE
+     * Manejar evento desde BiometricAdapter
+     * Este método procesa eventos SSE en tiempo real del backend
+     * Nota: Nombre legacy "handleRouterEvent" mantenido por compatibilidad
      */
     handleRouterEvent(eventType, eventData) {
         // Extraer mensaje base

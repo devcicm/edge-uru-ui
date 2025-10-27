@@ -15,13 +15,7 @@ class EnrollmentControl extends BaseComponent {
         this.userId = '';
         this.isEnrolling = false;
 
-        // Suscribirse al EventRouter
-        if (this.eventRouter) {
-            this.eventRouter.subscribe('enrollment', this, this.componentId);
-            console.log(`[${this.componentId}] Suscrito a eventos de enrollment`);
-        }
-
-        // Escuchar DIRECTAMENTE al adapter para eventos en tiempo real
+        // Escuchar directamente al adapter para eventos en tiempo real
         this._setupDirectListener();
 
         // Escuchar evento de finalización
@@ -30,8 +24,7 @@ class EnrollmentControl extends BaseComponent {
 
     /**
      * Configurar listener directo al adapter para eventos en tiempo real
-     * Esto asegura que recibimos TODOS los eventos SSE instantáneamente,
-     * sin pasar por el filtro del EventRouter
+     * Esto asegura que recibimos TODOS los eventos SSE instantáneamente
      */
     _setupDirectListener() {
         // Escuchar TODOS los eventos del adapter con wildcard
@@ -108,11 +101,6 @@ class EnrollmentControl extends BaseComponent {
         this.isEnrolling = false;
         this._updateUI();
 
-        // Finalizar operación en EventRouter
-        if (this.eventRouter) {
-            this.eventRouter.endOperation('enrollment');
-        }
-
         // Auto-limpiar después de 3 segundos
         setTimeout(() => this.clear(), 3000);
     }
@@ -125,11 +113,6 @@ class EnrollmentControl extends BaseComponent {
 
         this.isEnrolling = false;
         this._updateUI();
-
-        // Finalizar operación en EventRouter
-        if (this.eventRouter) {
-            this.eventRouter.endOperation('enrollment');
-        }
     }
 
     /**
@@ -231,11 +214,6 @@ class EnrollmentControl extends BaseComponent {
 
             this.showLoading('Iniciando enrolamiento...');
 
-            // Notificar al EventRouter que esta operación comenzó
-            if (this.eventRouter) {
-                this.eventRouter.startOperation('enrollment', this.componentId);
-            }
-
             // Llamar al backend - NO esperamos resultado aquí
             // Los eventos SSE nos notificarán del progreso y finalización en tiempo real
             await this.adapter.enrollFingerprint(this.userId);
@@ -248,10 +226,6 @@ class EnrollmentControl extends BaseComponent {
             // Solo en caso de error de conexión finalizamos
             this.isEnrolling = false;
             this._updateUI();
-
-            if (this.eventRouter) {
-                this.eventRouter.endOperation('enrollment');
-            }
         }
     }
 

@@ -12,8 +12,7 @@ This directory contains the JavaScript component system for the biometric finger
 js/
 ├── infrastructure/          # Core infrastructure - DOM framework & communication
 │   ├── BaseComponent.js     # Base class for building UI components
-│   ├── BiometricAdapter.js  # Backend-frontend communication adapter
-│   ├── EventRouter.js       # Middleware for routing SSE events to components
+│   ├── BiometricAdapter.js  # Backend-frontend communication adapter (main gateway)
 │   └── ComponentFactory.js  # Factory pattern for component creation
 │
 └── biometric-controls/      # Business logic - Fingerprint reader UI
@@ -101,68 +100,12 @@ adapter.on('enrollment:completed', (data) => {
 const result = await adapter.enrollV2({ userId: 'USER001' });
 ```
 
-#### `EventRouter.js`
-
-**NEW**: Middleware for routing SSE events to components.
-
-**Purpose**: Solves the problem of event routing by directing backend SSE events to the correct component based on active operations.
-
-**Responsibilities**:
-- Capture all SSE events from BiometricAdapter
-- Route events to subscribed components based on operation type
-- Track active operations (enrollment, verification, identification)
-- Provide event history and statistics for debugging
-- Ensure events reach the correct component's status display
-
-**Key Features**:
-- **Context-aware routing**: Events like `CAPTURE_STARTED` are routed to the currently active operation
-- **Subscription model**: Components subscribe to specific event categories
-- **Operation tracking**: Knows which component is performing which operation
-- **Isolated dispatch**: Events are dispatched ONLY to the component with active operation (prevents cross-component contamination)
-- **Debugging tools**: Built-in statistics and event history
-
-**Usage**:
-```javascript
-// Initialize EventRouter
-const eventRouter = new EventRouter(biometricAdapter);
-
-// Subscribe a component to enrollment events
-const enrollCtrl = new EnrollmentControl('container', adapter, { eventRouter });
-eventRouter.subscribe('enrollment', enrollCtrl, enrollCtrl.componentId);
-
-// Start an operation (automatically routes future events)
-eventRouter.startOperation('enrollment', enrollCtrl.componentId, { userId: 'USER001' });
-
-// End operation when done
-eventRouter.endOperation('enrollment');
-
-// Debug: View routing statistics
-eventRouter.debugStatus();
+**Architecture Flow**:
 ```
-
-**Event Categories**:
-- `enrollment` - ENROLLMENT_* events
-- `verification` - VERIFICATION_* events
-- `identification` - IDENTIFICATION_* events
-- `reader` - READER_*, DEVICE_STATUS events
-- `system` - SYSTEM_* events
-- `all` - All events (for logging components)
-
-**How it works**:
-```
-Backend SSE → BiometricAdapter → EventRouter → Active Component ONLY
-                                      ↓
-                                 [Routes based on:
-                                  - Event type prefix (ENROLLMENT_*, VERIFICATION_*, etc.)
-                                  - Active operation tracking
-                                  - Component isolation (1 active component per operation type)]
-
-Example Flow:
-1. EnrollmentControl calls eventRouter.startOperation('enrollment', componentId)
-2. Backend sends ENROLLMENT_STARTED event
-3. EventRouter dispatches to EnrollmentControl ONLY (not VerificationControl)
-4. Event displays in EnrollmentControl's SSE status area
-5. VerificationControl remains clean (no cross-contamination)
+Backend SSE → BiometricAdapter (gateway) → Components listen directly
+                                            ↓
+                              Components use adapter.on('*', handler)
+                              to receive all real-time events
 ```
 
 #### `ComponentFactory.js`
