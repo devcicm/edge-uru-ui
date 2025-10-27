@@ -1,242 +1,766 @@
-# DP4500 Fingerprint Manager
+# EdgeUruBridgeCore - Sistema Biométrico DP4500
 
-A complete fingerprint enrollment, verification, and identification system using DP4500 reader with Node.js + Edge.js + .NET integration.
+Sistema completo de captura, enrolamiento, verificación e identificación de huellas dactilares utilizando el lector DP4500 con integración Node.js + Edge.js + .NET Framework.
 
-## Features
+## 🌟 Características Principales
 
-- **🔒 Fingerprint Enrollment**: Register new users with automatic quality checking
-- **✅ 1:1 Verification**: Verify identity against enrolled fingerprints
-- **🔍 1:N Identification**: Identify unknown fingerprints against the entire gallery
-- **📊 Live Logging**: Real-time system events and operation status
-- **👥 Gallery Management**: View, manage, and clear enrolled fingerprints
-- **🎨 Modern UI**: Responsive web interface with dark theme
+### Operaciones Biométricas
+- **📝 Enrolamiento**: Registro de nuevos usuarios con captura de 4 muestras y control de calidad automático
+- **✅ Verificación 1:1**: Verificación de identidad contra huellas enroladas específicas
+- **🔍 Identificación 1:N**: Identificación de huellas desconocidas contra toda la galería
+- **📸 Captura Simple**: Captura individual de huellas sin enrolamiento
 
-## Prerequisites
+### Funcionalidades Avanzadas
+- **⚡ Eventos en Tiempo Real**: Actualización instantánea de progreso, imágenes y estado mediante Server-Sent Events (SSE)
+- **🎨 Interfaz Modular**: Sistema de componentes reutilizables con arquitectura desacoplada
+- **📊 Gestión de Plantillas**: Administración completa de plantillas biométricas almacenadas
+- **🔧 Control de Dispositivo**: Inicialización, configuración y monitoreo del lector DP4500
+- **📋 Logging en Vivo**: Sistema de logs en tiempo real con múltiples niveles de detalle
 
-- **Windows OS** (Required for DP4500 drivers)
-- **Node.js x86** (32-bit version required for edge-js compatibility)
-- **.NET Framework 4.7.2** targeting pack
-- **DP4500 Hardware** connected and working
-- **DLL Dependencies**: Place the following files in `bin-deps/`:
-  - `DPUruNet.dll`
-  - `dpfpdd.dll`
-  - `dpfj.dll`
-
-## Installation & Setup
-
-1. **Clone/Download** this repository
-2. **Install Dependencies**:
-   ```bash
-   cd node
-   npm install
-   ```
-3. **Build C# Bridge**:
-   ```bash
-   dotnet build bridge-csharp/EdgeBridge.csproj -c Release
-   ```
-4. **Build TypeScript Server**:
-   ```bash
-   cd node
-   npm run build
-   ```
-
-## Running the Application
-
-1. **Start the Server**:
-   ```bash
-   cd node
-   npm start
-   ```
-2. **Open Web Interface**: Navigate to http://localhost:8080
-
-## Usage Guide
-
-### Initial Setup (Required)
-1. **Bootstrap**: Initialize native DLL loading
-2. **Register Callback**: Set up event handling
-3. **Initialize Reader**: Connect to DP4500 device
-
-### Fingerprint Operations
-
-#### Enrollment Process
-1. Enter a unique **User Tag/ID** (e.g., "John_Doe", "Employee_001")
-2. Set **Timeout** (default: 30 seconds)
-3. Click **"Start Enrollment Process"**
-4. Follow prompts to scan finger **4 times** with quality checking
-5. System automatically saves to gallery upon success
-
-#### Verification Process
-1. Select an enrolled user from the **dropdown list**
-2. Set **Timeout** (default: 15 seconds)
-3. Click **"Verify Fingerprint"**
-4. Scan finger to verify identity
-5. Results show **VERIFIED/NOT VERIFIED** with score details
-
-#### Identification (1:N)
-1. Set **Timeout** (default: 12 seconds)
-2. Click **"Identify 1:N"**
-3. Scan unknown finger
-4. System searches entire gallery for matches
-5. Returns best match or "NO MATCH" result
-
-### Gallery Management
-- **Refresh**: Update fingerprint list
-- **Clear All**: Remove all enrolled fingerprints
-- **Individual Delete**: Remove specific users (via table actions)
-
-## System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    FRONTEND (Browser)                        │
-│  index.html → BiometricAdapter → EventSource (/events)      │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         │ Server-Sent Events (SSE)
-                         │ Real-time biometric events
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│                   NODE.JS (server.ts)                        │
-│  Express + SseBridge + Edge.js Callback Handler             │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         │ Edge.js Bridge (V8 ↔ CLR)
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│              C# BACKEND (EdgeUruBridge.cs)                   │
-│  EdgeUruBridge → Dp4500Service → DPUruNet SDK               │
-│  • Async operations with Task.Run()                          │
-│  • Real-time event callbacks during capture                  │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-                  ┌──────────────┐
-                  │  DP4500      │
-                  │  Hardware    │
-                  └──────────────┘
-```
-
-### Real-time Events Architecture
-
-This system implements **Server-Sent Events (SSE)** for real-time communication during biometric operations:
-
-- **Frontend** subscribes to `/events` endpoint via EventSource
-- **C# Backend** fires events during capture (images, progress, attempts)
-- **SseBridge** routes events to all connected clients instantly
-- **BiometricAdapter** handles events and updates UI in real-time
-
-**Technical Details:** See [SOLUCION-EVENTOS-TIEMPO-REAL.md](./SOLUCION-EVENTOS-TIEMPO-REAL.md) for the complete technical explanation of how we solved the real-time event delivery challenge.
-
-## Configuration
-
-### Timeout Settings
-- **Enrollment**: 30 seconds (allows multiple finger scans)
-- **Verification**: 15 seconds (single scan)
-- **Identification**: 12 seconds (single scan)
-- **Single Capture**: 10 seconds
-
-### Quality Parameters
-- **Target FARN**: 21474 (≈1% false accept rate)
-- **Max Samples**: 4 per enrollment
-- **Max Retries**: 3 per sample
-
-## API Endpoints
-
-### System Control
-- `POST /api/bootstrap` - Initialize native libraries
-- `POST /api/register` - Register event callbacks
-- `POST /api/init` - Initialize fingerprint reader
-- `POST /api/dispose` - Clean up resources
-
-### Fingerprint Operations
-- `POST /api/enroll` - Enroll new fingerprint (4 samples with real-time events)
-- `POST /api/verify` - Verify 1:1 against specific user
-- `POST /api/identify` - Identify 1:N against gallery
-- `POST /api/single` - Single capture without enrollment
-
-### Gallery Management
-- `GET /api/store` - List all enrolled fingerprints
-- `DELETE /api/store` - Clear entire gallery
-
-### Real-time Events
-- `GET /events` - Server-Sent Events stream for live updates
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"No hay lectores U.are.U conectados"**
-   - Check DP4500 USB connection
-   - Verify device drivers are installed
-   - Try different USB port
-
-2. **"Bootstrap/register failed"**
-   - Ensure DLL files are in `bin-deps/`
-   - Verify .NET Framework 4.7.2 is installed
-   - Check Windows compatibility
-
-3. **"Network error" in browser**
-   - Verify server is running on port 8080
-   - Check firewall settings
-   - Try localhost instead of IP address
-
-4. **Enrollment fails with quality errors**
-   - Clean finger and sensor surface
-   - Press firmly but don't slide finger
-   - Ensure good lighting conditions
-   - Try different finger if persistent issues
-
-### Performance Tips
-
-- Keep sensor surface clean and dry
-- Use consistent finger placement
-- Allow brief pause between scans during enrollment
-- Close browser tabs to free memory during operations
-
-## Development
-
-### Project Structure
-```
-edge-uru-ui/
-├── bridge-csharp/              # C# .NET bridge code
-│   ├── src/
-│   │   ├── Bridge/
-│   │   │   └── EdgeUruBridge.cs      # Edge.js interface & event handling
-│   │   └── Core/
-│   │       └── Dp4500Service.cs      # Core fingerprint operations
-│   └── EdgeBridge.csproj             # Project file
-├── node/                           # Node.js server
-│   ├── public/
-│   │   ├── index.html              # Web UI (simplified panel)
-│   │   └── js/                     # Frontend JavaScript modules
-│   │       ├── infrastructure/     # Core framework
-│   │       └── biometric-controls/ # UI components
-│   ├── server.ts                   # Express server + API endpoints
-│   ├── sseBridge.ts                # Server-Sent Events bridge
-│   └── package.json                # Dependencies
-├── bin-deps/                       # Native DLL files
-└── out/net472/                     # Compiled C# output
-```
-
-### Adding Features
-
-1. **New C# Operations**: Add to `src/Bridge/EdgeUruBridge.cs`
-2. **Core Biometric Logic**: Modify `src/Core/Dp4500Service.cs`
-3. **API Endpoints**: Add to `server.ts`
-4. **Real-time Events**: Configure in `sseBridge.ts`
-5. **UI Components**: Modify `index.html` or add to `public/js/biometric-controls/`
-
-## License
-
-This project is for demonstration and educational purposes. DigitalPersona SDK and DPUruNet are proprietary to HID Global/DigitalPersona.
-
-## Support
-
-For issues related to:
-- **Hardware**: Contact DigitalPersona/HID Global support
-- **SDK**: Refer to DPUruNet documentation
-- **This Application**: Check troubleshooting section above
+### Experiencia de Usuario
+- **🎯 Interfaz Responsive**: Diseño moderno adaptable a diferentes resoluciones
+- **🔄 Progreso Visual**: Barras de progreso animadas y contadores en tiempo real
+- **🎨 Feedback Inmediato**: Indicadores visuales de estado y resultados
+- **⚠️ Validaciones Inteligentes**: Verificación de estado del lector antes de cada operación
 
 ---
 
-**Note**: This application requires a physical DP4500 fingerprint reader and proper SDK installation to function correctly.
+## 📋 Requisitos del Sistema
+
+### Hardware
+- **Lector DP4500**: DigitalPersona U.are.U 4500 (conectado vía USB 2.0)
+- **Sistema Operativo**: Windows 7/8/10/11 (32-bit o 64-bit)
+- **Puerto USB**: USB 2.0 o superior
+
+### Software
+- **Node.js**: Versión x86 (32-bit) - [Descargar](https://nodejs.org/)
+  ```bash
+  # Verificar versión instalada
+  node --version  # Debe mostrar v16.x.x o superior (32-bit)
+  ```
+- **.NET Framework**: 4.7.2 o superior - [Descargar](https://dotnet.microsoft.com/download/dotnet-framework)
+- **SDK de .NET**: .NET Framework 4.7.2 Targeting Pack
+
+### DLL Dependencies
+Coloca los siguientes archivos en el directorio `bin-deps/`:
+- `DPUruNet.dll` - SDK de DigitalPersona
+- `dpfpdd.dll` - Driver del dispositivo
+- `dpfj.dll` - Motor de comparación
+
+> **Nota**: Estos archivos se obtienen del SDK de DigitalPersona U.are.U
+
+---
+
+## 🚀 Instalación y Configuración
+
+### 1. Clonar el Repositorio
+```bash
+git clone https://github.com/devcicm/edge-uru-ui.git
+cd edge-uru-ui
+git checkout EdgeUruBridgeCore  # Rama principal
+```
+
+### 2. Instalar Dependencias de Node.js
+```bash
+cd node
+npm install
+```
+
+### 3. Compilar el Bridge de C#
+```bash
+# Desde la raíz del proyecto
+dotnet build bridge-csharp/EdgeBridge.csproj -c Release
+```
+
+La compilación generará:
+- `out/net472/bridge-csharp.dll`
+- `out/net472/bridge-csharp.pdb`
+
+### 4. Verificar DLL Dependencies
+Asegúrate de que `bin-deps/` contenga:
+```
+bin-deps/
+├── DPUruNet.dll
+├── dpfpdd.dll
+└── dpfj.dll
+```
+
+### 5. Build del Servidor TypeScript (Opcional)
+```bash
+cd node
+npm run build
+```
+
+---
+
+## ▶️ Ejecución de la Aplicación
+
+### Iniciar el Servidor
+```bash
+cd node
+npm start
+```
+
+El servidor se iniciará en: **http://localhost:8080**
+
+### Logs de Inicio Esperados
+```
+[SERVER] 🚀 Servidor iniciando...
+[SERVER] 📂 Sirviendo archivos estáticos desde: C:\...\node\public
+[SERVER] ✅ Servidor escuchando en http://localhost:8080
+[SERVER] 📡 SSE endpoint listo en /events
+```
+
+### Abrir la Interfaz Web
+Navega a: http://localhost:8080/demo-avance.html
+
+---
+
+## 📖 Guía de Uso
+
+### Inicialización del Sistema (Obligatorio)
+
+1. **Encender el Lector** (ReaderControl):
+   - Presiona el botón "Encender Lector"
+   - Espera el mensaje: ✅ Lector DP4500 encendido
+   - El status bar debe mostrar: "✅ Lector DP4500 encendido - Sistema listo"
+
+> ⚠️ **IMPORTANTE**: Todas las operaciones requieren que el lector esté encendido primero
+
+### Operaciones Biométricas
+
+#### 📝 Enrolamiento de Usuario
+
+1. **Ingresar ID de Usuario**:
+   - Campo: "ID del Usuario"
+   - Ejemplo: `Usuario001`, `John_Doe`, `Empleado_123`
+
+2. **Iniciar Enrolamiento**:
+   - Presiona "Iniciar Enrolamiento"
+   - El sistema solicitará **4 muestras** del mismo dedo
+
+3. **Captura de Muestras**:
+   - Coloca el dedo cuando se solicite
+   - Mantén el dedo quieto hasta ver confirmación
+   - Progreso visual: `1/4 → 2/4 → 3/4 → 4/4`
+   - Barra de progreso: `0% → 25% → 50% → 75% → 100%`
+
+4. **Resultado**:
+   - ✅ Éxito: "Enrolamiento completado exitosamente"
+   - ❌ Error: Se mostrará el motivo (calidad baja, timeout, etc.)
+
+#### ✅ Verificación 1:1
+
+1. **Seleccionar Usuario**:
+   - Despliega el menú de usuarios enrolados
+   - Selecciona el usuario a verificar
+
+2. **Verificar**:
+   - Presiona "Verificar Usuario Seleccionado"
+   - Coloca el dedo en el lector
+
+3. **Resultado**:
+   - ✅ VERIFICADO: Huella coincide con el usuario seleccionado
+   - ❌ NO COINCIDE: Huella no pertenece al usuario
+   - Score de comparación mostrado
+
+#### 🔍 Identificación 1:N
+
+1. **Iniciar Identificación**:
+   - Presiona "Identificar 1:N"
+   - El sistema buscará en toda la galería
+
+2. **Capturar Huella**:
+   - Coloca el dedo cuando se solicite
+   - El sistema compara contra todos los usuarios
+
+3. **Resultado**:
+   - ✅ IDENTIFICADO: "Usuario_XXX" (con score)
+   - ⚠️ NO MATCH: No se encontraron coincidencias
+
+#### 📸 Captura Simple
+
+1. **Capturar**:
+   - Presiona "Capturar"
+   - Coloca el dedo en el lector
+
+2. **Resultado**:
+   - Imagen de la huella capturada
+   - Template FMD generado (base64)
+
+### Gestión de Plantillas (TemplateManagerControl)
+
+- **Cargar Plantillas**: Ver todas las plantillas almacenadas
+- **Filtrado**: Por tipo de formato (DP_REGISTRATION, DP_VERIFICATION, ANSI, etc.)
+- **Información**: Tag, formato, tamaño, SHA-1, fecha
+- **Limpiar**: Eliminar todas las plantillas (⚠️ irreversible)
+
+---
+
+## 🏗️ Arquitectura del Sistema
+
+### Diagrama de Alto Nivel
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    FRONTEND (Browser)                            │
+│                                                                   │
+│  demo-avance.html                                                │
+│       ├── ComponentFactory (Auto-inicialización)                 │
+│       ├── EnrollmentControl                                      │
+│       ├── VerificationControl                                    │
+│       ├── SimpleCaptureControl                                   │
+│       ├── TemplateManagerControl                                 │
+│       ├── ReaderControl                                          │
+│       └── BiometricAdapter (SSE Client)                          │
+│                                                                   │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         │ HTTP + Server-Sent Events (SSE)
+                         │ Real-time biometric events
+                         │
+┌────────────────────────▼────────────────────────────────────────┐
+│                   NODE.JS SERVER (server.ts)                     │
+│                                                                   │
+│  Express.js                                                      │
+│       ├── API Routes (/api/*)                                    │
+│       ├── SSE Bridge (/events)                                   │
+│       └── Edge.js Callback Handler                               │
+│                                                                   │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         │ Edge.js Bridge (V8 ↔ CLR)
+                         │ Async with Task.Run()
+                         │
+┌────────────────────────▼────────────────────────────────────────┐
+│              C# BACKEND (.NET Framework 4.7.2)                   │
+│                                                                   │
+│  EdgeUruBridge.cs (Edge.js Interface)                            │
+│       ├── Bootstrap & Init                                       │
+│       ├── Enroll / Verify / Identify                             │
+│       ├── Event Emission (SSE)                                   │
+│       └── Template Store Management                              │
+│                                                                   │
+│  Dp4500Service.cs (Core Biometric Logic)                         │
+│       ├── Enroll3() - 4 samples enrollment                       │
+│       ├── VerifyLiveAgainstReg() - 1:1 verification              │
+│       ├── IdentifyLive1N() - 1:N identification                  │
+│       ├── SingleCapture() - Simple capture                       │
+│       └── DPUruNet SDK Integration                               │
+│                                                                   │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         │ DPUruNet SDK API
+                         │
+                  ┌──────▼──────┐
+                  │   DP4500    │
+                  │   Hardware  │
+                  └─────────────┘
+```
+
+### Arquitectura de Eventos en Tiempo Real
+
+**Flujo de Eventos SSE:**
+
+```
+Backend C# (SendEvent)
+    ↓
+Edge.js Callback
+    ↓
+SseBridge (Node.js)
+    ↓
+EventSource (/events)
+    ↓
+BiometricAdapter.emit()
+    ↓
+Component Listeners (EnrollmentControl, etc.)
+    ↓
+UI Update (Real-time)
+```
+
+**Eventos Principales:**
+- `READER_READY` - Lector inicializado
+- `ENROLLMENT_STARTED` - Inicio de enrolamiento
+- `SAMPLE_COLLECTED` - Muestra capturada (1/4, 2/4, etc.)
+- `IMAGE_CAPTURED` - Imagen de huella disponible
+- `ENROLLMENT_COMPLETED` - Enrolamiento exitoso
+- `VERIFICATION_SUCCESS/FAILED` - Resultado de verificación
+- `IDENTIFICATION_MATCH/NO_MATCH` - Resultado de identificación
+
+> **Documentación Detallada**: Ver [SOLUCION-EVENTOS-TIEMPO-REAL.md](./SOLUCION-EVENTOS-TIEMPO-REAL.md)
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+edge-uru-ui/
+│
+├── bridge-csharp/                    # C# .NET Bridge
+│   ├── src/
+│   │   ├── Bridge/
+│   │   │   └── EdgeUruBridge.cs      # Interface Edge.js + Event handling
+│   │   └── Core/
+│   │       └── Dp4500Service.cs      # Core biometric operations
+│   └── EdgeBridge.csproj             # Project file
+│
+├── node/                             # Node.js Server
+│   ├── public/
+│   │   ├── demo-avance.html          # Main UI (recommended)
+│   │   ├── index.html                # Simple panel (legacy)
+│   │   ├── js/
+│   │   │   ├── adapter/
+│   │   │   │   └── BiometricAdapter.js     # SSE client & API wrapper
+│   │   │   ├── components/
+│   │   │   │   ├── BaseComponent.js        # Base class for all controls
+│   │   │   │   └── ComponentFactory.js     # Auto-initialization & creation
+│   │   │   └── controls/
+│   │   │       ├── EnrollmentControl.js    # Enrollment UI
+│   │   │       ├── VerificationControl.js  # Verification 1:1 & 1:N
+│   │   │       ├── SimpleCaptureControl.js # Simple capture
+│   │   │       ├── TemplateManagerControl.js # Template management
+│   │   │       ├── ReaderControl.js        # Reader initialization
+│   │   │       ├── LogDeviceControl.js     # Live logging
+│   │   │       └── TechDeviceControl.js    # Device info
+│   │   └── css/
+│   │       └── styles.css              # Shared styles
+│   ├── server.ts                       # Express server + API endpoints
+│   ├── sseBridge.ts                    # Server-Sent Events bridge
+│   └── package.json                    # Dependencies
+│
+├── bin-deps/                           # Native DLL files
+│   ├── DPUruNet.dll
+│   ├── dpfpdd.dll
+│   └── dpfj.dll
+│
+├── out/net472/                         # Compiled C# output
+│   ├── bridge-csharp.dll
+│   └── bridge-csharp.pdb
+│
+├── ARQUITECTURA-EVENTOS.md            # Event architecture documentation
+├── SOLUCION-EVENTOS-TIEMPO-REAL.md    # Real-time events solution
+└── README.md                           # This file
+```
+
+---
+
+## 🔌 API Endpoints
+
+### System Control
+| Endpoint | Method | Descripción |
+|----------|--------|-------------|
+| `/api/bootstrap` | POST | Inicializar librerías nativas |
+| `/api/registerCallback` | POST | Registrar callbacks de eventos |
+| `/api/init` | POST | Inicializar lector de huellas |
+| `/api/dispose` | POST | Liberar recursos |
+| `/api/getReaderInfo` | POST | Obtener información del dispositivo DP4500 |
+
+### Fingerprint Operations
+| Endpoint | Method | Descripción | Parámetros |
+|----------|--------|-------------|------------|
+| `/api/enroll` | POST | Enrolar nueva huella (4 muestras) | `{ userId: string, timeoutMs?: number }` |
+| `/api/verify` | POST | Verificar 1:1 contra usuario | `{ tag: string, timeoutMs?: number }` |
+| `/api/identify` | POST | Identificar 1:N en galería | `{ timeoutMs?: number, top?: number }` |
+| `/api/single` | POST | Captura simple sin enrolar | `{ timeoutMs?: number }` |
+
+### Gallery Management
+| Endpoint | Method | Descripción |
+|----------|--------|-------------|
+| `/api/storeList` | POST | Listar todas las plantillas |
+| `/api/storeClear` | POST | Limpiar toda la galería |
+
+### Real-time Events
+| Endpoint | Method | Descripción |
+|----------|--------|-------------|
+| `/events` | GET | Server-Sent Events stream |
+
+---
+
+## 🎨 Componentes del Frontend
+
+### Sistema de Componentes Modular
+
+Todos los componentes heredan de `BaseComponent` y se auto-registran con `ComponentFactory`.
+
+#### EnrollmentControl
+- **Propósito**: Enrolamiento de usuarios con 4 muestras
+- **Características**:
+  - Progreso visual (barra + contador + indicadores)
+  - Validación de lector antes de operar
+  - Eventos: `enrolled`, `cleared`
+  - Auto-limpieza después de completar
+
+#### VerificationControl
+- **Propósito**: Verificación 1:1 e Identificación 1:N
+- **Características**:
+  - Tabs para ambas operaciones
+  - Lista de usuarios filtrada (solo DP_REGISTRATION)
+  - Contador de plantillas disponibles
+  - Eventos: `verified`, `identified`
+
+#### SimpleCaptureControl
+- **Propósito**: Captura simple de huella
+- **Características**:
+  - Captura sin enrolamiento
+  - Generación de FMD template
+  - Visualización de imagen
+  - Evento: `captured`
+
+#### TemplateManagerControl
+- **Propósito**: Gestión de plantillas almacenadas
+- **Características**:
+  - Tabla con información detallada
+  - Filtrado por formato
+  - Refresh manual
+  - Clear all (con confirmación)
+  - Eventos: `templatesLoaded`, `templatesCleared`
+
+#### ReaderControl
+- **Propósito**: Control del dispositivo DP4500
+- **Características**:
+  - Encender/Apagar lector
+  - Estado visual (ON/OFF)
+  - Eventos: `readerInitialized`, `readerDisposed`
+
+#### LogDeviceControl
+- **Propósito**: Logging en tiempo real
+- **Características**:
+  - Logs categorizados por tipo
+  - Auto-scroll
+  - Límite de 500 mensajes
+  - Clear logs
+
+#### TechDeviceControl
+- **Propósito**: Información técnica del DP4500
+- **Características**:
+  - Especificaciones del dispositivo
+  - Versión del SDK
+  - Formatos soportados
+  - Certificaciones
+
+---
+
+## ⚙️ Configuración
+
+### Timeouts por Operación
+```javascript
+{
+  enroll: 60000,      // 60 segundos (captura de 4 muestras)
+  verify: 60000,      // 60 segundos (verificación 1:1)
+  identify: 60000,    // 60 segundos (identificación 1:N)
+  single: 10000       // 10 segundos (captura simple)
+}
+```
+
+### Parámetros de Calidad
+```javascript
+{
+  targetFarn: 21474,           // ~1% false accept rate
+  maxSamples: 4,               // Muestras por enrolamiento
+  maxRetriesPerSample: 3       // Reintentos por muestra
+}
+```
+
+### Filtrado de Plantillas
+```javascript
+// Solo plantillas DP_REGISTRATION son válidas para verificación
+validFormats: ['DP_REGISTRATION']
+```
+
+---
+
+## 🐛 Solución de Problemas
+
+### Problemas Comunes
+
+#### 1. "⚠️ Lector apagado - Enciende el lector desde ReaderControl"
+**Causa**: El lector no ha sido inicializado
+
+**Solución**:
+1. Ve a ReaderControl
+2. Presiona "Encender Lector"
+3. Espera confirmación: ✅ Lector DP4500 encendido
+
+#### 2. "Error: Unknown operation: getReaderInfo"
+**Causa**: Backend C# no compilado o DLL desactualizada
+
+**Solución**:
+```bash
+dotnet build bridge-csharp/EdgeBridge.csproj -c Release
+```
+Reinicia el servidor Node.js
+
+#### 3. "No hay usuarios registrados (hay X plantillas de otros formatos)"
+**Causa**: Solo hay plantillas intermedias (PRE, VER, ANSI) pero no DP_REGISTRATION
+
+**Solución**:
+- Realiza un enrolamiento completo (4 muestras)
+- Esto generará una plantilla DP_REGISTRATION válida
+
+#### 4. "❌ Error: Operación cancelada" en Identificación
+**Causas Posibles**:
+- Timeout excedido (no colocaste el dedo a tiempo)
+- Lector no detectó el dedo correctamente
+- Galería vacía
+
+**Solución**:
+- Asegúrate de colocar el dedo cuando se solicite
+- Limpia el sensor
+- Verifica que hay usuarios enrolados
+
+#### 5. Botones deshabilitados después de operación
+**Causa**: Evento de finalización no llegó al componente
+
+**Solución**: Ahora solucionado con mecanismo de respaldo en EnrollmentControl
+- Si persiste, recarga la página (F5)
+
+#### 6. "Network error" en navegador
+**Causas**:
+- Servidor no está corriendo
+- Puerto 8080 ocupado
+- Firewall bloqueando
+
+**Solución**:
+```bash
+# Verificar que el servidor está corriendo
+cd node
+npm start
+
+# Verificar puerto
+netstat -ano | findstr :8080
+```
+
+### Consejos de Performance
+
+1. **Limpia el Sensor**:
+   - Usa un paño suave y seco
+   - Evita huellas de grasa
+
+2. **Posicionamiento del Dedo**:
+   - Presiona firmemente pero sin deslizar
+   - Centra el dedo en el sensor
+   - Mantén quieto hasta ver confirmación
+
+3. **Iluminación**:
+   - Buena iluminación ambiental
+   - Evita luz directa en el sensor
+
+4. **Calidad de Captura**:
+   - Si ves errores de calidad repetidos, intenta con otro dedo
+   - Asegúrate de que el dedo esté limpio y seco
+
+---
+
+## 🔧 Desarrollo
+
+### Agregar Nuevas Funcionalidades
+
+#### 1. Nueva Operación Biométrica (Backend C#)
+
+**Archivo**: `bridge-csharp/src/Bridge/EdgeUruBridge.cs`
+
+```csharp
+case "miNuevaOperacion":
+{
+    if (_reader == null)
+    {
+        return new { ok = false, error = "Reader not initialized" };
+    }
+
+    try
+    {
+        // ✅ IMPORTANTE: Usar await Task.Run() para no bloquear Node.js
+        var result = await Task.Run(() => _reader.MiOperacion(...));
+
+        SendEvent("MI_OPERACION_COMPLETED", "Operación exitosa", "SUCCESS");
+
+        return new { ok = true, data = result };
+    }
+    catch (Exception ex)
+    {
+        SendEvent("MI_OPERACION_FAILED", ex.Message, "ERROR");
+        return new { ok = false, error = ex.Message };
+    }
+}
+```
+
+#### 2. Nuevo Endpoint API (Node.js)
+
+**Archivo**: `node/server.ts`
+
+```typescript
+app.post('/api/miOperacion', async (req, res) => {
+    try {
+        const result = await edgeBridge.invoke({
+            op: 'miNuevaOperacion',
+            ...req.body
+        });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+```
+
+#### 3. Nuevo Control UI (Frontend)
+
+**Archivo**: `node/public/js/controls/MiNuevoControl.js`
+
+```javascript
+class MiNuevoControl extends BaseComponent {
+    constructor(containerId, adapter, config = {}) {
+        super(containerId, adapter, config);
+
+        // Tu código de inicialización
+    }
+
+    _createStructure() {
+        this.container.innerHTML = `
+            <div class="mi-control">
+                <!-- Tu HTML aquí -->
+            </div>
+        `;
+    }
+
+    async miOperacion() {
+        const result = await this.adapter.apiCall('/api/miOperacion', {
+            // parámetros
+        });
+
+        if (result.ok) {
+            this.emit('operacionCompletada', result);
+        }
+    }
+}
+
+window.MiNuevoControl = MiNuevoControl;
+```
+
+#### 4. Registrar en ComponentFactory
+
+**Archivo**: `node/public/js/components/ComponentFactory.js`
+
+```javascript
+this.componentTypes.set('minuevocontrol', {
+    class: MiNuevoControl,
+    description: 'Descripción de mi control',
+    defaultConfig: {
+        // configuración por defecto
+    }
+});
+```
+
+### Testing
+
+#### Test Manual de SSE
+```javascript
+// En consola del navegador
+const eventSource = new EventSource('/events');
+eventSource.onmessage = (event) => {
+    console.log('SSE:', JSON.parse(event.data));
+};
+```
+
+#### Test de API
+```bash
+# Test de enrolamiento
+curl -X POST http://localhost:8080/api/enroll \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"TestUser001","timeoutMs":30000}'
+```
+
+### Build y Deploy
+
+#### Build C# (Release)
+```bash
+dotnet build bridge-csharp/EdgeBridge.csproj -c Release
+```
+
+#### Build TypeScript
+```bash
+cd node
+npm run build
+```
+
+#### Limpiar Build
+```bash
+dotnet clean bridge-csharp/EdgeBridge.csproj
+rm -rf node/dist/
+```
+
+---
+
+## 📚 Documentación Adicional
+
+- **[ARQUITECTURA-EVENTOS.md](./ARQUITECTURA-EVENTOS.md)** - Arquitectura del sistema de eventos
+- **[SOLUCION-EVENTOS-TIEMPO-REAL.md](./SOLUCION-EVENTOS-TIEMPO-REAL.md)** - Cómo se solucionó el problema de eventos en tiempo real
+- **[node/public/README-MODULAR.md](./node/public/README-MODULAR.md)** - Sistema modular de componentes
+
+---
+
+## 📝 Changelog
+
+### EdgeUruBridgeCore v1.0 (Actual)
+
+**Nuevas Características:**
+- ✅ Sistema de componentes modular con ComponentFactory
+- ✅ Eventos en tiempo real con SSE
+- ✅ Progreso visual en enrolamiento
+- ✅ Filtrado inteligente de plantillas
+- ✅ Validación de estado del lector
+- ✅ Operación `single` para captura simple
+- ✅ Operación `getReaderInfo` para specs del dispositivo
+- ✅ Sistema de eventos custom (BaseComponent)
+- ✅ TemplateManagerControl para gestión de plantillas
+
+**Correcciones:**
+- 🐛 Botones deshabilitados en EnrollmentControl
+- 🐛 Verificación 1:1 mostrando plantillas inválidas
+- 🐛 Propiedad `match` vs `matched` en identificación
+- 🐛 Acceso a `user.tag` case-sensitive
+- 🐛 Eventos SSE bloqueados por operaciones síncronas
+
+---
+
+## 🤝 Contribuciones
+
+Este proyecto está en desarrollo activo. Si encuentras bugs o tienes sugerencias:
+
+1. Abre un [Issue](https://github.com/devcicm/edge-uru-ui/issues)
+2. Describe el problema con logs y pasos para reproducir
+3. Incluye información del sistema (Windows version, Node.js version)
+
+---
+
+## 📄 Licencia
+
+Este proyecto es para propósitos demostrativos y educativos.
+
+**Componentes Propietarios:**
+- DigitalPersona SDK (DPUruNet) - HID Global/DigitalPersona
+- DP4500 Firmware y Drivers - HID Global
+
+---
+
+## 👨‍💻 Autor
+
+**Proyecto**: EdgeUruBridgeCore
+**Rama Principal**: `EdgeUruBridgeCore`
+**Última Actualización**: 27 de Octubre, 2025
+
+---
+
+## 🆘 Soporte
+
+### Hardware y SDK
+- **DigitalPersona/HID Global**: Soporte oficial del DP4500
+- **DPUruNet Documentation**: Referencia del SDK
+
+### Aplicación
+- **Issues**: [GitHub Issues](https://github.com/devcicm/edge-uru-ui/issues)
+- **Documentación**: Ver archivos .md en el repositorio
+- **Troubleshooting**: Sección de solución de problemas arriba
+
+---
+
+**Nota Importante**: Este sistema requiere un lector físico DP4500 y la instalación correcta del SDK de DigitalPersona para funcionar adecuadamente.
