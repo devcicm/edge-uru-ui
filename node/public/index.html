@@ -3,65 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Biométrico DP4500</title>
+    <title>Panel Biométrico DP4500 - Simple y Directo</title>
     <style>
         :root {
-            color-scheme: light;
+            --primary: #2563eb;
+            --primary-dark: #1d48d0;
+            --success: #15803d;
+            --success-light: #dcfce7;
+            --error: #b91c1c;
+            --error-light: #fee2e2;
+            --warning: #d97706;
+            --warning-light: #fef3c7;
+            --info: #0369a1;
+            --info-light: #e0f2fe;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-900: #111827;
         }
 
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #eef1f6;
-            font-family: Arial, Helvetica, sans-serif;
-            color: #1f2933;
             padding: 20px;
+            color: var(--gray-900);
         }
 
-        .panel-biometrico {
-            width: min(460px, 100%);
-            background: #ffffff;
-            border-radius: 14px;
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.09);
-            border: 1px solid #d9dce3;
-            padding: 24px;
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: var(--gray-900);
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: var(--gray-600);
+            font-size: 14px;
+        }
+
+        .status-bar {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--error);
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.active {
+            background: var(--success);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-text {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .controls-grid {
             display: grid;
-            gap: 18px;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
         }
 
-        .panel-biometrico__header {
-            text-align: center;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e5e7eb;
+        .control-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
         }
 
-        .panel-biometrico__title {
-            margin: 0 0 5px 0;
-            font-size: 20px;
-            font-weight: 700;
-            color: #1f2933;
+        .control-header {
+            border-bottom: 2px solid var(--gray-200);
+            padding-bottom: 12px;
         }
 
-        .panel-biometrico__subtitle {
-            margin: 0;
-            font-size: 12px;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .control-header h2 {
+            font-size: 18px;
+            color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .panel-biometrico__fingerprint {
+        .control-header p {
+            font-size: 13px;
+            color: var(--gray-600);
+            margin-top: 4px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .input-group input,
+        .input-group select {
+            padding: 10px 12px;
+            border: 2px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .fingerprint-preview {
             aspect-ratio: 1;
-            border-radius: 10px;
-            border: 2px dashed #c0cad8;
-            background: #f8fafc;
+            border: 2px dashed var(--gray-300);
+            border-radius: 12px;
+            background: var(--gray-50);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -69,419 +170,1008 @@
             position: relative;
         }
 
-        .panel-biometrico__fingerprint img {
+        .fingerprint-preview img {
             width: 100%;
             height: 100%;
             object-fit: contain;
         }
 
-        .panel-biometrico__fingerprint-placeholder {
-            font-size: 80px;
+        .fingerprint-placeholder {
+            font-size: 64px;
             opacity: 0.3;
         }
 
-        .panel-biometrico__block {
-            padding: 14px 16px;
+        .progress-container {
+            background: var(--gray-100);
+            border: 2px solid var(--gray-200);
             border-radius: 10px;
-            background: #f4f6fb;
-            border: 1px solid #d7dce6;
-            display: grid;
-            gap: 6px;
+            padding: 12px;
+            display: none;
         }
 
-        .panel-biometrico__label {
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .progress-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .progress-counter {
             font-size: 13px;
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            color: #44505f;
+            color: var(--primary);
         }
 
-        .panel-biometrico__value {
-            font-size: 16px;
-            font-weight: 600;
-            color: #233047;
+        .progress-bar-bg {
+            height: 24px;
+            background: var(--gray-200);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 8px;
         }
 
-        .panel-biometrico__status {
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .progress-indicators {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .sample-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--gray-600);
+            border: 2px solid var(--gray-300);
+            transition: all 0.3s;
+        }
+
+        .sample-dot.captured {
+            background: linear-gradient(135deg, var(--success), #16a34a);
+            color: white;
+            border-color: var(--success);
+            transform: scale(1.1);
+        }
+
+        .sample-dot.active {
+            background: var(--warning-light);
+            color: var(--warning);
+            border-color: var(--warning);
+            animation: pulse-dot 1s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .status-message {
             padding: 12px 16px;
             border-radius: 8px;
-            background: #e0f2fe;
-            border: 1px solid #bae6fd;
-            color: #0369a1;
             font-size: 14px;
             font-weight: 500;
             text-align: center;
+            background: var(--info-light);
+            border: 1px solid #bae6fd;
+            color: var(--info);
         }
 
-        .panel-biometrico__status--success {
-            background: #dcfce7;
+        .status-message.success {
+            background: var(--success-light);
             border-color: #bbf7d0;
-            color: #15803d;
+            color: var(--success);
         }
 
-        .panel-biometrico__status--error {
-            background: #fee2e2;
+        .status-message.error {
+            background: var(--error-light);
             border-color: #fecaca;
-            color: #b91c1c;
+            color: var(--error);
         }
 
-        .panel-biometrico__button {
-            padding: 14px 16px;
-            border-radius: 10px;
+        .status-message.warning {
+            background: var(--warning-light);
+            border-color: #fde68a;
+            color: var(--warning);
+        }
+
+        .btn {
+            padding: 12px 20px;
             border: none;
-            background: linear-gradient(135deg, #2563eb, #1d48d0);
-            color: #ffffff;
-            font-size: 15px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        .panel-biometrico__button:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 12px 22px rgba(37, 99, 235, 0.24);
-        }
-
-        .panel-biometrico__button:active:not(:disabled) {
-            transform: translateY(1px);
-        }
-
-        .panel-biometrico__button:disabled {
-            opacity: 0.6;
+        .btn:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
         }
 
-        .panel-biometrico__debug {
-            margin-top: 10px;
-            padding: 10px;
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            color: #4b5563;
-            max-height: 150px;
-            overflow-y: auto;
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
         }
 
-        .panel-biometrico__debug-title {
-            font-weight: 700;
-            margin-bottom: 5px;
-            color: #1f2933;
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--gray-300);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #16a34a);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(21, 128, 61, 0.3);
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 8px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--gray-50);
+            border-radius: 6px;
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+
+        .info-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .templates-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+        }
+
+        .template-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--gray-200);
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .template-item:last-child {
+            border-bottom: none;
+        }
+
+        .template-format {
+            font-size: 11px;
+            padding: 2px 6px;
+            background: var(--primary);
+            color: white;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
-    <div class="panel-biometrico" id="biometricContainer">
+    <div class="container">
         <!-- Header -->
-        <div class="panel-biometrico__header">
-            <h1 class="panel-biometrico__title">Panel Biométrico DP4500</h1>
-            <p class="panel-biometrico__subtitle">Eventos en Tiempo Real</p>
+        <div class="header">
+            <h1>🔐 Panel Biométrico DP4500</h1>
+            <p>Conexión directa con hardware - Eventos en tiempo real</p>
         </div>
 
-        <!-- Imagen de huella -->
-        <div class="panel-biometrico__fingerprint">
-            <div class="panel-biometrico__fingerprint-placeholder" id="fingerprintPlaceholder">👤</div>
-            <img id="imageFingerBase64" alt="Huella dactilar" style="display: none;" />
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-indicator" id="statusIndicator"></div>
+            <div class="status-text" id="statusText">⚠️ Lector apagado - Inicializa el lector primero</div>
         </div>
 
-        <!-- Estado actual -->
-        <div class="panel-biometrico__status" id="statusMessage">
-            Esperando conexión...
-        </div>
+        <!-- Controls Grid -->
+        <div class="controls-grid">
 
-        <!-- Muestras capturadas -->
-        <div class="panel-biometrico__block">
-            <span class="panel-biometrico__label">Progreso de captura</span>
-            <span class="panel-biometrico__value" id="sampleProgress">0 / 4</span>
-        </div>
+            <!-- 1. READER CONTROL -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>🔧 Control del Lector</h2>
+                    <p>Inicializar y gestionar dispositivo DP4500</p>
+                </div>
 
-        <!-- Botón de acción -->
-        <button id="btnEnroll" class="panel-biometrico__button" type="button" disabled>
-            Iniciar Enrolamiento
-        </button>
+                <div class="status-message" id="readerStatus">Lector apagado</div>
 
-        <!-- Debug log (opcional) -->
-        <div class="panel-biometrico__debug">
-            <div class="panel-biometrico__debug-title">Últimos eventos SSE:</div>
-            <div id="debugLog"></div>
+                <button class="btn btn-primary" id="btnInitReader">
+                    ⚡ Encender Lector
+                </button>
+
+                <button class="btn btn-secondary" id="btnDisposeReader" disabled>
+                    🔌 Apagar Lector
+                </button>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Modelo:</span>
+                        <span class="info-value">DP4500</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Estado:</span>
+                        <span class="info-value" id="readerState">Apagado</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. ENROLLMENT CONTROL -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>📝 Enrolamiento</h2>
+                    <p>Captura 4 muestras de huella dactilar</p>
+                </div>
+
+                <div class="input-group">
+                    <label for="enrollUserId">ID del Usuario:</label>
+                    <input type="text" id="enrollUserId" placeholder="Ej: Usuario001">
+                </div>
+
+                <div class="fingerprint-preview">
+                    <div class="fingerprint-placeholder" id="enrollPlaceholder">👤</div>
+                    <img id="enrollImage" alt="Huella" style="display: none;">
+                </div>
+
+                <div class="progress-container" id="enrollProgress">
+                    <div class="progress-header">
+                        <span class="progress-label">Progreso de Captura</span>
+                        <span class="progress-counter" id="enrollCounter">0/4</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar" id="enrollProgressBar">0%</div>
+                    </div>
+                    <div class="progress-indicators">
+                        <span class="sample-dot" id="enrollDot1">1</span>
+                        <span class="sample-dot" id="enrollDot2">2</span>
+                        <span class="sample-dot" id="enrollDot3">3</span>
+                        <span class="sample-dot" id="enrollDot4">4</span>
+                    </div>
+                </div>
+
+                <div class="status-message" id="enrollStatus">Ingresa un ID de usuario</div>
+
+                <button class="btn btn-primary" id="btnEnroll" disabled>
+                    Iniciar Enrolamiento
+                </button>
+            </div>
+
+            <!-- 3. VERIFICATION CONTROL -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>✅ Verificación 1:1</h2>
+                    <p>Verificar huella contra usuario específico</p>
+                </div>
+
+                <div class="input-group">
+                    <label for="verifyUserId">Seleccionar Usuario:</label>
+                    <select id="verifyUserId">
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                </div>
+
+                <div class="fingerprint-preview">
+                    <div class="fingerprint-placeholder" id="verifyPlaceholder">🔍</div>
+                    <img id="verifyImage" alt="Huella" style="display: none;">
+                </div>
+
+                <div class="status-message" id="verifyStatus">Selecciona un usuario</div>
+
+                <button class="btn btn-primary" id="btnVerify" disabled>
+                    Verificar Huella
+                </button>
+
+                <div class="info-grid" id="verifyInfo" style="display: none;">
+                    <div class="info-item">
+                        <span class="info-label">Usuario:</span>
+                        <span class="info-value" id="verifyUserResult">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Score:</span>
+                        <span class="info-value" id="verifyScore">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Resultado:</span>
+                        <span class="info-value" id="verifyResult">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. IDENTIFICATION CONTROL -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>🔍 Identificación 1:N</h2>
+                    <p>Buscar coincidencia en toda la galería</p>
+                </div>
+
+                <div class="fingerprint-preview">
+                    <div class="fingerprint-placeholder" id="identifyPlaceholder">🔎</div>
+                    <img id="identifyImage" alt="Huella" style="display: none;">
+                </div>
+
+                <div class="status-message" id="identifyStatus">
+                    <span id="galleryCount">0</span> usuarios en galería
+                </div>
+
+                <button class="btn btn-success" id="btnIdentify" disabled>
+                    Identificar 1:N
+                </button>
+
+                <div class="info-grid" id="identifyInfo" style="display: none;">
+                    <div class="info-item">
+                        <span class="info-label">Usuario Identificado:</span>
+                        <span class="info-value" id="identifyUserResult">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Score:</span>
+                        <span class="info-value" id="identifyScore">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. SIMPLE CAPTURE CONTROL -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>📸 Captura Simple</h2>
+                    <p>Captura individual sin enrolamiento</p>
+                </div>
+
+                <div class="fingerprint-preview">
+                    <div class="fingerprint-placeholder" id="capturePlaceholder">🖐️</div>
+                    <img id="captureImage" alt="Huella" style="display: none;">
+                </div>
+
+                <div class="status-message" id="captureStatus">Presiona capturar</div>
+
+                <button class="btn btn-primary" id="btnCapture" disabled>
+                    Capturar Huella
+                </button>
+
+                <div class="info-grid" id="captureInfo" style="display: none;">
+                    <div class="info-item">
+                        <span class="info-label">Capturada:</span>
+                        <span class="info-value" id="captureTime">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Template:</span>
+                        <span class="info-value">Generado</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. TEMPLATE MANAGER -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>📊 Gestión de Plantillas</h2>
+                    <p>Ver y administrar plantillas almacenadas</p>
+                </div>
+
+                <div class="info-item">
+                    <span class="info-label">Total Plantillas:</span>
+                    <span class="info-value" id="templateCount">0</span>
+                </div>
+
+                <div class="templates-list" id="templatesList">
+                    <div class="template-item" style="text-align: center; color: var(--gray-600);">
+                        No hay plantillas
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="btnRefreshTemplates">
+                    🔄 Refrescar Lista
+                </button>
+
+                <button class="btn btn-secondary" id="btnClearTemplates">
+                    🗑️ Limpiar Todas
+                </button>
+            </div>
+
         </div>
     </div>
 
-    <!-- BiometricAdapter para manejar SSE y API -->
+    <!-- BiometricAdapter -->
     <script src="/js/adapter/BiometricAdapter.js"></script>
 
     <script>
         /**
-         * Panel Biométrico DP4500
+         * Panel Biométrico DP4500 - Simple y Directo
          *
-         * Arquitectura simple y directa:
-         * C# Backend (EdgeUruBridge) → Node.js (SSE Bridge) → BiometricAdapter → index.html
+         * Arquitectura:
+         * C# Backend → Node.js SSE → BiometricAdapter → index.html
          *
-         * Eventos en tiempo real sin capas intermedias
+         * Sin capas intermedias, comunicación directa con hardware
          */
         (() => {
-            // Referencias DOM
-            const dom = {
-                statusMessage: document.getElementById('statusMessage'),
-                sampleProgress: document.getElementById('sampleProgress'),
-                imageElement: document.getElementById('imageFingerBase64'),
-                placeholder: document.getElementById('fingerprintPlaceholder'),
-                btnEnroll: document.getElementById('btnEnroll'),
-                debugLog: document.getElementById('debugLog')
-            };
-
-            // Estado de la aplicación
+            // ==========================================
+            // ESTADO DE LA APLICACIÓN
+            // ==========================================
             const state = {
                 adapter: null,
-                isConnected: false,
+                readerInitialized: false,
                 isEnrolling: false,
-                currentSample: 0,
-                totalSamples: 4,
-                lastEventType: null,
-                eventCount: 0
+                enrollSamples: 0,
+                templates: [],
+                currentOperation: null
             };
 
-            // ============================================
-            // FUNCIONES DE UI
-            // ============================================
+            // ==========================================
+            // REFERENCIAS DOM
+            // ==========================================
+            const dom = {
+                // Status bar
+                statusIndicator: document.getElementById('statusIndicator'),
+                statusText: document.getElementById('statusText'),
 
-            function updateStatus(message, type = 'info') {
-                dom.statusMessage.textContent = message;
-                dom.statusMessage.className = 'panel-biometrico__status';
+                // Reader Control
+                readerStatus: document.getElementById('readerStatus'),
+                readerState: document.getElementById('readerState'),
+                btnInitReader: document.getElementById('btnInitReader'),
+                btnDisposeReader: document.getElementById('btnDisposeReader'),
 
-                if (type === 'success') {
-                    dom.statusMessage.classList.add('panel-biometrico__status--success');
-                } else if (type === 'error') {
-                    dom.statusMessage.classList.add('panel-biometrico__status--error');
+                // Enrollment
+                enrollUserId: document.getElementById('enrollUserId'),
+                enrollImage: document.getElementById('enrollImage'),
+                enrollPlaceholder: document.getElementById('enrollPlaceholder'),
+                enrollProgress: document.getElementById('enrollProgress'),
+                enrollCounter: document.getElementById('enrollCounter'),
+                enrollProgressBar: document.getElementById('enrollProgressBar'),
+                enrollStatus: document.getElementById('enrollStatus'),
+                btnEnroll: document.getElementById('btnEnroll'),
+                enrollDots: [
+                    document.getElementById('enrollDot1'),
+                    document.getElementById('enrollDot2'),
+                    document.getElementById('enrollDot3'),
+                    document.getElementById('enrollDot4')
+                ],
+
+                // Verification
+                verifyUserId: document.getElementById('verifyUserId'),
+                verifyImage: document.getElementById('verifyImage'),
+                verifyPlaceholder: document.getElementById('verifyPlaceholder'),
+                verifyStatus: document.getElementById('verifyStatus'),
+                btnVerify: document.getElementById('btnVerify'),
+                verifyInfo: document.getElementById('verifyInfo'),
+                verifyUserResult: document.getElementById('verifyUserResult'),
+                verifyScore: document.getElementById('verifyScore'),
+                verifyResult: document.getElementById('verifyResult'),
+
+                // Identification
+                identifyImage: document.getElementById('identifyImage'),
+                identifyPlaceholder: document.getElementById('identifyPlaceholder'),
+                identifyStatus: document.getElementById('identifyStatus'),
+                galleryCount: document.getElementById('galleryCount'),
+                btnIdentify: document.getElementById('btnIdentify'),
+                identifyInfo: document.getElementById('identifyInfo'),
+                identifyUserResult: document.getElementById('identifyUserResult'),
+                identifyScore: document.getElementById('identifyScore'),
+
+                // Simple Capture
+                captureImage: document.getElementById('captureImage'),
+                capturePlaceholder: document.getElementById('capturePlaceholder'),
+                captureStatus: document.getElementById('captureStatus'),
+                btnCapture: document.getElementById('btnCapture'),
+                captureInfo: document.getElementById('captureInfo'),
+                captureTime: document.getElementById('captureTime'),
+
+                // Templates
+                templateCount: document.getElementById('templateCount'),
+                templatesList: document.getElementById('templatesList'),
+                btnRefreshTemplates: document.getElementById('btnRefreshTemplates'),
+                btnClearTemplates: document.getElementById('btnClearTemplates')
+            };
+
+            // ==========================================
+            // FUNCIONES DE UI HELPER
+            // ==========================================
+
+            function updateGlobalStatus(message, isReady = false) {
+                dom.statusText.textContent = message;
+                if (isReady) {
+                    dom.statusIndicator.classList.add('active');
+                } else {
+                    dom.statusIndicator.classList.remove('active');
                 }
             }
 
-            function updateProgress(current, total) {
-                state.currentSample = current;
-                state.totalSamples = total;
-                dom.sampleProgress.textContent = `${current} / ${total}`;
-            }
-
-            function showFingerprint(base64) {
+            function showImage(imgElement, placeholder, base64) {
                 if (base64) {
                     const src = base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`;
-                    dom.imageElement.src = src;
-                    dom.imageElement.style.display = 'block';
-                    dom.placeholder.style.display = 'none';
+                    imgElement.src = src;
+                    imgElement.style.display = 'block';
+                    placeholder.style.display = 'none';
                 } else {
-                    dom.imageElement.style.display = 'none';
-                    dom.placeholder.style.display = 'block';
+                    imgElement.style.display = 'none';
+                    placeholder.style.display = 'block';
                 }
             }
 
-            function addDebugLog(eventType, data) {
-                state.eventCount++;
-                const timestamp = new Date().toLocaleTimeString();
-                const logEntry = `[${timestamp}] ${eventType}: ${data.message || JSON.stringify(data).substring(0, 50)}...`;
-
-                dom.debugLog.innerHTML = logEntry + '<br>' + dom.debugLog.innerHTML;
-
-                // Mantener solo últimos 10 logs
-                const lines = dom.debugLog.innerHTML.split('<br>');
-                if (lines.length > 10) {
-                    dom.debugLog.innerHTML = lines.slice(0, 10).join('<br>');
-                }
+            function updateStatus(element, message, type = 'info') {
+                element.textContent = message;
+                element.className = `status-message ${type}`;
             }
 
-            // ============================================
-            // MANEJADOR DE EVENTOS SSE DIRECTO
-            // ============================================
-
-            function handleDirectEvent(data) {
-                const eventType = data.eventType || data.evt || 'UNKNOWN';
-
-                console.log(`[DP4500] 📨 Evento: ${eventType}`, data);
-                addDebugLog(eventType, data);
-
-                // Manejar eventos según tipo
-                switch (eventType) {
-                    // Eventos de conexión
-                    case 'hello':
-                        updateStatus('✅ Conectado al servidor SSE', 'success');
-                        break;
-
-                    case 'READER_READY':
-                        state.isConnected = true;
-                        updateStatus('✅ Lector biométrico listo', 'success');
-                        dom.btnEnroll.disabled = false;
-                        break;
-
-                    case 'SYSTEM_ERROR':
-                        updateStatus(`❌ Error: ${data.message}`, 'error');
-                        dom.btnEnroll.disabled = false;
-                        break;
-
-                    // Eventos de enrolamiento
-                    case 'ENROLLMENT_STARTED':
-                        state.isEnrolling = true;
-                        updateStatus('🚀 Enrolamiento iniciado', 'info');
-                        updateProgress(0, 4);
-                        showFingerprint(null);
-                        break;
-
-                    case 'CAPTURE_STARTED':
-                        const sampleNum = data.data?.sampleNumber || state.currentSample + 1;
-                        updateStatus(`👆 Coloca el dedo (muestra ${sampleNum}/4)`, 'info');
-                        break;
-
-                    case 'IMAGE_CAPTURED':
-                        const imageBase64 = data.data?.imageBase64 || data.imageBase64;
-                        if (imageBase64) {
-                            showFingerprint(imageBase64);
-                            updateStatus('📸 Imagen capturada', 'success');
-                        }
-                        break;
-
-                    case 'SAMPLE_COLLECTED':
-                        const sample = data.sampleNumber || data.data?.sampleNumber || state.currentSample + 1;
-                        const total = data.totalSamples || data.data?.totalSamples || 4;
-                        updateProgress(sample, total);
-                        updateStatus(`✅ Muestra ${sample}/${total} capturada`, 'success');
-                        break;
-
-                    case 'CAPTURE_FAILED':
-                        updateStatus(`⚠️ ${data.message || 'Intenta de nuevo'}`, 'error');
-                        break;
-
-                    case 'ENROLLMENT_COMPLETED':
-                        state.isEnrolling = false;
-                        const userId = data.userId || data.data?.userId || 'Usuario';
-                        updateStatus(`🎉 Enrolamiento completado: ${userId}`, 'success');
-                        dom.btnEnroll.disabled = false;
-                        updateProgress(state.totalSamples, state.totalSamples);
-                        break;
-
-                    case 'ENROLLMENT_FAILED':
-                        state.isEnrolling = false;
-                        updateStatus(`❌ Enrolamiento fallido: ${data.message}`, 'error');
-                        dom.btnEnroll.disabled = false;
-                        break;
-
-                    case 'VERIFICATION_STARTED':
-                        updateStatus('🔍 Verificación iniciada', 'info');
-                        break;
-
-                    case 'VERIFICATION_SUCCESS':
-                        updateStatus(`✅ Verificación exitosa`, 'success');
-                        break;
-
-                    case 'VERIFICATION_FAILED':
-                        updateStatus(`❌ Verificación fallida: ${data.message || ''}`, 'error');
-                        break;
-
-                    case 'IDENTIFICATION_STARTED':
-                        updateStatus('🔍 Identificación 1:N iniciada', 'info');
-                        break;
-
-                    case 'IDENTIFICATION_MATCH':
-                        const matchedUser = data.data?.userId || 'Usuario';
-                        updateStatus(`✅ Usuario identificado: ${matchedUser}`, 'success');
-                        break;
-
-                    case 'IDENTIFICATION_NO_MATCH':
-                        updateStatus('❌ Usuario no identificado', 'error');
-                        break;
-
-                    case 'USER_ENROLLED':
-                        console.log('[DP4500] Usuario registrado en almacenamiento', data);
-                        break;
-
-                    default:
-                        // Loggear eventos no manejados
-                        console.log(`[DP4500] ⚠️ Evento no manejado: ${eventType}`, data);
-                }
-
-                state.lastEventType = eventType;
-            }
-
-            // ============================================
-            // FUNCIONES DE API
-            // ============================================
+            // ==========================================
+            // READER CONTROL
+            // ==========================================
 
             async function initializeReader() {
                 try {
-                    updateStatus('🔌 Inicializando lector...', 'info');
+                    updateStatus(dom.readerStatus, '🔌 Inicializando lector...', 'info');
+                    dom.btnInitReader.disabled = true;
+
                     await state.adapter.initializeReader();
                     console.log('[DP4500] ✅ Lector inicializado');
+
                 } catch (error) {
-                    console.error('[DP4500] ❌ Error inicializando lector:', error);
-                    updateStatus(`❌ Error: ${error.message}`, 'error');
+                    console.error('[DP4500] ❌ Error:', error);
+                    updateStatus(dom.readerStatus, `❌ Error: ${error.message}`, 'error');
+                    dom.btnInitReader.disabled = false;
                 }
             }
 
+            async function disposeReader() {
+                try {
+                    updateStatus(dom.readerStatus, '⚠️ Apagando lector...', 'warning');
+                    await state.adapter.disposeReader();
+                    console.log('[DP4500] Lector apagado');
+                } catch (error) {
+                    console.error('[DP4500] Error:', error);
+                }
+            }
+
+            // ==========================================
+            // ENROLLMENT CONTROL
+            // ==========================================
+
+            function updateEnrollProgress(current, total) {
+                const percentage = Math.round((current / total) * 100);
+                dom.enrollCounter.textContent = `${current}/${total}`;
+                dom.enrollProgressBar.style.width = `${percentage}%`;
+                dom.enrollProgressBar.textContent = `${percentage}%`;
+
+                // Actualizar dots
+                dom.enrollDots.forEach((dot, index) => {
+                    dot.classList.remove('captured', 'active');
+                    const sampleNum = index + 1;
+                    if (sampleNum <= current) {
+                        dot.classList.add('captured');
+                    } else if (sampleNum === current + 1 && current < total) {
+                        dot.classList.add('active');
+                    }
+                });
+            }
+
             async function startEnrollment() {
-                if (state.isEnrolling) {
-                    console.warn('[DP4500] Ya hay un enrolamiento en curso');
+                const userId = dom.enrollUserId.value.trim();
+                if (!userId) {
+                    updateStatus(dom.enrollStatus, '⚠️ Ingresa un ID de usuario', 'warning');
+                    return;
+                }
+
+                if (!state.readerInitialized) {
+                    updateStatus(dom.enrollStatus, '⚠️ Enciende el lector primero', 'error');
                     return;
                 }
 
                 try {
                     state.isEnrolling = true;
+                    state.enrollSamples = 0;
                     dom.btnEnroll.disabled = true;
+                    dom.enrollProgress.classList.add('active');
+                    updateEnrollProgress(0, 4);
+                    updateStatus(dom.enrollStatus, '🚀 Iniciando enrolamiento...', 'info');
 
-                    const userId = `Usuario_${Date.now()}`;
-                    updateStatus('📞 Solicitando enrolamiento...', 'info');
-
-                    console.log(`[DP4500] 🚀 Iniciando enrolamiento para: ${userId}`);
                     await state.adapter.enrollFingerprint(userId);
-
-                    // Los eventos SSE nos notificarán del progreso
-                    console.log('[DP4500] ✅ Solicitud de enrolamiento enviada');
+                    console.log('[Enroll] Solicitud enviada');
 
                 } catch (error) {
-                    console.error('[DP4500] ❌ Error en enrolamiento:', error);
-                    updateStatus(`❌ Error: ${error.message}`, 'error');
+                    console.error('[Enroll] Error:', error);
+                    updateStatus(dom.enrollStatus, `❌ ${error.message}`, 'error');
                     state.isEnrolling = false;
                     dom.btnEnroll.disabled = false;
                 }
             }
 
-            // ============================================
-            // INICIALIZACIÓN
-            // ============================================
+            // ==========================================
+            // VERIFICATION CONTROL
+            // ==========================================
+
+            async function loadUsers() {
+                try {
+                    const result = await state.adapter.getStoredFingerprints();
+                    if (result.ok) {
+                        // Filtrar solo DP_REGISTRATION
+                        const users = result.items.filter(item => item.format === 'DP_REGISTRATION');
+
+                        dom.verifyUserId.innerHTML = '<option value="">-- Seleccionar --</option>';
+                        users.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.tag;
+                            option.textContent = user.tag;
+                            dom.verifyUserId.appendChild(option);
+                        });
+
+                        dom.galleryCount.textContent = users.length;
+                        state.templates = users;
+                    }
+                } catch (error) {
+                    console.error('[Users] Error:', error);
+                }
+            }
+
+            async function verifyUser() {
+                const userId = dom.verifyUserId.value;
+                if (!userId) {
+                    updateStatus(dom.verifyStatus, '⚠️ Selecciona un usuario', 'warning');
+                    return;
+                }
+
+                if (!state.readerInitialized) {
+                    updateStatus(dom.verifyStatus, '⚠️ Enciende el lector primero', 'error');
+                    return;
+                }
+
+                try {
+                    dom.btnVerify.disabled = true;
+                    updateStatus(dom.verifyStatus, `🔍 Verificando ${userId}...`, 'info');
+                    showImage(dom.verifyImage, dom.verifyPlaceholder, null);
+
+                    const result = await state.adapter.verifyFingerprint(userId);
+                    console.log('[Verify] Result:', result);
+
+                    if (result.ok) {
+                        dom.verifyInfo.style.display = 'grid';
+                        dom.verifyUserResult.textContent = userId;
+                        dom.verifyScore.textContent = result.score || 'N/A';
+
+                        if (result.verified) {
+                            dom.verifyResult.textContent = '✅ VERIFICADO';
+                            updateStatus(dom.verifyStatus, `✅ Usuario verificado`, 'success');
+                        } else {
+                            dom.verifyResult.textContent = '❌ NO COINCIDE';
+                            updateStatus(dom.verifyStatus, `❌ Huella no coincide`, 'error');
+                        }
+                    } else {
+                        updateStatus(dom.verifyStatus, `❌ ${result.error}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('[Verify] Error:', error);
+                    updateStatus(dom.verifyStatus, `❌ ${error.message}`, 'error');
+                } finally {
+                    dom.btnVerify.disabled = false;
+                }
+            }
+
+            // ==========================================
+            // IDENTIFICATION CONTROL
+            // ==========================================
+
+            async function identifyUser() {
+                if (!state.readerInitialized) {
+                    updateStatus(dom.identifyStatus, '⚠️ Enciende el lector primero', 'error');
+                    return;
+                }
+
+                if (state.templates.length === 0) {
+                    updateStatus(dom.identifyStatus, '⚠️ No hay usuarios enrolados', 'warning');
+                    return;
+                }
+
+                try {
+                    dom.btnIdentify.disabled = true;
+                    updateStatus(dom.identifyStatus, `🔍 Buscando en ${state.templates.length} usuarios...`, 'info');
+                    showImage(dom.identifyImage, dom.identifyPlaceholder, null);
+
+                    const result = await state.adapter.identifyFingerprint();
+                    console.log('[Identify] Result:', result);
+
+                    if (result.ok) {
+                        if (result.match) {
+                            dom.identifyInfo.style.display = 'grid';
+                            dom.identifyUserResult.textContent = result.bestTag || 'Usuario';
+                            dom.identifyScore.textContent = result.bestScore || 'N/A';
+                            updateStatus(dom.identifyStatus, `✅ Identificado: ${result.bestTag}`, 'success');
+                        } else {
+                            dom.identifyInfo.style.display = 'none';
+                            updateStatus(dom.identifyStatus, '❌ No se encontraron coincidencias', 'error');
+                        }
+                    } else {
+                        updateStatus(dom.identifyStatus, `❌ ${result.error}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('[Identify] Error:', error);
+                    updateStatus(dom.identifyStatus, `❌ ${error.message}`, 'error');
+                } finally {
+                    dom.btnIdentify.disabled = false;
+                }
+            }
+
+            // ==========================================
+            // SIMPLE CAPTURE CONTROL
+            // ==========================================
+
+            async function captureFingerprint() {
+                if (!state.readerInitialized) {
+                    updateStatus(dom.captureStatus, '⚠️ Enciende el lector primero', 'error');
+                    return;
+                }
+
+                try {
+                    dom.btnCapture.disabled = true;
+                    updateStatus(dom.captureStatus, '📸 Coloca el dedo...', 'info');
+                    showImage(dom.captureImage, dom.capturePlaceholder, null);
+
+                    const result = await state.adapter.captureFingerprint();
+                    console.log('[Capture] Result:', result);
+
+                    if (result.ok) {
+                        dom.captureInfo.style.display = 'grid';
+                        dom.captureTime.textContent = new Date().toLocaleTimeString();
+                        updateStatus(dom.captureStatus, '✅ Captura exitosa', 'success');
+                    } else {
+                        updateStatus(dom.captureStatus, `❌ ${result.error}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('[Capture] Error:', error);
+                    updateStatus(dom.captureStatus, `❌ ${error.message}`, 'error');
+                } finally {
+                    dom.btnCapture.disabled = false;
+                }
+            }
+
+            // ==========================================
+            // TEMPLATE MANAGER
+            // ==========================================
+
+            async function refreshTemplates() {
+                try {
+                    const result = await state.adapter.getStoredFingerprints();
+                    if (result.ok) {
+                        state.templates = result.items;
+                        dom.templateCount.textContent = result.items.length;
+
+                        if (result.items.length === 0) {
+                            dom.templatesList.innerHTML = `
+                                <div class="template-item" style="text-align: center; color: var(--gray-600);">
+                                    No hay plantillas
+                                </div>
+                            `;
+                        } else {
+                            dom.templatesList.innerHTML = result.items.map(item => `
+                                <div class="template-item">
+                                    <span>${item.tag}</span>
+                                    <span class="template-format">${item.format}</span>
+                                </div>
+                            `).join('');
+                        }
+
+                        // Actualizar lista de verificación
+                        loadUsers();
+                    }
+                } catch (error) {
+                    console.error('[Templates] Error:', error);
+                }
+            }
+
+            async function clearTemplates() {
+                if (!confirm('¿Seguro que deseas eliminar TODAS las plantillas?')) {
+                    return;
+                }
+
+                try {
+                    await state.adapter.clearStoredFingerprints();
+                    await refreshTemplates();
+                    updateGlobalStatus('🗑️ Plantillas eliminadas', true);
+                } catch (error) {
+                    console.error('[Templates] Error:', error);
+                }
+            }
+
+            // ==========================================
+            // EVENT HANDLER (SSE)
+            // ==========================================
+
+            function handleSSEEvent(data) {
+                const eventType = data.eventType || data.evt;
+                console.log(`[SSE] ${eventType}`, data);
+
+                switch (eventType) {
+                    case 'READER_READY':
+                        state.readerInitialized = true;
+                        dom.readerState.textContent = 'Encendido';
+                        updateStatus(dom.readerStatus, '✅ Lector DP4500 listo', 'success');
+                        updateGlobalStatus('✅ Lector DP4500 encendido - Sistema listo', true);
+
+                        // Habilitar controles
+                        dom.btnInitReader.disabled = true;
+                        dom.btnDisposeReader.disabled = false;
+                        dom.btnEnroll.disabled = false;
+                        dom.btnVerify.disabled = false;
+                        dom.btnIdentify.disabled = false;
+                        dom.btnCapture.disabled = false;
+
+                        // Cargar usuarios
+                        loadUsers();
+                        refreshTemplates();
+                        break;
+
+                    case 'READER_DISPOSED':
+                        state.readerInitialized = false;
+                        dom.readerState.textContent = 'Apagado';
+                        updateStatus(dom.readerStatus, '⚠️ Lector apagado', 'warning');
+                        updateGlobalStatus('⚠️ Lector apagado - Inicializa el lector para continuar', false);
+
+                        // Deshabilitar controles
+                        dom.btnInitReader.disabled = false;
+                        dom.btnDisposeReader.disabled = true;
+                        dom.btnEnroll.disabled = true;
+                        dom.btnVerify.disabled = true;
+                        dom.btnIdentify.disabled = true;
+                        dom.btnCapture.disabled = true;
+                        break;
+
+                    case 'IMAGE_CAPTURED':
+                        const imageBase64 = data.data?.imageBase64 || data.imageBase64;
+                        if (imageBase64) {
+                            if (state.isEnrolling) {
+                                showImage(dom.enrollImage, dom.enrollPlaceholder, imageBase64);
+                            }
+                            if (state.currentOperation === 'verify') {
+                                showImage(dom.verifyImage, dom.verifyPlaceholder, imageBase64);
+                            }
+                            if (state.currentOperation === 'identify') {
+                                showImage(dom.identifyImage, dom.identifyPlaceholder, imageBase64);
+                            }
+                            if (state.currentOperation === 'capture') {
+                                showImage(dom.captureImage, dom.capturePlaceholder, imageBase64);
+                            }
+                        }
+                        break;
+
+                    case 'SAMPLE_COLLECTED':
+                        if (state.isEnrolling) {
+                            const sampleNum = data.data?.sampleNumber || data.sampleNumber || state.enrollSamples + 1;
+                            state.enrollSamples = sampleNum;
+                            updateEnrollProgress(sampleNum, 4);
+                            updateStatus(dom.enrollStatus, `✅ Muestra ${sampleNum}/4 capturada`, 'success');
+                        }
+                        break;
+
+                    case 'ENROLLMENT_COMPLETED':
+                        state.isEnrolling = false;
+                        updateEnrollProgress(4, 4);
+                        updateStatus(dom.enrollStatus, '🎉 Enrolamiento completado', 'success');
+                        dom.btnEnroll.disabled = false;
+                        setTimeout(() => {
+                            dom.enrollUserId.value = '';
+                            dom.enrollProgress.classList.remove('active');
+                            showImage(dom.enrollImage, dom.enrollPlaceholder, null);
+                            refreshTemplates();
+                        }, 3000);
+                        break;
+
+                    case 'ENROLLMENT_FAILED':
+                        state.isEnrolling = false;
+                        updateStatus(dom.enrollStatus, `❌ ${data.message || 'Error'}`, 'error');
+                        dom.btnEnroll.disabled = false;
+                        break;
+
+                    case 'CAPTURE_STARTED':
+                        updateStatus(dom.enrollStatus, '👆 Coloca el dedo en el lector', 'info');
+                        break;
+                }
+            }
+
+            // ==========================================
+            // SETUP AND INITIALIZATION
+            // ==========================================
 
             function setup() {
                 console.log('[DP4500] 🚀 Inicializando Panel Biométrico...');
 
-                // Obtener instancia del BiometricAdapter
+                // Obtener adapter
                 state.adapter = window.BiometricAdapter;
-
                 if (!state.adapter) {
-                    console.error('[DP4500] ❌ BiometricAdapter no encontrado');
-                    updateStatus('❌ Error: BiometricAdapter no disponible', 'error');
+                    console.error('[DP4500] BiometricAdapter no encontrado');
+                    updateGlobalStatus('❌ Error: BiometricAdapter no disponible', false);
                     return;
                 }
 
-                // Escuchar TODOS los eventos SSE directamente con wildcard '*'
-                state.adapter.on('*', handleDirectEvent);
-                console.log('[DP4500] ✅ Listener de eventos SSE configurado');
+                // Event listeners SSE
+                state.adapter.on('*', handleSSEEvent);
 
-                // Configurar botón
+                // Event listeners UI - Reader
+                dom.btnInitReader.addEventListener('click', initializeReader);
+                dom.btnDisposeReader.addEventListener('click', disposeReader);
+
+                // Event listeners UI - Enrollment
+                dom.enrollUserId.addEventListener('input', () => {
+                    dom.btnEnroll.disabled = !dom.enrollUserId.value.trim() || !state.readerInitialized;
+                });
                 dom.btnEnroll.addEventListener('click', startEnrollment);
 
-                // Inicializar lector
-                initializeReader();
+                // Event listeners UI - Verification
+                dom.verifyUserId.addEventListener('change', () => {
+                    state.currentOperation = 'verify';
+                    dom.btnVerify.disabled = !dom.verifyUserId.value || !state.readerInitialized;
+                });
+                dom.btnVerify.addEventListener('click', verifyUser);
 
-                // Cleanup al cerrar
-                window.addEventListener('beforeunload', () => {
-                    if (state.adapter) {
-                        state.adapter.disconnect();
-                    }
+                // Event listeners UI - Identification
+                dom.btnIdentify.addEventListener('click', () => {
+                    state.currentOperation = 'identify';
+                    identifyUser();
                 });
 
-                console.log('[DP4500] ✅ Panel Biométrico listo');
-                console.log('[DP4500] 📡 Esperando eventos del backend...');
+                // Event listeners UI - Capture
+                dom.btnCapture.addEventListener('click', () => {
+                    state.currentOperation = 'capture';
+                    captureFingerprint();
+                });
+
+                // Event listeners UI - Templates
+                dom.btnRefreshTemplates.addEventListener('click', refreshTemplates);
+                dom.btnClearTemplates.addEventListener('click', clearTemplates);
+
+                console.log('[DP4500] ✅ Panel listo');
             }
 
-            // Esperar a que BiometricAdapter esté disponible
+            // Inicializar cuando BiometricAdapter esté listo
             if (window.BiometricAdapter) {
                 setup();
             } else {
