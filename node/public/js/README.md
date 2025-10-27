@@ -10,29 +10,42 @@ This directory contains the JavaScript component system for the biometric finger
 
 ```
 js/
-├── infrastructure/          # Core infrastructure - DOM framework & communication
-│   ├── BaseComponent.js     # Base class for building UI components
-│   ├── BiometricAdapter.js  # Backend-frontend communication adapter (main gateway)
-│   └── ComponentFactory.js  # Factory pattern for component creation
+├── adapter/                    # Backend communication layer
+│   └── BiometricAdapter.js     # Main gateway: SSE + API REST
 │
-└── biometric-controls/      # Business logic - Fingerprint reader UI
-    ├── EnrollmentControl.js       # Enrollment workflow (4 samples)
-    ├── VerificationControl.js     # Verification workflow (1:1)
-    ├── SimpleCaptureControl.js    # Basic fingerprint capture
-    ├── ReaderControl.js           # Device management & initialization
-    ├── LogDeviceControl.js        # Device logging & debugging
-    └── TechDeviceControl.js       # Technical device information
+├── components/                 # UI component framework
+│   ├── BaseComponent.js        # Base class for all UI components
+│   └── ComponentFactory.js     # Factory pattern for component creation
+│
+└── controls/                   # Biometric controls (business logic)
+    ├── EnrollmentControl.js    # Enrollment workflow (4 samples)
+    ├── VerificationControl.js  # Verification (1:1) & Identification (1:N)
+    ├── SimpleCaptureControl.js # Basic fingerprint capture
+    ├── ReaderControl.js        # Device management & initialization
+    ├── LogDeviceControl.js     # Device logging & debugging
+    └── TechDeviceControl.js    # Technical device information
 ```
 
 ---
 
 ## Component Categories
 
-### 1. Infrastructure Components (`infrastructure/`)
+### 1. Adapter Layer (`adapter/`)
 
-**Purpose**: Foundational framework for building DOM-based UI components
+**Purpose**: Backend communication gateway
 
-These components provide the **core capabilities** needed to build any interactive UI component, independent of the specific business domain (biometrics). They handle:
+This layer provides the **main communication channel** between frontend and backend:
+
+- Server-Sent Events (SSE) connection management
+- API REST calls to backend endpoints
+- Event emission to UI components
+- Connection lifecycle (connect, disconnect, reconnect)
+
+### 2. Component Framework (`components/`)
+
+**Purpose**: UI component framework
+
+These classes provide the **foundation** for building interactive UI components:
 
 - DOM construction and manipulation
 - Event handling and lifecycle management
@@ -119,7 +132,7 @@ Factory pattern for creating component instances.
 
 ---
 
-### 2. Biometric Controls (`biometric-controls/`)
+### 3. Biometric Controls (`controls/`)
 
 **Purpose**: Fingerprint reader-specific UI components and workflows
 
@@ -133,7 +146,7 @@ These components implement the **business logic** for biometric operations. They
 
 **Key Characteristics**:
 - Domain-specific (biometric fingerprint operations)
-- Extend infrastructure components (BaseComponent)
+- Extend BaseComponent from components/
 - Implement biometric workflows and state machines
 - Handle device-specific logic
 
@@ -289,18 +302,20 @@ Components use events for decoupled communication:
 Components must be loaded in dependency order:
 
 ```html
-<!-- 1. Infrastructure (no dependencies) -->
-<script src="/js/infrastructure/BiometricAdapter.js"></script>
-<script src="/js/infrastructure/BaseComponent.js"></script>
-<script src="/js/infrastructure/ComponentFactory.js"></script>
+<!-- 1. Adapter (no dependencies) -->
+<script src="/js/adapter/BiometricAdapter.js"></script>
 
-<!-- 2. Biometric Controls (depend on infrastructure) -->
-<script src="/js/biometric-controls/EnrollmentControl.js"></script>
-<script src="/js/biometric-controls/VerificationControl.js"></script>
-<script src="/js/biometric-controls/SimpleCaptureControl.js"></script>
-<script src="/js/biometric-controls/ReaderControl.js"></script>
-<script src="/js/biometric-controls/LogDeviceControl.js"></script>
-<script src="/js/biometric-controls/TechDeviceControl.js"></script>
+<!-- 2. Component Framework (no dependencies) -->
+<script src="/js/components/BaseComponent.js"></script>
+<script src="/js/components/ComponentFactory.js"></script>
+
+<!-- 3. Biometric Controls (depend on adapter + components) -->
+<script src="/js/controls/EnrollmentControl.js"></script>
+<script src="/js/controls/VerificationControl.js"></script>
+<script src="/js/controls/SimpleCaptureControl.js"></script>
+<script src="/js/controls/ReaderControl.js"></script>
+<script src="/js/controls/LogDeviceControl.js"></script>
+<script src="/js/controls/TechDeviceControl.js"></script>
 ```
 
 ### Example HTML
@@ -311,16 +326,16 @@ See `v2-ceddfa/template-workflow-ceddfa.html` for complete implementation.
 
 ## Development Guidelines
 
-### Creating New Infrastructure Components
+### Creating New Component Framework Classes
 
-1. Place in `infrastructure/` directory
+1. Place in `components/` directory
 2. Should be domain-agnostic (not biometric-specific)
-3. Provide reusable capabilities
-4. No dependencies on biometric-controls
+3. Provide reusable UI capabilities
+4. No dependencies on controls/
 
 Example:
 ```javascript
-// infrastructure/DataTableComponent.js
+// components/DataTableComponent.js
 class DataTableComponent {
     constructor(containerId, data) {
         this.containerId = containerId;
@@ -335,14 +350,14 @@ class DataTableComponent {
 
 ### Creating New Biometric Controls
 
-1. Place in `biometric-controls/` directory
-2. Extend `BaseComponent`
+1. Place in `controls/` directory
+2. Extend `BaseComponent` from components/
 3. Implement biometric-specific workflow
-4. Use `BiometricAdapter` for backend communication
+4. Use `BiometricAdapter` from adapter/ for backend communication
 
 Example:
 ```javascript
-// biometric-controls/IdentificationControl.js
+// controls/IdentificationControl.js
 class IdentificationControl extends BaseComponent {
     constructor(containerId, adapter, config = {}) {
         super(containerId, adapter, config);
@@ -389,18 +404,21 @@ js/
 **After** (separated by purpose):
 ```
 js/
-├── infrastructure/
+├── adapter/
+│   └── BiometricAdapter.js
+├── components/
 │   ├── BaseComponent.js
-│   ├── BiometricAdapter.js
-└── biometric-controls/
+│   └── ComponentFactory.js
+└── controls/
     ├── EnrollmentControl.js
     └── VerificationControl.js
 ```
 
 ### Benefits of New Structure
 
-1. **Clarity**: Clear distinction between framework and business logic
-2. **Reusability**: Infrastructure components can be used in other projects
+1. **Clarity**: Clear separation of concerns (adapter, framework, business logic)
+2. **Reusability**: Component framework can be used in other projects
+3. **Simplicity**: Each folder has a single, clear purpose
 3. **Maintainability**: Changes to business logic don't affect infrastructure
 4. **Testability**: Easier to test components in isolation
 5. **Onboarding**: New developers understand architecture faster

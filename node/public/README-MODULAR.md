@@ -32,15 +32,16 @@ ComponentFactory.create('enrollment', 'myDiv', config)
 
 ```
 js/
-├── infrastructure/
-│   ├── BiometricAdapter.js      # Comunicación backend-frontend (gateway principal)
-│   ├── BaseComponent.js         # Clase base para componentes
-│   └── ComponentFactory.js      # Factory para crear componentes
-├── biometric-controls/
-│   ├── EnrollmentControl.js     # Componente de enrolamiento
-│   ├── SimpleCaptureControl.js  # Componente de captura
-│   ├── VerificationControl.js   # Componente de verificación
-│   ├── ReaderControl.js         # Control del estado del lector
+├── adapter/                     # Comunicación con backend
+│   └── BiometricAdapter.js      # Gateway principal (SSE + API REST)
+├── components/                  # Framework de componentes
+│   ├── BaseComponent.js         # Clase base para UI
+│   └── ComponentFactory.js      # Factory pattern para crear componentes
+├── controls/                    # Controles biométricos
+│   ├── EnrollmentControl.js     # Enrolamiento de huellas
+│   ├── VerificationControl.js   # Verificación 1:1 e identificación 1:N
+│   ├── SimpleCaptureControl.js  # Captura simple
+│   ├── ReaderControl.js         # Estado del lector
 │   ├── LogDeviceControl.js      # Logs del dispositivo
 │   └── TechDeviceControl.js     # Información técnica avanzada
 └── styles/
