@@ -81,6 +81,15 @@ class ComponentFactory {
             }
         });
 
+        this.componentTypes.set('fingermanagement', {
+            class: FingerManagementControl,
+            description: 'Gestión de huellas por dedo y mano específicos',
+            defaultConfig: {
+                autoRefreshFingers: true,
+                showVisualHands: true
+            }
+        });
+
         console.log('[ComponentFactory] Componentes registrados:', Array.from(this.componentTypes.keys()));
     }
 
@@ -187,7 +196,14 @@ class ComponentFactory {
             'template': 'templatemanager',
             'templates': 'templatemanager',
             'manager': 'templatemanager',
-            'store': 'templatemanager'
+            'store': 'templatemanager',
+
+            'fingermanagement': 'fingermanagement',
+            'finger-management': 'fingermanagement',
+            'finger': 'fingermanagement',
+            'fingers': 'fingermanagement',
+            'hand': 'fingermanagement',
+            'hands': 'fingermanagement'
         };
 
         // Buscar coincidencia en el ID del contenedor
@@ -305,7 +321,8 @@ class ComponentFactory {
             'readercontrol', 'reader', 'lector',
             'logdevice', 'log', 'logs',
             'techdevice', 'tech', 'technical',
-            'templatemanager', 'template', 'templates', 'manager', 'store'
+            'templatemanager', 'template', 'templates', 'manager', 'store',
+            'fingermanagement', 'finger-management', 'finger', 'fingers', 'hand', 'hands'
         ];
 
         commonIds.forEach(id => {
