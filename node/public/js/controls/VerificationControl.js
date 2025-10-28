@@ -720,8 +720,8 @@ class VerificationControl extends BaseComponent {
             console.log(`[${this.componentId}] 🔍 Iniciando verificación para: ${this.selectedUserId}`);
             this._updateStatus('verify', `Verificando ${this.selectedUserId}...`, 'loading');
 
-            // Llamar al backend
-            const result = await this.adapter.verifyFingerprint(this.selectedUserId);
+            // Llamar al backend con maxAttempts=4
+            const result = await this.adapter.verifyFingerprint(this.selectedUserId, 4);
 
             console.log(`[${this.componentId}] 📥 Resultado de verificación:`, result);
 
@@ -791,8 +791,8 @@ class VerificationControl extends BaseComponent {
 
             this._updateStatus('identify', `Buscando coincidencias en ${this.availableUsers.length} usuarios...`, 'loading');
 
-            // Llamar al backend
-            const result = await this.adapter.identifyFingerprint();
+            // Llamar al backend con maxAttempts=4
+            const result = await this.adapter.identifyFingerprint(4);
 
             // Procesar resultado
             if (result.ok) {

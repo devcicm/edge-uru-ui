@@ -134,7 +134,8 @@ app.post("/api/identify", async (req, res) => {
     const timeoutMs = req.body?.timeoutMs ?? 12000;
     const targetFarn = req.body?.targetFarn ?? 21474;
     const top = req.body?.top ?? 5;
-    res.json(await call({ op: "identify", timeoutMs, targetFarn, top }));
+    const maxAttempts = req.body?.maxAttempts ?? 4;
+    res.json(await call({ op: "identify", timeoutMs, targetFarn, top, maxAttempts }));
   } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
@@ -157,7 +158,8 @@ app.post("/api/verify", async (req, res) => {
     }
     const timeoutMs = req.body?.timeoutMs ?? 15000;
     const targetFarn = req.body?.targetFarn ?? 21474;
-    res.json(await call({ op: "verify", tag, timeoutMs, targetFarn }));
+    const maxAttempts = req.body?.maxAttempts ?? 4;
+    res.json(await call({ op: "verify", tag, timeoutMs, targetFarn, maxAttempts }));
   } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 

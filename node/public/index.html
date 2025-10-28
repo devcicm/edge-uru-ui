@@ -959,7 +959,7 @@
                     updateStatus(dom.verifyStatus, `🔍 Verificando ${userId}...`, 'info');
                     showImage(dom.verifyImage, dom.verifyPlaceholder, null);
 
-                    const result = await state.adapter.verifyFingerprint(userId);
+                    const result = await state.adapter.verifyFingerprint(userId, 4);
                     console.log('[Verify] Result:', result);
 
                     if (result.ok) {
@@ -1018,7 +1018,7 @@
                     updateStatus(dom.identifyStatus, `🔍 Buscando en ${state.templates.length} usuarios...`, 'info');
                     showImage(dom.identifyImage, dom.identifyPlaceholder, null);
 
-                    const result = await state.adapter.identifyFingerprint();
+                    const result = await state.adapter.identifyFingerprint(4);
                     console.log('[Identify] Result:', result);
 
                     if (result.ok) {
