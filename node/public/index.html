@@ -650,6 +650,39 @@
                 </button>
             </div>
 
+            <!-- 7. TECH DEVICE INFO -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>🔧 Información Técnica</h2>
+                    <p>Detalles del dispositivo y sistema</p>
+                </div>
+
+                <div class="status-message" id="techStatus">Presiona Actualizar para obtener información</div>
+
+                <button class="btn btn-primary" id="btnLoadTechInfo">
+                    🔄 Actualizar Información
+                </button>
+
+                <div class="info-grid" id="techInfo" style="display: none;">
+                    <div class="info-item">
+                        <span class="info-label">Modelo:</span>
+                        <span class="info-value" id="techModel">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Serie:</span>
+                        <span class="info-value" id="techSerial">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Resolución:</span>
+                        <span class="info-value" id="techResolution">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Estado:</span>
+                        <span class="info-value" id="techState">-</span>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -759,7 +792,16 @@
                 templateCount: document.getElementById('templateCount'),
                 templatesList: document.getElementById('templatesList'),
                 btnRefreshTemplates: document.getElementById('btnRefreshTemplates'),
-                btnClearTemplates: document.getElementById('btnClearTemplates')
+                btnClearTemplates: document.getElementById('btnClearTemplates'),
+
+                // Tech Device Info
+                techStatus: document.getElementById('techStatus'),
+                btnLoadTechInfo: document.getElementById('btnLoadTechInfo'),
+                techInfo: document.getElementById('techInfo'),
+                techModel: document.getElementById('techModel'),
+                techSerial: document.getElementById('techSerial'),
+                techResolution: document.getElementById('techResolution'),
+                techState: document.getElementById('techState')
             };
 
             // ==========================================
@@ -1133,6 +1175,36 @@
             }
 
             // ==========================================
+            // TECH DEVICE INFO
+            // ==========================================
+
+            async function loadTechInfo() {
+                try {
+                    dom.btnLoadTechInfo.disabled = true;
+                    updateStatus(dom.techStatus, '🔄 Obteniendo información del dispositivo...', 'info');
+
+                    const result = await state.adapter.getReaderInfo();
+                    console.log('[TechInfo] Result:', result);
+
+                    if (result.ok) {
+                        dom.techInfo.style.display = 'grid';
+                        dom.techModel.textContent = result.data?.model || 'DigitalPersona U.are.U 4500';
+                        dom.techSerial.textContent = result.data?.serialNumber || result.data?.serial || 'N/A';
+                        dom.techResolution.textContent = result.data?.resolution || '512 DPI';
+                        dom.techState.textContent = state.readerInitialized ? 'Encendido' : 'Apagado';
+                        updateStatus(dom.techStatus, '✅ Información actualizada', 'success');
+                    } else {
+                        updateStatus(dom.techStatus, `❌ ${result.error || 'Error obteniendo información'}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('[TechInfo] Error:', error);
+                    updateStatus(dom.techStatus, `❌ ${error.message}`, 'error');
+                } finally {
+                    dom.btnLoadTechInfo.disabled = false;
+                }
+            }
+
+            // ==========================================
             // EVENT HANDLER (SSE)
             // ==========================================
 
@@ -1315,6 +1387,9 @@
                 // Event listeners UI - Templates
                 dom.btnRefreshTemplates.addEventListener('click', refreshTemplates);
                 dom.btnClearTemplates.addEventListener('click', clearTemplates);
+
+                // Event listeners UI - Tech Device Info
+                dom.btnLoadTechInfo.addEventListener('click', loadTechInfo);
 
                 console.log('[DP4500] ✅ Panel listo');
             }
