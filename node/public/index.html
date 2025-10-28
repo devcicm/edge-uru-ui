@@ -654,7 +654,7 @@
             <div class="control-card">
                 <div class="control-header">
                     <h2>🔧 Información Técnica</h2>
-                    <p>Detalles del dispositivo y sistema</p>
+                    <p>Detalles completos del dispositivo y sistema</p>
                 </div>
 
                 <div class="status-message" id="techStatus">Presiona Actualizar para obtener información</div>
@@ -663,22 +663,84 @@
                     🔄 Actualizar Información
                 </button>
 
-                <div class="info-grid" id="techInfo" style="display: none;">
-                    <div class="info-item">
-                        <span class="info-label">Modelo:</span>
-                        <span class="info-value" id="techModel">-</span>
+                <button class="btn btn-secondary" id="btnExportTechInfo" disabled>
+                    📥 Exportar JSON
+                </button>
+
+                <div id="techInfoPanel" style="display: none;">
+                    <!-- Sección: Dispositivo -->
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 16px; color: var(--gray-700); margin-bottom: 10px; border-bottom: 2px solid var(--gray-200); padding-bottom: 5px;">
+                            📱 Dispositivo
+                        </h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Modelo:</span>
+                                <span class="info-value" id="techModel">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Serie:</span>
+                                <span class="info-value" id="techSerial">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Firmware:</span>
+                                <span class="info-value" id="techFirmware">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Estado:</span>
+                                <span class="info-value" id="techStatus2">-</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">Serie:</span>
-                        <span class="info-value" id="techSerial">-</span>
+
+                    <!-- Sección: Capacidades -->
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 16px; color: var(--gray-700); margin-bottom: 10px; border-bottom: 2px solid var(--gray-200); padding-bottom: 5px;">
+                            ⚙️ Capacidades
+                        </h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Resolución:</span>
+                                <span class="info-value" id="techResolution">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Área de captura:</span>
+                                <span class="info-value" id="techArea">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Profundidad:</span>
+                                <span class="info-value" id="techDepth">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Tecnología:</span>
+                                <span class="info-value" id="techTechnology">-</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">Resolución:</span>
-                        <span class="info-value" id="techResolution">-</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Estado:</span>
-                        <span class="info-value" id="techState">-</span>
+
+                    <!-- Sección: Sistema -->
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 16px; color: var(--gray-700); margin-bottom: 10px; border-bottom: 2px solid var(--gray-200); padding-bottom: 5px;">
+                            💻 Sistema
+                        </h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Driver:</span>
+                                <span class="info-value" id="techDriver">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">SDK:</span>
+                                <span class="info-value" id="techSDK">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Plataforma:</span>
+                                <span class="info-value" id="techPlatform">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Última actualización:</span>
+                                <span class="info-value" id="techLastUpdate">-</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -708,7 +770,8 @@
                 isEnrolling: false,
                 enrollSamples: 0,
                 templates: [],
-                currentOperation: null
+                currentOperation: null,
+                techDeviceInfo: null
             };
 
             // ==========================================
@@ -797,11 +860,23 @@
                 // Tech Device Info
                 techStatus: document.getElementById('techStatus'),
                 btnLoadTechInfo: document.getElementById('btnLoadTechInfo'),
-                techInfo: document.getElementById('techInfo'),
+                btnExportTechInfo: document.getElementById('btnExportTechInfo'),
+                techInfoPanel: document.getElementById('techInfoPanel'),
+                // Dispositivo
                 techModel: document.getElementById('techModel'),
                 techSerial: document.getElementById('techSerial'),
+                techFirmware: document.getElementById('techFirmware'),
+                techStatus2: document.getElementById('techStatus2'),
+                // Capacidades
                 techResolution: document.getElementById('techResolution'),
-                techState: document.getElementById('techState')
+                techArea: document.getElementById('techArea'),
+                techDepth: document.getElementById('techDepth'),
+                techTechnology: document.getElementById('techTechnology'),
+                // Sistema
+                techDriver: document.getElementById('techDriver'),
+                techSDK: document.getElementById('techSDK'),
+                techPlatform: document.getElementById('techPlatform'),
+                techLastUpdate: document.getElementById('techLastUpdate')
             };
 
             // ==========================================
@@ -1187,12 +1262,34 @@
                     console.log('[TechInfo] Result:', result);
 
                     if (result.ok) {
-                        dom.techInfo.style.display = 'grid';
-                        dom.techModel.textContent = result.data?.model || 'DigitalPersona U.are.U 4500';
-                        dom.techSerial.textContent = result.data?.serialNumber || result.data?.serial || 'N/A';
-                        dom.techResolution.textContent = result.data?.resolution || '512 DPI';
-                        dom.techState.textContent = state.readerInitialized ? 'Encendido' : 'Apagado';
-                        updateStatus(dom.techStatus, '✅ Información actualizada', 'success');
+                        const info = result.data || result.info || {};
+
+                        // Mostrar panel
+                        dom.techInfoPanel.style.display = 'block';
+                        dom.btnExportTechInfo.disabled = false;
+
+                        // Sección: Dispositivo
+                        dom.techModel.textContent = info.model || 'DigitalPersona U.are.U 4500';
+                        dom.techSerial.textContent = info.serialNumber || info.serial || 'N/A';
+                        dom.techFirmware.textContent = info.firmware || info.firmwareVersion || 'N/A';
+                        dom.techStatus2.textContent = state.readerInitialized ? '✅ Encendido' : '⚠️ Apagado';
+
+                        // Sección: Capacidades
+                        dom.techResolution.textContent = info.resolution || '512 DPI';
+                        dom.techArea.textContent = info.captureArea || info.area || '16 x 18 mm';
+                        dom.techDepth.textContent = info.bitDepth || info.depth || '8 bits';
+                        dom.techTechnology.textContent = info.technology || 'Óptico';
+
+                        // Sección: Sistema
+                        dom.techDriver.textContent = info.driver || info.driverVersion || 'DigitalPersona Driver v2.x';
+                        dom.techSDK.textContent = info.sdk || info.sdkVersion || 'U.are.U SDK 2.x';
+                        dom.techPlatform.textContent = navigator.platform || 'Windows';
+                        dom.techLastUpdate.textContent = new Date().toLocaleString('es-ES');
+
+                        // Guardar info para exportar
+                        state.techDeviceInfo = info;
+
+                        updateStatus(dom.techStatus, '✅ Información técnica actualizada', 'success');
                     } else {
                         updateStatus(dom.techStatus, `❌ ${result.error || 'Error obteniendo información'}`, 'error');
                     }
@@ -1201,6 +1298,41 @@
                     updateStatus(dom.techStatus, `❌ ${error.message}`, 'error');
                 } finally {
                     dom.btnLoadTechInfo.disabled = false;
+                }
+            }
+
+            function exportTechInfo() {
+                if (!state.techDeviceInfo) {
+                    updateStatus(dom.techStatus, '⚠️ No hay información para exportar', 'warning');
+                    return;
+                }
+
+                try {
+                    const exportData = {
+                        timestamp: new Date().toISOString(),
+                        deviceInfo: state.techDeviceInfo,
+                        systemInfo: {
+                            userAgent: navigator.userAgent,
+                            platform: navigator.platform,
+                            language: navigator.language,
+                            readerStatus: state.readerInitialized ? 'Encendido' : 'Apagado'
+                        }
+                    };
+
+                    const dataStr = JSON.stringify(exportData, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `device-info-${new Date().toISOString().split('T')[0]}.json`;
+                    link.click();
+
+                    URL.revokeObjectURL(url);
+                    updateStatus(dom.techStatus, '✅ Información exportada correctamente', 'success');
+                } catch (error) {
+                    console.error('[TechInfo] Error exportando:', error);
+                    updateStatus(dom.techStatus, '❌ Error al exportar información', 'error');
                 }
             }
 
@@ -1390,6 +1522,7 @@
 
                 // Event listeners UI - Tech Device Info
                 dom.btnLoadTechInfo.addEventListener('click', loadTechInfo);
+                dom.btnExportTechInfo.addEventListener('click', exportTechInfo);
 
                 console.log('[DP4500] ✅ Panel listo');
             }
