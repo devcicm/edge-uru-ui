@@ -9,6 +9,7 @@ Sistema completo de captura, enrolamiento, verificación e identificación de hu
 - **✅ Verificación 1:1**: Verificación de identidad contra huellas enroladas específicas
 - **🔍 Identificación 1:N**: Identificación de huellas desconocidas contra toda la galería
 - **📸 Captura Simple**: Captura individual de huellas sin enrolamiento
+- **🖐️ Gestión de Dedos**: Sistema avanzado de identificación por dedo específico (Pulgar, Índice, Medio, Anular, Meñique) por mano (Izquierda/Derecha)
 
 ### Funcionalidades Avanzadas
 - **⚡ Eventos en Tiempo Real**: Actualización instantánea de progreso, imágenes y estado mediante Server-Sent Events (SSE)
@@ -16,6 +17,8 @@ Sistema completo de captura, enrolamiento, verificación e identificación de hu
 - **📊 Gestión de Plantillas**: Administración completa de plantillas biométricas almacenadas
 - **🔧 Control de Dispositivo**: Inicialización, configuración y monitoreo del lector DP4500
 - **📋 Logging en Vivo**: Sistema de logs en tiempo real con múltiples niveles de detalle
+- **🏷️ Tags Estructurados**: Sistema de identificación por tag con formato `userId_HAND_FINGER` (ej: `juan_LEFT_THUMB`, `maria_RIGHT_INDEX`)
+- **👐 Multibiometría**: Soporte completo para hasta 10 dedos por usuario (5 dedos × 2 manos)
 
 ### Experiencia de Usuario
 - **🎯 Interfaz Responsive**: Diseño moderno adaptable a diferentes resoluciones
@@ -188,6 +191,46 @@ Navega a: http://localhost:8080/demo-avance.html
    - Imagen de la huella capturada
    - Template FMD generado (base64)
 
+#### 🖐️ Gestión de Dedos por Mano (FingerManagementControl)
+
+**Sistema avanzado para gestión biométrica por dedo específico**
+
+1. **Enrolamiento por Dedo**:
+   - **Usuario**: Ingresa ID del usuario (ej: `juan`, `maria`)
+   - **Mano**: Selecciona Izquierda o Derecha
+   - **Dedo**: Selecciona entre Pulgar, Índice, Medio, Anular o Meñique
+   - **Presiona**: "Enrolar Dedo Seleccionado"
+   - **Tag generado**: `userId_HAND_FINGER` (ej: `juan_LEFT_THUMB`)
+
+2. **Verificación por Dedo**:
+   - Selecciona usuario, mano y dedo específicos
+   - Presiona "Verificar Dedo"
+   - Coloca el dedo correspondiente
+   - **Resultado**: Verificación contra ese dedo específico
+
+3. **Identificación Inteligente**:
+   - Presiona "Identificar Dedo"
+   - Coloca cualquier dedo enrolado
+   - **Resultado**: Usuario + Mano + Dedo identificados
+   - **Ejemplo**: `✅ IDENTIFICADO: juan | Índice 👈 Izquierda (Score: 98.5)`
+
+4. **Visualización de Dedos Enrolados**:
+   - Lista organizada por usuario
+   - Agrupada por mano (Izquierda/Derecha)
+   - Emojis representativos por dedo:
+     - 👍 Pulgar
+     - ☝️ Índice
+     - 🖕 Medio
+     - 💍 Anular
+     - 🤙 Meñique
+
+**Ventajas del Sistema de Dedos:**
+- ✅ Hasta 10 huellas por usuario (redundancia)
+- ✅ Identificación precisa de qué dedo se usó
+- ✅ Verificación específica contra dedo correcto
+- ✅ Gestión completa de multibiometría
+- ✅ Tags estructurados y fáciles de parsear
+
 ### Gestión de Plantillas (TemplateManagerControl)
 
 - **Cargar Plantillas**: Ver todas las plantillas almacenadas
@@ -319,6 +362,7 @@ edge-uru-ui/
 │   │   │       ├── VerificationControl.js  # Verification 1:1 & 1:N
 │   │   │       ├── SimpleCaptureControl.js # Simple capture
 │   │   │       ├── TemplateManagerControl.js # Template management
+│   │   │       ├── FingerManagementControl.js # Finger-by-hand management
 │   │   │       ├── ReaderControl.js        # Reader initialization
 │   │   │       ├── LogDeviceControl.js     # Live logging
 │   │   │       └── TechDeviceControl.js    # Device info
@@ -433,10 +477,39 @@ Todos los componentes heredan de `BaseComponent` y se auto-registran con `Compon
 #### TechDeviceControl
 - **Propósito**: Información técnica del DP4500
 - **Características**:
-  - Especificaciones del dispositivo
-  - Versión del SDK
-  - Formatos soportados
-  - Certificaciones
+  - Especificaciones del dispositivo (Modelo, Serie, Firmware)
+  - Capacidades (Resolución, Área de captura, Profundidad)
+  - Información del sistema (Driver, SDK, Plataforma)
+  - Exportación de información a JSON
+
+#### FingerManagementControl
+- **Propósito**: Gestión avanzada de huellas por dedo y mano
+- **Características**:
+  - Selectores de mano (Izquierda/Derecha) y dedo (Pulgar-Meñique)
+  - Tags estructurados: `userId_HAND_FINGER`
+  - Enrolamiento por dedo específico (4 muestras)
+  - Verificación contra dedo y mano específicos
+  - Identificación inteligente con detección de dedo
+  - Visualización gráfica de ambas manos (demo-avance.html)
+  - Lista de dedos enrolados con emojis
+  - Soporte para 10 dedos por usuario
+  - Eventos: `fingerEnrolled`, `fingerVerified`, `fingerIdentified`
+
+**Formato de Tags:**
+```javascript
+// Ejemplos de tags estructurados
+"juan_LEFT_THUMB"      // Juan - Pulgar izquierdo
+"maria_RIGHT_INDEX"    // María - Índice derecho
+"pedro_LEFT_MIDDLE"    // Pedro - Medio izquierdo
+```
+
+**Parsing de Tags:**
+```javascript
+// El sistema parsea automáticamente
+const tag = "juan_LEFT_THUMB";
+const { userId, hand, finger } = parseFingerTag(tag);
+// userId: "juan", hand: "LEFT", finger: "THUMB"
+```
 
 ---
 
@@ -700,9 +773,37 @@ rm -rf node/dist/
 
 ## 📝 Changelog
 
-### EdgeUruBridgeCore v1.0 (Actual)
+### EdgeUruBridgeCore v1.2 (Actual - 28 Octubre 2025)
 
-**Nuevas Características:**
+**Nuevas Características Principales:**
+- ✅ **FingerManagementControl**: Sistema completo de gestión de huellas por dedo y mano
+  - Tags estructurados: `userId_HAND_FINGER`
+  - Soporte para 10 dedos por usuario (5 dedos × 2 manos)
+  - Visualización gráfica de manos con estados de dedos
+  - Identificación inteligente de usuario + dedo + mano
+- ✅ **TechDeviceControl Expandido**: Información técnica completa del dispositivo
+  - 12 campos de información organizados en 3 secciones
+  - Exportación de datos a JSON
+  - Información de dispositivo, capacidades y sistema
+- ✅ **Multi-intentos en Verificación/Identificación**: Parámetro `maxAttempts` (hasta 4 intentos)
+- ✅ **Control 8/8 Completo**: Todos los controles implementados en ambas versiones (demo-avance.html e index.html)
+
+**Mejoras de Funcionalidad:**
+- ✅ Verificación e identificación con múltiples intentos automáticos
+- ✅ Sistema de tags estructurados para multibiometría
+- ✅ Parsing automático de tags para identificación precisa
+- ✅ Emojis representativos para cada dedo (👍☝️🖕💍🤙)
+- ✅ Lista organizada de dedos enrolados por usuario y mano
+- ✅ Integración completa en frontend (index.html) y backend (server.ts)
+
+**Correcciones:**
+- 🐛 Parámetro `maxAttempts` faltante en llamadas del frontend
+- 🐛 RuntimeBinderException por falta de parámetro en C#
+- 🐛 Sincronización de parámetros entre frontend y backend
+
+### EdgeUruBridgeCore v1.0 (27 Octubre 2025)
+
+**Nuevas Características Iniciales:**
 - ✅ Sistema de componentes modular con ComponentFactory
 - ✅ Eventos en tiempo real con SSE
 - ✅ Progreso visual en enrolamiento
@@ -713,7 +814,7 @@ rm -rf node/dist/
 - ✅ Sistema de eventos custom (BaseComponent)
 - ✅ TemplateManagerControl para gestión de plantillas
 
-**Correcciones:**
+**Correcciones Iniciales:**
 - 🐛 Botones deshabilitados en EnrollmentControl
 - 🐛 Verificación 1:1 mostrando plantillas inválidas
 - 🐛 Propiedad `match` vs `matched` en identificación
@@ -746,7 +847,7 @@ Este proyecto es para propósitos demostrativos y educativos.
 
 **Proyecto**: EdgeUruBridgeCore
 **Rama Principal**: `EdgeUruBridgeCore`
-**Última Actualización**: 27 de Octubre, 2025
+**Última Actualización**: 28 de Octubre, 2025
 
 ---
 

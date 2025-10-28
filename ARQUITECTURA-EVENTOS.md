@@ -69,6 +69,9 @@ El sistema utiliza **DOS sistemas de eventos independientes** con responsabilida
 │  ✓ captured         (SimpleCaptureControl)                      │
 │  ✓ templatesLoaded  (TemplateManagerControl)                    │
 │  ✓ templatesCleared (TemplateManagerControl)                    │
+│  ✓ fingerEnrolled   (FingerManagementControl)                   │
+│  ✓ fingerVerified   (FingerManagementControl)                   │
+│  ✓ fingerIdentified (FingerManagementControl)                   │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          │ component.on('enrolled', handler)
@@ -275,15 +278,138 @@ console.log(components.enrollment.eventListeners);
 
 ---
 
+## 🖐️ Caso de Uso: FingerManagementControl
+
+### Sistema de Gestión de Dedos por Mano
+
+El `FingerManagementControl` es un ejemplo avanzado de cómo el sistema de eventos permite implementar funcionalidades complejas de manera modular.
+
+#### Arquitectura de Tags Estructurados
+
+```javascript
+// Formato de tag: userId_HAND_FINGER
+const tag = "juan_LEFT_THUMB";  // Juan - Pulgar izquierdo
+
+// Parsing automático
+const { userId, hand, finger } = parseFingerTag(tag);
+// → userId: "juan", hand: "LEFT", finger: "THUMB"
+```
+
+#### Flujo de Eventos para Enrolamiento de Dedo
+
+```
+Usuario selecciona: Juan + Mano Izquierda + Pulgar
+         ↓
+Component genera tag: "juan_LEFT_THUMB"
+         ↓
+adapter.enrollFingerprint(tag)  ← API call
+         ↓
+Backend C# inicia enrolamiento
+         ↓
+SSE: SAMPLE_COLLECTED (1/4, 2/4, 3/4, 4/4)
+         ↓
+BiometricAdapter.emit('SAMPLE_COLLECTED', data)
+         ↓
+Component actualiza progreso visual
+         ↓
+SSE: ENROLLMENT_COMPLETED
+         ↓
+Component emite evento custom:
+component.emit('fingerEnrolled', {
+    userId: 'juan',
+    hand: 'LEFT',
+    finger: 'THUMB',
+    tag: 'juan_LEFT_THUMB'
+})
+         ↓
+Aplicación actualiza lista de dedos enrolados
+```
+
+#### Flujo de Identificación Inteligente
+
+```
+Usuario presiona "Identificar Dedo"
+         ↓
+adapter.identifyFingerprint()  ← Sin tag específico
+         ↓
+Backend compara contra TODOS los dedos enrolados
+         ↓
+SSE: IDENTIFICATION_MATCH
+         ↓
+BiometricAdapter.emit('IDENTIFICATION_MATCH', {
+    bestTag: "maria_RIGHT_INDEX",
+    bestScore: 98.5
+})
+         ↓
+Component parsea el tag:
+const { userId, hand, finger } = parseTag(bestTag)
+         ↓
+Component emite evento custom:
+component.emit('fingerIdentified', {
+    userId: 'maria',
+    hand: 'RIGHT',
+    finger: 'INDEX',
+    score: 98.5
+})
+         ↓
+UI muestra: "✅ IDENTIFICADO: maria | Índice 👉 Derecha (Score: 98.5)"
+```
+
+#### Eventos Custom del FingerManagementControl
+
+```javascript
+// 1. Enrolamiento de dedo completado
+component.on('fingerEnrolled', (data) => {
+    console.log(`Dedo enrolado: ${data.userId} - ${data.hand} ${data.finger}`);
+    // data = { userId, hand, finger, tag }
+});
+
+// 2. Verificación de dedo
+component.on('fingerVerified', (data) => {
+    console.log(`Verificado: ${data.verified}, Score: ${data.score}`);
+    // data = { userId, hand, finger, verified, score }
+});
+
+// 3. Identificación de dedo
+component.on('fingerIdentified', (data) => {
+    console.log(`Identificado: ${data.userId} - ${data.finger} ${data.hand}`);
+    // data = { userId, hand, finger, score }
+});
+```
+
+#### Ventajas del Sistema de Eventos para Multibiometría
+
+1. **Desacoplamiento Total**:
+   - Backend no conoce la lógica de parsing de tags
+   - Componente maneja transformación de datos
+   - Aplicación recibe eventos limpios y estructurados
+
+2. **Escalabilidad**:
+   - Soporta 10 dedos por usuario (5 × 2 manos)
+   - Fácil agregar más manos o dedos sin cambiar arquitectura
+
+3. **Trazabilidad**:
+   - Cada evento custom incluye userId, hand, finger
+   - Fácil de auditar qué dedo se usó en qué operación
+
+4. **Integración Transparente**:
+   - Mismo sistema de eventos que otros controles
+   - Reutiliza BiometricAdapter y BaseComponent
+   - Se registra con ComponentFactory automáticamente
+
+---
+
 ## 📚 Referencias
 
 - **BiometricAdapter.js**: `node/public/js/adapter/BiometricAdapter.js`
 - **BaseComponent.js**: `node/public/js/components/BaseComponent.js`
 - **EnrollmentControl.js**: `node/public/js/controls/EnrollmentControl.js`
+- **FingerManagementControl.js**: `node/public/js/controls/FingerManagementControl.js`
 - **demo-avance.html**: `node/public/demo-avance.html`
+- **index.html**: `node/public/index.html`
 
 ---
 
-**Última Actualización**: 2025-10-27
-**Versión**: EdgeUruBridgeCore v1.0
+**Última Actualización**: 2025-10-28
+**Versión**: EdgeUruBridgeCore v1.2
 **Autor**: Sistema de Arquitectura Edge-Uru-UI
