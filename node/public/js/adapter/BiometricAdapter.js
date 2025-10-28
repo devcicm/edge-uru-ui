@@ -264,10 +264,10 @@ class BiometricAdapter {
     /**
      * Verificar huella
      */
-    async verifyFingerprint(userId) {
-        console.log(`[BiometricAdapter] 🔍 Verificación para: ${userId}`);
+    async verifyFingerprint(userId, maxAttempts = 4) {
+        console.log(`[BiometricAdapter] 🔍 Verificación para: ${userId} (máx ${maxAttempts} intentos)`);
         try {
-            return await this.apiCall('/api/verify', { tag: userId });
+            return await this.apiCall('/api/verify', { tag: userId, maxAttempts });
         } catch (error) {
             console.error('[BiometricAdapter] Error en verificación:', error);
             throw error;
@@ -277,10 +277,10 @@ class BiometricAdapter {
     /**
      * Identificar huella 1:N
      */
-    async identifyFingerprint() {
-        console.log('[BiometricAdapter] 🔎 Identificación 1:N...');
+    async identifyFingerprint(maxAttempts = 4) {
+        console.log(`[BiometricAdapter] 🔎 Identificación 1:N (máx ${maxAttempts} intentos)...`);
         try {
-            return await this.apiCall('/api/identify');
+            return await this.apiCall('/api/identify', { maxAttempts });
         } catch (error) {
             console.error('[BiometricAdapter] Error en identificación:', error);
             throw error;
