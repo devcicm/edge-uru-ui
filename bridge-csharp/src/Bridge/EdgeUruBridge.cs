@@ -299,10 +299,10 @@ namespace EdgeBridge
 
                     var timeoutMs = (int?)input?.timeoutMs ?? 60000;
                     var targetFarn = (int?)input?.targetFarn ?? 21474;
+                    var maxAttempts = (int?)input?.maxAttempts ?? 4;
 
                     SendEvent("VERIFICATION_STARTED", $"Iniciando verificación para: {userId}", "INFO",
-                        new { userId });
-                    SendEvent("CAPTURE_STARTED", "Coloque su dedo en el lector", "INFO");
+                        new { userId, maxAttempts });
 
                     _cts?.Cancel();
                     _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
@@ -315,36 +315,71 @@ namespace EdgeBridge
                             return new { ok = false, error = $"Fingerprint with tag '{userId}' not found" };
                         }
 
-                        // ⚡ EJECUTAR EN THREAD SEPARADO para no bloquear Edge.js
-                        var result = await Task.Run(() => _reader.VerifyLiveAgainstReg(stored.Fmd, _cts.Token, targetFarn));
-
-                        string? imageBase64 = null;
-                        if (result.ok && _reader.LastFid != null)
+                        // LOOP DE HASTA 4 INTENTOS - Termina en cuanto haya match exitoso
+                        for (int attempt = 1; attempt <= maxAttempts; attempt++)
                         {
-                            imageBase64 = Dp4500Service.FidToBase64Png(_reader.LastFid);
+                            SendEvent("CAPTURE_STARTED", $"Intento {attempt}/{maxAttempts} - Coloque su dedo en el lector", "INFO",
+                                new { attemptNumber = attempt, totalAttempts = maxAttempts });
+
+                            // ⚡ EJECUTAR EN THREAD SEPARADO para no bloquear Edge.js
+                            var result = await Task.Run(() => _reader.VerifyLiveAgainstReg(stored.Fmd, _cts.Token, targetFarn));
+
+                            string? imageBase64 = null;
+                            if (result.ok && _reader.LastFid != null)
+                            {
+                                imageBase64 = Dp4500Service.FidToBase64Png(_reader.LastFid);
+                                SendEvent("IMAGE_CAPTURED", "Imagen capturada", "INFO", new { imageBase64 });
+                            }
+
+                            var verified = result.score < targetFarn;
+
+                            // Emitir progreso
+                            var progress = (attempt * 100) / maxAttempts;
+                            SendEvent("VERIFICATION_ATTEMPT", $"Intento {attempt}/{maxAttempts} completado", "INFO",
+                                new { attemptNumber = attempt, totalAttempts = maxAttempts, progress, verified, score = result.score });
+
+                            // ✅ ÉXITO - Terminar inmediatamente
+                            if (verified)
+                            {
+                                SendEvent("VERIFICATION_SUCCESS", $"Verificación exitosa para {userId} en intento {attempt}/{maxAttempts}", "SUCCESS",
+                                    new { userId, score = result.score, threshold = targetFarn, attempt, totalAttempts = maxAttempts });
+
+                                return new
+                                {
+                                    ok = result.ok,
+                                    verified = true,
+                                    userId,
+                                    score = result.score,
+                                    attempt,
+                                    totalAttempts = maxAttempts,
+                                    message = $"Verificado en intento {attempt}",
+                                    imageBase64
+                                };
+                            }
+
+                            // Si no es el último intento y no hay match, continuar
+                            if (attempt < maxAttempts)
+                            {
+                                SendEvent("VERIFICATION_RETRY", $"Intento {attempt}/{maxAttempts} sin coincidencia, reintentando...", "WARNING",
+                                    new { attemptNumber = attempt, totalAttempts = maxAttempts, score = result.score, threshold = targetFarn });
+                                await Task.Delay(500); // Pausa breve entre intentos
+                            }
                         }
 
-                        var verified = result.score < targetFarn;
-
-                        if (verified)
-                        {
-                            SendEvent("VERIFICATION_SUCCESS", $"Verificación exitosa para {userId}", "SUCCESS",
-                                new { userId, score = result.score, threshold = targetFarn });
-                        }
-                        else
-                        {
-                            SendEvent("VERIFICATION_FAILED", $"Verificación fallida para {userId}", "WARNING",
-                                new { userId, score = result.score, threshold = targetFarn });
-                        }
+                        // ❌ FALLÓ - Todos los intentos sin match
+                        SendEvent("VERIFICATION_FAILED", $"Verificación fallida para {userId} después de {maxAttempts} intentos", "ERROR",
+                            new { userId, attempts = maxAttempts });
 
                         return new
                         {
-                            ok = result.ok,
-                            verified,
+                            ok = true,
+                            verified = false,
                             userId,
-                            score = result.score,
-                            message = result.msg,
-                            imageBase64
+                            score = 999999,
+                            attempt = maxAttempts,
+                            totalAttempts = maxAttempts,
+                            message = $"No verificado después de {maxAttempts} intentos",
+                            imageBase64 = (string?)null
                         };
                     }
                     catch (Exception ex)
@@ -366,48 +401,85 @@ namespace EdgeBridge
                     var timeoutMs = (int?)input?.timeoutMs ?? 60000;
                     var targetFarn = (int?)input?.targetFarn ?? 21474;
                     var top = (int?)input?.top ?? 5;
+                    var maxAttempts = (int?)input?.maxAttempts ?? 4;
 
                     var gallerySize = FingerprintTempStore.All().Count;
 
                     SendEvent("IDENTIFICATION_STARTED", $"Iniciando identificación 1:N (galería: {gallerySize} usuarios)", "INFO",
-                        new { gallerySize });
-                    SendEvent("CAPTURE_STARTED", "Coloque su dedo en el lector", "INFO");
+                        new { gallerySize, maxAttempts });
 
                     _cts?.Cancel();
                     _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
 
                     try
                     {
-                        // ⚡ EJECUTAR EN THREAD SEPARADO para no bloquear Edge.js
-                        var result = await Task.Run(() => _reader.IdentifyLive1N(_cts.Token, targetFarn, top));
+                        // LOOP DE HASTA 4 INTENTOS - Termina en cuanto haya match exitoso
+                        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                        {
+                            SendEvent("CAPTURE_STARTED", $"Intento {attempt}/{maxAttempts} - Coloque su dedo en el lector", "INFO",
+                                new { attemptNumber = attempt, totalAttempts = maxAttempts });
 
-                        string? imageBase64 = null;
-                        if (_reader.LastFid != null)
-                        {
-                            imageBase64 = Dp4500Service.FidToBase64Png(_reader.LastFid);
+                            // ⚡ EJECUTAR EN THREAD SEPARADO para no bloquear Edge.js
+                            var result = await Task.Run(() => _reader.IdentifyLive1N(_cts.Token, targetFarn, top));
+
+                            string? imageBase64 = null;
+                            if (_reader.LastFid != null)
+                            {
+                                imageBase64 = Dp4500Service.FidToBase64Png(_reader.LastFid);
+                                SendEvent("IMAGE_CAPTURED", "Imagen capturada", "INFO", new { imageBase64 });
+                            }
+
+                            // Emitir progreso
+                            var progress = (attempt * 100) / maxAttempts;
+                            SendEvent("IDENTIFICATION_ATTEMPT", $"Intento {attempt}/{maxAttempts} completado", "INFO",
+                                new { attemptNumber = attempt, totalAttempts = maxAttempts, progress, matched = result.match, bestScore = result.bestScore });
+
+                            // ✅ ÉXITO - Match encontrado, terminar inmediatamente
+                            if (result.match)
+                            {
+                                SendEvent("IDENTIFICATION_MATCH", $"Usuario identificado: {result.bestTag} en intento {attempt}/{maxAttempts}", "SUCCESS",
+                                    new { userId = result.bestTag, score = result.bestScore, gallerySize, attempt, totalAttempts = maxAttempts });
+
+                                return new
+                                {
+                                    ok = true,
+                                    match = true,
+                                    bestTag = result.bestTag,
+                                    bestScore = result.bestScore,
+                                    topK = result.topK.Select(m => new { tag = m.tag, score = m.score }).ToArray(),
+                                    attempt,
+                                    totalAttempts = maxAttempts,
+                                    message = $"Identificado en intento {attempt}",
+                                    imageBase64,
+                                    galleryFormat = result.galleryFormat
+                                };
+                            }
+
+                            // Si no es el último intento y no hay match, continuar
+                            if (attempt < maxAttempts)
+                            {
+                                SendEvent("IDENTIFICATION_RETRY", $"Intento {attempt}/{maxAttempts} sin coincidencia, reintentando...", "WARNING",
+                                    new { attemptNumber = attempt, totalAttempts = maxAttempts, bestScore = result.bestScore, threshold = targetFarn });
+                                await Task.Delay(500); // Pausa breve entre intentos
+                            }
                         }
 
-                        if (result.match)
-                        {
-                            SendEvent("IDENTIFICATION_MATCH", $"Usuario identificado: {result.bestTag}", "SUCCESS",
-                                new { userId = result.bestTag, score = result.bestScore, gallerySize });
-                        }
-                        else
-                        {
-                            SendEvent("IDENTIFICATION_NO_MATCH", "No se encontró coincidencia en la galería", "WARNING",
-                                new { bestScore = result.bestScore, threshold = targetFarn, gallerySize });
-                        }
+                        // ❌ FALLÓ - Todos los intentos sin match
+                        SendEvent("IDENTIFICATION_NO_MATCH", $"No se encontró coincidencia después de {maxAttempts} intentos", "ERROR",
+                            new { attempts = maxAttempts, threshold = targetFarn, gallerySize });
 
                         return new
                         {
                             ok = true,
-                            match = result.match,
-                            bestTag = result.bestTag,
-                            bestScore = result.bestScore,
-                            topK = result.topK.Select(m => new { tag = m.tag, score = m.score }).ToArray(),
-                            message = result.msg,
-                            imageBase64,
-                            galleryFormat = result.galleryFormat
+                            match = false,
+                            bestTag = (string?)null,
+                            bestScore = 999999,
+                            topK = new object[0],
+                            attempt = maxAttempts,
+                            totalAttempts = maxAttempts,
+                            message = $"No identificado después de {maxAttempts} intentos",
+                            imageBase64 = (string?)null,
+                            galleryFormat = "DP_REGISTRATION"
                         };
                     }
                     catch (Exception ex)

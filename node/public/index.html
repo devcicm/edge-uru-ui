@@ -507,6 +507,22 @@
                     <img id="verifyImage" alt="Huella" style="display: none;">
                 </div>
 
+                <div class="progress-container" id="verifyProgress">
+                    <div class="progress-header">
+                        <span class="progress-label">Intentos de Verificación</span>
+                        <span class="progress-counter" id="verifyCounter">0/4</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar" id="verifyProgressBar">0%</div>
+                    </div>
+                    <div class="progress-indicators">
+                        <span class="sample-dot" id="verifyDot1">1</span>
+                        <span class="sample-dot" id="verifyDot2">2</span>
+                        <span class="sample-dot" id="verifyDot3">3</span>
+                        <span class="sample-dot" id="verifyDot4">4</span>
+                    </div>
+                </div>
+
                 <div class="status-message" id="verifyStatus">Selecciona un usuario</div>
 
                 <button class="btn btn-primary" id="btnVerify" disabled>
@@ -539,6 +555,22 @@
                 <div class="fingerprint-preview">
                     <div class="fingerprint-placeholder" id="identifyPlaceholder">🔎</div>
                     <img id="identifyImage" alt="Huella" style="display: none;">
+                </div>
+
+                <div class="progress-container" id="identifyProgress">
+                    <div class="progress-header">
+                        <span class="progress-label">Intentos de Identificación</span>
+                        <span class="progress-counter" id="identifyCounter">0/4</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar" id="identifyProgressBar">0%</div>
+                    </div>
+                    <div class="progress-indicators">
+                        <span class="sample-dot" id="identifyDot1">1</span>
+                        <span class="sample-dot" id="identifyDot2">2</span>
+                        <span class="sample-dot" id="identifyDot3">3</span>
+                        <span class="sample-dot" id="identifyDot4">4</span>
+                    </div>
                 </div>
 
                 <div class="status-message" id="identifyStatus">
@@ -680,22 +712,40 @@
                 verifyUserId: document.getElementById('verifyUserId'),
                 verifyImage: document.getElementById('verifyImage'),
                 verifyPlaceholder: document.getElementById('verifyPlaceholder'),
+                verifyProgress: document.getElementById('verifyProgress'),
+                verifyCounter: document.getElementById('verifyCounter'),
+                verifyProgressBar: document.getElementById('verifyProgressBar'),
                 verifyStatus: document.getElementById('verifyStatus'),
                 btnVerify: document.getElementById('btnVerify'),
                 verifyInfo: document.getElementById('verifyInfo'),
                 verifyUserResult: document.getElementById('verifyUserResult'),
                 verifyScore: document.getElementById('verifyScore'),
                 verifyResult: document.getElementById('verifyResult'),
+                verifyDots: [
+                    document.getElementById('verifyDot1'),
+                    document.getElementById('verifyDot2'),
+                    document.getElementById('verifyDot3'),
+                    document.getElementById('verifyDot4')
+                ],
 
                 // Identification
                 identifyImage: document.getElementById('identifyImage'),
                 identifyPlaceholder: document.getElementById('identifyPlaceholder'),
+                identifyProgress: document.getElementById('identifyProgress'),
+                identifyCounter: document.getElementById('identifyCounter'),
+                identifyProgressBar: document.getElementById('identifyProgressBar'),
                 identifyStatus: document.getElementById('identifyStatus'),
                 galleryCount: document.getElementById('galleryCount'),
                 btnIdentify: document.getElementById('btnIdentify'),
                 identifyInfo: document.getElementById('identifyInfo'),
                 identifyUserResult: document.getElementById('identifyUserResult'),
                 identifyScore: document.getElementById('identifyScore'),
+                identifyDots: [
+                    document.getElementById('identifyDot1'),
+                    document.getElementById('identifyDot2'),
+                    document.getElementById('identifyDot3'),
+                    document.getElementById('identifyDot4')
+                ],
 
                 // Simple Capture
                 captureImage: document.getElementById('captureImage'),
@@ -793,6 +843,42 @@
                 });
             }
 
+            function updateVerifyProgress(current, total) {
+                const percentage = Math.round((current / total) * 100);
+                dom.verifyCounter.textContent = `${current}/${total}`;
+                dom.verifyProgressBar.style.width = `${percentage}%`;
+                dom.verifyProgressBar.textContent = `${percentage}%`;
+
+                // Actualizar dots
+                dom.verifyDots.forEach((dot, index) => {
+                    dot.classList.remove('captured', 'active');
+                    const attemptNum = index + 1;
+                    if (attemptNum <= current) {
+                        dot.classList.add('captured');
+                    } else if (attemptNum === current + 1 && current < total) {
+                        dot.classList.add('active');
+                    }
+                });
+            }
+
+            function updateIdentifyProgress(current, total) {
+                const percentage = Math.round((current / total) * 100);
+                dom.identifyCounter.textContent = `${current}/${total}`;
+                dom.identifyProgressBar.style.width = `${percentage}%`;
+                dom.identifyProgressBar.textContent = `${percentage}%`;
+
+                // Actualizar dots
+                dom.identifyDots.forEach((dot, index) => {
+                    dot.classList.remove('captured', 'active');
+                    const attemptNum = index + 1;
+                    if (attemptNum <= current) {
+                        dot.classList.add('captured');
+                    } else if (attemptNum === current + 1 && current < total) {
+                        dot.classList.add('active');
+                    }
+                });
+            }
+
             async function startEnrollment() {
                 const userId = dom.enrollUserId.value.trim();
                 if (!userId) {
@@ -865,6 +951,11 @@
 
                 try {
                     dom.btnVerify.disabled = true;
+                    state.currentOperation = 'verify';
+
+                    // Mostrar progreso y resetear
+                    dom.verifyProgress.classList.add('active');
+                    updateVerifyProgress(0, 4);
                     updateStatus(dom.verifyStatus, `🔍 Verificando ${userId}...`, 'info');
                     showImage(dom.verifyImage, dom.verifyPlaceholder, null);
 
@@ -878,20 +969,27 @@
 
                         if (result.verified) {
                             dom.verifyResult.textContent = '✅ VERIFICADO';
-                            updateStatus(dom.verifyStatus, `✅ Usuario verificado`, 'success');
+                            updateStatus(dom.verifyStatus, `✅ Usuario verificado en intento ${result.attempt || '?'}`, 'success');
                         } else {
                             dom.verifyResult.textContent = '❌ NO COINCIDE';
-                            updateStatus(dom.verifyStatus, `❌ Huella no coincide`, 'error');
+                            updateStatus(dom.verifyStatus, `❌ Huella no coincide después de ${result.attempt || 4} intentos`, 'error');
                         }
                     } else {
                         updateStatus(dom.verifyStatus, `❌ ${result.error}`, 'error');
                     }
 
+                    // Ocultar progreso después de 3 segundos
+                    setTimeout(() => {
+                        dom.verifyProgress.classList.remove('active');
+                    }, 3000);
+
                 } catch (error) {
                     console.error('[Verify] Error:', error);
                     updateStatus(dom.verifyStatus, `❌ ${error.message}`, 'error');
+                    dom.verifyProgress.classList.remove('active');
                 } finally {
                     dom.btnVerify.disabled = false;
+                    state.currentOperation = null;
                 }
             }
 
@@ -912,6 +1010,11 @@
 
                 try {
                     dom.btnIdentify.disabled = true;
+                    state.currentOperation = 'identify';
+
+                    // Mostrar progreso y resetear
+                    dom.identifyProgress.classList.add('active');
+                    updateIdentifyProgress(0, 4);
                     updateStatus(dom.identifyStatus, `🔍 Buscando en ${state.templates.length} usuarios...`, 'info');
                     showImage(dom.identifyImage, dom.identifyPlaceholder, null);
 
@@ -923,20 +1026,27 @@
                             dom.identifyInfo.style.display = 'grid';
                             dom.identifyUserResult.textContent = result.bestTag || 'Usuario';
                             dom.identifyScore.textContent = result.bestScore || 'N/A';
-                            updateStatus(dom.identifyStatus, `✅ Identificado: ${result.bestTag}`, 'success');
+                            updateStatus(dom.identifyStatus, `✅ Identificado: ${result.bestTag} en intento ${result.attempt || '?'}`, 'success');
                         } else {
                             dom.identifyInfo.style.display = 'none';
-                            updateStatus(dom.identifyStatus, '❌ No se encontraron coincidencias', 'error');
+                            updateStatus(dom.identifyStatus, `❌ No se encontraron coincidencias después de ${result.attempt || 4} intentos`, 'error');
                         }
                     } else {
                         updateStatus(dom.identifyStatus, `❌ ${result.error}`, 'error');
                     }
 
+                    // Ocultar progreso después de 3 segundos
+                    setTimeout(() => {
+                        dom.identifyProgress.classList.remove('active');
+                    }, 3000);
+
                 } catch (error) {
                     console.error('[Identify] Error:', error);
                     updateStatus(dom.identifyStatus, `❌ ${error.message}`, 'error');
+                    dom.identifyProgress.classList.remove('active');
                 } finally {
                     dom.btnIdentify.disabled = false;
+                    state.currentOperation = null;
                 }
             }
 
@@ -1111,8 +1221,46 @@
                         dom.btnEnroll.disabled = false;
                         break;
 
+                    case 'VERIFICATION_ATTEMPT':
+                        if (state.currentOperation === 'verify') {
+                            const attemptNum = data.data?.attemptNumber || data.attemptNumber || 1;
+                            updateVerifyProgress(attemptNum, 4);
+                            updateStatus(dom.verifyStatus, `Intento ${attemptNum}/4 completado`, 'info');
+                        }
+                        break;
+
+                    case 'VERIFICATION_RETRY':
+                        if (state.currentOperation === 'verify') {
+                            const attemptNum = data.data?.attemptNumber || data.attemptNumber || 1;
+                            updateStatus(dom.verifyStatus, `⚠️ Intento ${attemptNum}/4 sin coincidencia, reintentando...`, 'warning');
+                        }
+                        break;
+
+                    case 'IDENTIFICATION_ATTEMPT':
+                        if (state.currentOperation === 'identify') {
+                            const attemptNum = data.data?.attemptNumber || data.attemptNumber || 1;
+                            updateIdentifyProgress(attemptNum, 4);
+                            updateStatus(dom.identifyStatus, `Intento ${attemptNum}/4 completado`, 'info');
+                        }
+                        break;
+
+                    case 'IDENTIFICATION_RETRY':
+                        if (state.currentOperation === 'identify') {
+                            const attemptNum = data.data?.attemptNumber || data.attemptNumber || 1;
+                            updateStatus(dom.identifyStatus, `⚠️ Intento ${attemptNum}/4 sin coincidencia, reintentando...`, 'warning');
+                        }
+                        break;
+
                     case 'CAPTURE_STARTED':
-                        updateStatus(dom.enrollStatus, '👆 Coloca el dedo en el lector', 'info');
+                        if (state.isEnrolling) {
+                            updateStatus(dom.enrollStatus, '👆 Coloca el dedo en el lector', 'info');
+                        } else if (state.currentOperation === 'verify') {
+                            const attemptInfo = data.data?.attemptNumber ? ` (intento ${data.data.attemptNumber}/4)` : '';
+                            updateStatus(dom.verifyStatus, `👆 Coloca el dedo en el lector${attemptInfo}`, 'info');
+                        } else if (state.currentOperation === 'identify') {
+                            const attemptInfo = data.data?.attemptNumber ? ` (intento ${data.data.attemptNumber}/4)` : '';
+                            updateStatus(dom.identifyStatus, `👆 Coloca el dedo en el lector${attemptInfo}`, 'info');
+                        }
                         break;
                 }
             }
