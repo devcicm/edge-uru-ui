@@ -266,6 +266,15 @@
                 </p>
                 <div id="template-manager" class="control-container"></div>
             </div>
+
+            <!-- 8. Finger Management Control -->
+            <div class="control-card full-width-card">
+                <h2>🖐️ Finger Management Control</h2>
+                <p class="control-description">
+                    Gestión completa de huellas por dedo y mano. Enrola, verifica e identifica cada dedo específico de cada usuario con visualización gráfica de ambas manos.
+                </p>
+                <div id="finger-management" class="control-container"></div>
+            </div>
         </div>
     </div>
 
@@ -286,6 +295,7 @@
     <script src="/js/controls/LogDeviceControl.js"></script>
     <script src="/js/controls/TechDeviceControl.js"></script>
     <script src="/js/controls/TemplateManagerControl.js"></script>
+    <script src="/js/controls/FingerManagementControl.js"></script>
 
     <!-- 4. Aplicación principal -->
     <script>
@@ -310,7 +320,8 @@
                 capture: null,
                 log: null,
                 tech: null,
-                templateManager: null
+                templateManager: null,
+                fingerManagement: null
             };
 
             // Estado global
@@ -524,6 +535,29 @@
                         if (components.verification && components.verification._loadUsers) {
                             components.verification._loadUsers();
                         }
+                    });
+
+                    // 8. Finger Management Control
+                    console.log('[DEMO] 🖐️ Creando FingerManagementControl...');
+                    components.fingerManagement = window.ComponentFactory.create(
+                        'fingermanagement',
+                        'finger-management',
+                        {}
+                    );
+
+                    // Escuchar eventos del FingerManagement
+                    components.fingerManagement.on('fingerEnrolled', (data) => {
+                        console.log('[DEMO] 🖐️ Dedo enrolado:', data);
+                        updateGlobalStatus(`✅ Dedo enrolado: ${data.userId} - ${data.finger}`, true);
+                    });
+
+                    components.fingerManagement.on('fingerVerified', (data) => {
+                        console.log('[DEMO] ✅ Dedo verificado:', data);
+                    });
+
+                    components.fingerManagement.on('fingerIdentified', (data) => {
+                        console.log('[DEMO] 🔍 Dedo identificado:', data);
+                        updateGlobalStatus(`🔍 Identificado: ${data.userId} - ${data.finger}`, true);
                     });
 
                     console.log('[DEMO] ✅ Todos los controles inicializados');

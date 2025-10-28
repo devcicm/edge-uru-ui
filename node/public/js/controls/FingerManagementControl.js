@@ -1,0 +1,591 @@
+/**
+ * FingerManagementControl - Control para gestión de huellas por dedo y mano
+ *
+ * Permite enrolar, verificar e identificar huellas específicas de cada dedo de cada mano
+ * Tags con formato: userId_HAND_FINGER (ej: "juan_LEFT_THUMB")
+ */
+class FingerManagementControl extends BaseComponent {
+    constructor(containerId, adapter, config = {}) {
+        super(containerId, adapter, config);
+
+        // Constantes
+        this.HANDS = {
+            LEFT: 'LEFT',
+            RIGHT: 'RIGHT'
+        };
+
+        this.FINGERS = {
+            THUMB: { name: 'THUMB', label: 'Pulgar', emoji: '👍' },
+            INDEX: { name: 'INDEX', label: 'Índice', emoji: '☝️' },
+            MIDDLE: { name: 'MIDDLE', label: 'Medio', emoji: '🖕' },
+            RING: { name: 'RING', label: 'Anular', emoji: '💍' },
+            PINKY: { name: 'PINKY', label: 'Meñique', emoji: '🤙' }
+        };
+
+        // Estado
+        this.selectedUserId = '';
+        this.selectedHand = 'LEFT';
+        this.selectedFinger = 'INDEX';
+        this.enrolledFingers = {}; // { userId: { LEFT: {THUMB: true, ...}, RIGHT: {...} } }
+        this.isProcessing = false;
+
+        // Cargar dedos enrolados
+        this._loadEnrolledFingers();
+    }
+
+    /**
+     * Crear estructura HTML
+     */
+    _createStructure() {
+        this.container.innerHTML = `
+            <div class="finger-management-control">
+                <!-- Header -->
+                <div class="component-header">
+                    <h3>🖐️ Gestión de Dedos por Mano</h3>
+                    <p class="component-subtitle">Enrolar y gestionar huellas de cada dedo específico</p>
+                </div>
+
+                <!-- Selector de Usuario -->
+                <div class="component-input-group">
+                    <label><strong>Usuario:</strong></label>
+                    <input type="text"
+                           class="component-input"
+                           id="fingerUserId-${this.containerId}"
+                           placeholder="Ingrese ID de usuario"
+                           maxlength="50">
+                </div>
+
+                <!-- Selectores de Mano y Dedo -->
+                <div class="selector-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="component-input-group">
+                        <label><strong>Mano:</strong></label>
+                        <select class="component-input" id="fingerHand-${this.containerId}">
+                            <option value="LEFT">👈 Izquierda</option>
+                            <option value="RIGHT">👉 Derecha</option>
+                        </select>
+                    </div>
+
+                    <div class="component-input-group">
+                        <label><strong>Dedo:</strong></label>
+                        <select class="component-input" id="fingerType-${this.containerId}">
+                            <option value="THUMB">👍 Pulgar</option>
+                            <option value="INDEX">☝️ Índice</option>
+                            <option value="MIDDLE">🖕 Medio</option>
+                            <option value="RING">💍 Anular</option>
+                            <option value="PINKY">🤙 Meñique</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Visualización de Manos -->
+                <div id="handsVisualization-${this.containerId}" class="hands-visualization">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+
+                <!-- Imagen de huella -->
+                <div class="fingerprint-image">
+                    <div class="image-placeholder" id="fingerPlaceholder-${this.containerId}">🖐️</div>
+                    <img id="fingerImage-${this.containerId}" alt="Huella" style="display: none;">
+                </div>
+
+                <!-- Progreso de enrolamiento -->
+                <div class="enrollment-progress" id="fingerProgress-${this.containerId}" style="display: none;">
+                    <div class="progress-header">
+                        <span class="progress-label">Muestras del dedo</span>
+                        <span class="progress-counter" id="fingerCounter-${this.containerId}">0/4</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="fingerProgressBar-${this.containerId}" style="width: 0%;">
+                            <span class="progress-percentage" id="fingerPercentage-${this.containerId}">0%</span>
+                        </div>
+                    </div>
+                    <div class="progress-samples" id="fingerSamples-${this.containerId}">
+                        <span class="sample-indicator" data-sample="1">1</span>
+                        <span class="sample-indicator" data-sample="2">2</span>
+                        <span class="sample-indicator" data-sample="3">3</span>
+                        <span class="sample-indicator" data-sample="4">4</span>
+                    </div>
+                </div>
+
+                <!-- Estado -->
+                <div class="component-status status-info" id="fingerStatus-${this.containerId}">
+                    <span class="status-timestamp">[--:--:--]</span>
+                    <span class="status-icon">ℹ️</span>
+                    <span class="status-message">Selecciona usuario, mano y dedo para enrolar</span>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="component-buttons">
+                    <button class="btn-primary" id="btnEnrollFinger-${this.containerId}">
+                        📝 Enrolar Dedo Seleccionado
+                    </button>
+                    <button class="btn-success" id="btnVerifyFinger-${this.containerId}">
+                        ✅ Verificar Dedo
+                    </button>
+                    <button class="btn-warning" id="btnIdentifyFinger-${this.containerId}">
+                        🔍 Identificar Dedo
+                    </button>
+                    <button class="btn-secondary" id="btnRefreshFingers-${this.containerId}">
+                        🔄 Refrescar Lista
+                    </button>
+                </div>
+
+                <!-- Lista de dedos enrolados -->
+                <div class="enrolled-fingers-list" id="enrolledList-${this.containerId}">
+                    <h4>Dedos Enrolados</h4>
+                    <div id="fingersListContent-${this.containerId}" style="max-height: 300px; overflow-y: auto;">
+                        <p style="text-align: center; color: #6b7280;">No hay dedos enrolados</p>
+                    </div>
+                </div>
+
+                <!-- Instrucciones -->
+                <div class="component-instructions">
+                    <div class="instruction-item">
+                        <span class="instruction-number">1</span>
+                        <span class="instruction-text">Ingresa ID de usuario</span>
+                    </div>
+                    <div class="instruction-item">
+                        <span class="instruction-number">2</span>
+                        <span class="instruction-text">Selecciona mano (Izquierda/Derecha) y dedo</span>
+                    </div>
+                    <div class="instruction-item">
+                        <span class="instruction-number">3</span>
+                        <span class="instruction-text">Presiona "Enrolar" y coloca el dedo 4 veces</span>
+                    </div>
+                    <div class="instruction-item">
+                        <span class="instruction-number">4</span>
+                        <span class="instruction-text">Usa "Verificar" para comprobar o "Identificar" para buscar</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Setup de eventos y referencias DOM
+     */
+    _setupDOM() {
+        super._setupDOM();
+
+        // Referencias
+        this.userIdInput = this.container.querySelector(`#fingerUserId-${this.containerId}`);
+        this.handSelect = this.container.querySelector(`#fingerHand-${this.containerId}`);
+        this.fingerSelect = this.container.querySelector(`#fingerType-${this.containerId}`);
+        this.handsVisualization = this.container.querySelector(`#handsVisualization-${this.containerId}`);
+        this.fingerPlaceholder = this.container.querySelector(`#fingerPlaceholder-${this.containerId}`);
+        this.fingerImage = this.container.querySelector(`#fingerImage-${this.containerId}`);
+        this.fingerProgress = this.container.querySelector(`#fingerProgress-${this.containerId}`);
+        this.fingerCounter = this.container.querySelector(`#fingerCounter-${this.containerId}`);
+        this.fingerProgressBar = this.container.querySelector(`#fingerProgressBar-${this.containerId}`);
+        this.fingerPercentage = this.container.querySelector(`#fingerPercentage-${this.containerId}`);
+        this.fingerSamples = this.container.querySelector(`#fingerSamples-${this.containerId}`);
+        this.statusElement = this.container.querySelector(`#fingerStatus-${this.containerId}`);
+        this.enrolledListContent = this.container.querySelector(`#fingersListContent-${this.containerId}`);
+
+        // Botones
+        this.btnEnroll = this.container.querySelector(`#btnEnrollFinger-${this.containerId}`);
+        this.btnVerify = this.container.querySelector(`#btnVerifyFinger-${this.containerId}`);
+        this.btnIdentify = this.container.querySelector(`#btnIdentifyFinger-${this.containerId}`);
+        this.btnRefresh = this.container.querySelector(`#btnRefreshFingers-${this.containerId}`);
+
+        // Event listeners
+        this.userIdInput.addEventListener('input', () => this._updateVisualization());
+        this.handSelect.addEventListener('change', () => {
+            this.selectedHand = this.handSelect.value;
+            this._updateVisualization();
+        });
+        this.fingerSelect.addEventListener('change', () => {
+            this.selectedFinger = this.fingerSelect.value;
+        });
+
+        this.btnEnroll.addEventListener('click', () => this.enrollFinger());
+        this.btnVerify.addEventListener('click', () => this.verifyFinger());
+        this.btnIdentify.addEventListener('click', () => this.identifyFinger());
+        this.btnRefresh.addEventListener('click', () => this._loadEnrolledFingers());
+
+        // Renderizar visualización inicial
+        this._updateVisualization();
+    }
+
+    /**
+     * Setup de eventos SSE
+     */
+    _setupEvents() {
+        // Eventos de enrolamiento
+        this.adapter.on('SAMPLE_COLLECTED', (data) => {
+            if (this.isProcessing) {
+                const sampleNum = data.data?.sampleNumber || data.sampleNumber || 1;
+                this._updateProgress(sampleNum, 4);
+                this._updateStatus('info', `✅ Muestra ${sampleNum}/4 capturada`);
+            }
+        });
+
+        this.adapter.on('IMAGE_CAPTURED', (data) => {
+            if (this.isProcessing) {
+                const imageBase64 = data.data?.imageBase64 || data.imageBase64;
+                if (imageBase64) {
+                    this._showImage(imageBase64);
+                }
+            }
+        });
+
+        this.adapter.on('ENROLLMENT_COMPLETED', (data) => {
+            if (this.isProcessing) {
+                this._updateProgress(4, 4);
+                this._updateStatus('success', '🎉 Dedo enrolado exitosamente');
+                setTimeout(() => {
+                    this.fingerProgress.style.display = 'none';
+                    this._loadEnrolledFingers();
+                }, 2000);
+            }
+        });
+
+        this.adapter.on('ENROLLMENT_FAILED', (data) => {
+            if (this.isProcessing) {
+                this._updateStatus('error', `❌ ${data.message || 'Error en enrolamiento'}`);
+                this.fingerProgress.style.display = 'none';
+            }
+        });
+    }
+
+    /**
+     * Generar tag estructurado
+     */
+    _generateTag(userId, hand, finger) {
+        return `${userId}_${hand}_${finger}`;
+    }
+
+    /**
+     * Parsear tag estructurado
+     */
+    _parseTag(tag) {
+        const parts = tag.split('_');
+        if (parts.length >= 3) {
+            return {
+                userId: parts.slice(0, -2).join('_'),
+                hand: parts[parts.length - 2],
+                finger: parts[parts.length - 1]
+            };
+        }
+        return null;
+    }
+
+    /**
+     * Enrolar dedo específico
+     */
+    async enrollFinger() {
+        const userId = this.userIdInput.value.trim();
+        if (!userId) {
+            this._updateStatus('error', '⚠️ Ingresa un ID de usuario');
+            return;
+        }
+
+        const hand = this.handSelect.value;
+        const finger = this.fingerSelect.value;
+        const tag = this._generateTag(userId, hand, finger);
+
+        try {
+            this.isProcessing = true;
+            this._updateStatus('info', `📝 Enrolando ${this.FINGERS[finger].label} de mano ${hand === 'LEFT' ? 'izquierda' : 'derecha'}...`);
+
+            // Mostrar progreso
+            this.fingerProgress.style.display = 'block';
+            this._updateProgress(0, 4);
+
+            console.log(`[FingerManagement] Enrolando: ${tag}`);
+            const result = await this.adapter.enrollFingerprint(tag);
+            console.log(`[FingerManagement] Resultado:`, result);
+
+            if (result.ok) {
+                this._updateStatus('success', `✅ ${this.FINGERS[finger].label} enrolado correctamente`);
+                this.emit('fingerEnrolled', { userId, hand, finger, tag });
+            } else {
+                this._updateStatus('error', `❌ ${result.error || 'Error en enrolamiento'}`);
+            }
+
+        } catch (error) {
+            console.error('[FingerManagement] Error:', error);
+            this._updateStatus('error', `❌ ${error.message}`);
+        } finally {
+            this.isProcessing = false;
+        }
+    }
+
+    /**
+     * Verificar dedo específico
+     */
+    async verifyFinger() {
+        const userId = this.userIdInput.value.trim();
+        if (!userId) {
+            this._updateStatus('error', '⚠️ Ingresa un ID de usuario');
+            return;
+        }
+
+        const hand = this.handSelect.value;
+        const finger = this.fingerSelect.value;
+        const tag = this._generateTag(userId, hand, finger);
+
+        try {
+            this._updateStatus('info', `🔍 Verificando ${this.FINGERS[finger].label}...`);
+
+            const result = await this.adapter.verifyFingerprint(tag, 4);
+            console.log(`[FingerManagement] Verificación:`, result);
+
+            if (result.ok) {
+                if (result.verified) {
+                    this._updateStatus('success', `✅ VERIFICADO: ${this.FINGERS[finger].label} de ${userId} (Score: ${result.score})`);
+                } else {
+                    this._updateStatus('error', `❌ NO COINCIDE: ${this.FINGERS[finger].label} (Score: ${result.score})`);
+                }
+                this.emit('fingerVerified', { userId, hand, finger, verified: result.verified, score: result.score });
+            } else {
+                this._updateStatus('error', `❌ ${result.error || 'Error en verificación'}`);
+            }
+
+        } catch (error) {
+            console.error('[FingerManagement] Error:', error);
+            this._updateStatus('error', `❌ ${error.message}`);
+        }
+    }
+
+    /**
+     * Identificar dedo (buscar en todos los dedos enrolados)
+     */
+    async identifyFinger() {
+        try {
+            this._updateStatus('info', '🔎 Identificando usuario y dedo...');
+
+            const result = await this.adapter.identifyFingerprint(4);
+            console.log(`[FingerManagement] Identificación:`, result);
+
+            if (result.ok && result.match) {
+                const parsed = this._parseTag(result.bestTag);
+
+                if (parsed) {
+                    const handLabel = parsed.hand === 'LEFT' ? '👈 Izquierda' : '👉 Derecha';
+                    const fingerLabel = this.FINGERS[parsed.finger]?.label || parsed.finger;
+
+                    this._updateStatus('success',
+                        `✅ IDENTIFICADO: ${parsed.userId} | ${fingerLabel} ${handLabel} (Score: ${result.bestScore})`);
+
+                    this.emit('fingerIdentified', {
+                        userId: parsed.userId,
+                        hand: parsed.hand,
+                        finger: parsed.finger,
+                        score: result.bestScore
+                    });
+                } else {
+                    this._updateStatus('success', `✅ IDENTIFICADO: ${result.bestTag} (Score: ${result.bestScore})`);
+                }
+            } else {
+                this._updateStatus('warning', '⚠️ No se encontró coincidencia');
+            }
+
+        } catch (error) {
+            console.error('[FingerManagement] Error:', error);
+            this._updateStatus('error', `❌ ${error.message}`);
+        }
+    }
+
+    /**
+     * Cargar dedos enrolados del store
+     */
+    async _loadEnrolledFingers() {
+        try {
+            const result = await this.adapter.getStoredFingerprints();
+
+            if (result.ok && result.data) {
+                this.enrolledFingers = {};
+
+                // Agrupar por usuario, mano y dedo
+                result.data.forEach(item => {
+                    const parsed = this._parseTag(item.tag);
+                    if (parsed) {
+                        if (!this.enrolledFingers[parsed.userId]) {
+                            this.enrolledFingers[parsed.userId] = { LEFT: {}, RIGHT: {} };
+                        }
+                        this.enrolledFingers[parsed.userId][parsed.hand][parsed.finger] = true;
+                    }
+                });
+
+                this._updateEnrolledList();
+                this._updateVisualization();
+            }
+
+        } catch (error) {
+            console.error('[FingerManagement] Error cargando dedos:', error);
+        }
+    }
+
+    /**
+     * Actualizar lista de dedos enrolados
+     */
+    _updateEnrolledList() {
+        const users = Object.keys(this.enrolledFingers);
+
+        if (users.length === 0) {
+            this.enrolledListContent.innerHTML = '<p style="text-align: center; color: #6b7280;">No hay dedos enrolados</p>';
+            return;
+        }
+
+        let html = '';
+        users.forEach(userId => {
+            const hands = this.enrolledFingers[userId];
+            html += `<div style="margin-bottom: 15px; padding: 10px; background: #f9fafb; border-radius: 8px;">`;
+            html += `<strong style="color: #374151;">👤 ${userId}</strong>`;
+
+            ['LEFT', 'RIGHT'].forEach(hand => {
+                const fingers = Object.keys(hands[hand]);
+                if (fingers.length > 0) {
+                    const handLabel = hand === 'LEFT' ? '👈 Izquierda' : '👉 Derecha';
+                    html += `<div style="margin-top: 8px; margin-left: 10px;">`;
+                    html += `<span style="font-weight: 500; color: #6b7280;">${handLabel}:</span> `;
+                    fingers.forEach(finger => {
+                        const fingerInfo = this.FINGERS[finger];
+                        html += `<span style="margin-right: 8px;" title="${fingerInfo.label}">${fingerInfo.emoji}</span>`;
+                    });
+                    html += `</div>`;
+                }
+            });
+
+            html += `</div>`;
+        });
+
+        this.enrolledListContent.innerHTML = html;
+    }
+
+    /**
+     * Actualizar visualización de manos
+     */
+    _updateVisualization() {
+        const userId = this.userIdInput.value.trim();
+
+        if (!userId || !this.enrolledFingers[userId]) {
+            this.handsVisualization.innerHTML = '<p style="text-align: center; color: #6b7280;">Ingresa un usuario para ver sus dedos enrolados</p>';
+            return;
+        }
+
+        const hands = this.enrolledFingers[userId];
+
+        let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">';
+
+        // Mano Izquierda
+        html += this._renderHand('LEFT', hands.LEFT);
+
+        // Mano Derecha
+        html += this._renderHand('RIGHT', hands.RIGHT);
+
+        html += '</div>';
+
+        this.handsVisualization.innerHTML = html;
+    }
+
+    /**
+     * Renderizar una mano
+     */
+    _renderHand(hand, fingers) {
+        const handLabel = hand === 'LEFT' ? '👈 Izquierda' : '👉 Derecha';
+
+        let html = `<div style="text-align: center; padding: 15px; background: #f9fafb; border-radius: 12px;">`;
+        html += `<h4 style="margin-bottom: 15px; color: #374151;">${handLabel}</h4>`;
+        html += `<div style="display: flex; justify-content: center; gap: 8px;">`;
+
+        Object.keys(this.FINGERS).forEach(fingerKey => {
+            const finger = this.FINGERS[fingerKey];
+            const isEnrolled = fingers[fingerKey];
+            const bgColor = isEnrolled ? '#dcfce7' : '#fee2e2';
+            const borderColor = isEnrolled ? '#15803d' : '#b91c1c';
+
+            html += `<div style="
+                width: 50px;
+                height: 70px;
+                background: ${bgColor};
+                border: 2px solid ${borderColor};
+                border-radius: 8px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+            " title="${finger.label} - ${isEnrolled ? 'Enrolado' : 'No enrolado'}">`;
+            html += `<span>${finger.emoji}</span>`;
+            html += `<span style="font-size: 10px; margin-top: 4px;">${isEnrolled ? '✅' : '❌'}</span>`;
+            html += `</div>`;
+        });
+
+        html += `</div></div>`;
+        return html;
+    }
+
+    /**
+     * Actualizar progreso de enrolamiento
+     */
+    _updateProgress(current, total) {
+        const percentage = Math.round((current / total) * 100);
+        this.fingerCounter.textContent = `${current}/${total}`;
+        this.fingerProgressBar.style.width = `${percentage}%`;
+        this.fingerPercentage.textContent = `${percentage}%`;
+
+        // Actualizar indicadores
+        const indicators = this.fingerSamples.querySelectorAll('.sample-indicator');
+        indicators.forEach((indicator, index) => {
+            if (index < current) {
+                indicator.classList.add('collected');
+            } else {
+                indicator.classList.remove('collected');
+            }
+        });
+    }
+
+    /**
+     * Mostrar imagen de huella
+     */
+    _showImage(imageBase64) {
+        this.fingerImage.src = `data:image/png;base64,${imageBase64}`;
+        this.fingerImage.style.display = 'block';
+        this.fingerPlaceholder.style.display = 'none';
+    }
+
+    /**
+     * Actualizar estado
+     */
+    _updateStatus(type, message) {
+        const statusClasses = {
+            info: 'status-info',
+            success: 'status-success',
+            error: 'status-error',
+            warning: 'status-warning'
+        };
+
+        this.statusElement.className = `component-status ${statusClasses[type] || 'status-info'}`;
+        this.statusElement.querySelector('.status-message').textContent = message;
+        this.statusElement.querySelector('.status-timestamp').textContent =
+            `[${new Date().toLocaleTimeString('es-ES')}]`;
+
+        const icons = {
+            info: 'ℹ️',
+            success: '✅',
+            error: '❌',
+            warning: '⚠️'
+        };
+        this.statusElement.querySelector('.status-icon').textContent = icons[type] || 'ℹ️';
+    }
+
+    /**
+     * Limpiar
+     */
+    clear() {
+        super.clear();
+        this.userIdInput.value = '';
+        this.isProcessing = false;
+        this.fingerProgress.style.display = 'none';
+        this.fingerImage.style.display = 'none';
+        this.fingerPlaceholder.style.display = 'block';
+        this._updateStatus('info', 'Control limpiado');
+    }
+}
+
+// Registrar componente
+if (typeof window !== 'undefined') {
+    window.FingerManagementControl = FingerManagementControl;
+}
