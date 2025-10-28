@@ -17,6 +17,9 @@ class VerificationControl extends BaseComponent {
         this.availableUsers = [];
         this.isProcessing = false;
 
+        // Configurar eventos SSE para progreso
+        this._setupProgressEvents();
+
         // Cargar usuarios
         this._loadUsers();
     }
@@ -78,6 +81,25 @@ class VerificationControl extends BaseComponent {
                             <div class="image-placeholder">🔒</div>
                         </div>
 
+                        <!-- Progreso de Verificación -->
+                        <div class="verification-progress" id="verifyProgress-${this.containerId}" style="display: none;">
+                            <div class="progress-header">
+                                <span class="progress-label">Intentos de Verificación</span>
+                                <span class="progress-counter" id="verifyCounter-${this.containerId}">0/4</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="verifyProgressBar-${this.containerId}" style="width: 0%;">
+                                    <span class="progress-percentage" id="verifyPercentage-${this.containerId}">0%</span>
+                                </div>
+                            </div>
+                            <div class="progress-samples" id="verifySamples-${this.containerId}">
+                                <span class="sample-indicator" data-attempt="1">1</span>
+                                <span class="sample-indicator" data-attempt="2">2</span>
+                                <span class="sample-indicator" data-attempt="3">3</span>
+                                <span class="sample-indicator" data-attempt="4">4</span>
+                            </div>
+                        </div>
+
                         <!-- Estado -->
                         <div class="component-status status-info" id="statusVerify-${this.containerId}">
                             <span class="status-timestamp">[--:--:--]</span>
@@ -133,6 +155,25 @@ class VerificationControl extends BaseComponent {
                         <!-- Imagen de huella -->
                         <div class="fingerprint-image">
                             <div class="image-placeholder">🔍</div>
+                        </div>
+
+                        <!-- Progreso de Identificación -->
+                        <div class="verification-progress" id="identifyProgress-${this.containerId}" style="display: none;">
+                            <div class="progress-header">
+                                <span class="progress-label">Intentos de Identificación</span>
+                                <span class="progress-counter" id="identifyCounter-${this.containerId}">0/4</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="identifyProgressBar-${this.containerId}" style="width: 0%;">
+                                    <span class="progress-percentage" id="identifyPercentage-${this.containerId}">0%</span>
+                                </div>
+                            </div>
+                            <div class="progress-samples" id="identifySamples-${this.containerId}">
+                                <span class="sample-indicator" data-attempt="1">1</span>
+                                <span class="sample-indicator" data-attempt="2">2</span>
+                                <span class="sample-indicator" data-attempt="3">3</span>
+                                <span class="sample-indicator" data-attempt="4">4</span>
+                            </div>
                         </div>
 
                         <!-- Estado -->
@@ -295,6 +336,104 @@ class VerificationControl extends BaseComponent {
                         color: #0369a1;
                         margin-bottom: 4px;
                     }
+
+                    /* Estilos de Progreso Multi-Intentos */
+                    .verification-progress {
+                        background: #f8f9fa;
+                        border: 2px solid #e9ecef;
+                        border-radius: 10px;
+                        padding: 15px;
+                        margin-bottom: 15px;
+                    }
+
+                    .progress-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 10px;
+                    }
+
+                    .progress-label {
+                        font-weight: 600;
+                        color: #495057;
+                        font-size: 0.9rem;
+                    }
+
+                    .progress-counter {
+                        font-weight: 700;
+                        color: #667eea;
+                        font-size: 1.1rem;
+                    }
+
+                    .progress-bar-container {
+                        width: 100%;
+                        height: 30px;
+                        background: #e9ecef;
+                        border-radius: 15px;
+                        overflow: hidden;
+                        position: relative;
+                        margin-bottom: 12px;
+                        box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+                    }
+
+                    .progress-bar {
+                        height: 100%;
+                        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                        border-radius: 15px;
+                        transition: width 0.5s ease;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        position: relative;
+                    }
+
+                    .progress-percentage {
+                        color: white;
+                        font-weight: 700;
+                        font-size: 0.85rem;
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+                    }
+
+                    .progress-samples {
+                        display: flex;
+                        gap: 10px;
+                        justify-content: center;
+                    }
+
+                    .sample-indicator {
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        background: #e9ecef;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: 700;
+                        font-size: 1rem;
+                        color: #adb5bd;
+                        border: 2px solid #dee2e6;
+                        transition: all 0.3s ease;
+                    }
+
+                    .sample-indicator.captured {
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        border-color: #667eea;
+                        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+                        transform: scale(1.1);
+                    }
+
+                    .sample-indicator.active {
+                        background: #fff3cd;
+                        color: #856404;
+                        border-color: #ffc107;
+                        animation: pulse 1.5s infinite;
+                    }
+
+                    @keyframes pulse {
+                        0%, 100% { transform: scale(1); }
+                        50% { transform: scale(1.05); }
+                    }
                 </style>
             </div>
         `;
@@ -314,6 +453,20 @@ class VerificationControl extends BaseComponent {
         this.statusVerify = this.container.querySelector(`#statusVerify-${this.containerId}`);
         this.statusIdentify = this.container.querySelector(`#statusIdentify-${this.containerId}`);
 
+        // Referencias a elementos de progreso - Verificación
+        this.verifyProgress = this.container.querySelector(`#verifyProgress-${this.containerId}`);
+        this.verifyCounter = this.container.querySelector(`#verifyCounter-${this.containerId}`);
+        this.verifyProgressBar = this.container.querySelector(`#verifyProgressBar-${this.containerId}`);
+        this.verifyPercentage = this.container.querySelector(`#verifyPercentage-${this.containerId}`);
+        this.verifySamples = this.container.querySelector(`#verifySamples-${this.containerId}`);
+
+        // Referencias a elementos de progreso - Identificación
+        this.identifyProgress = this.container.querySelector(`#identifyProgress-${this.containerId}`);
+        this.identifyCounter = this.container.querySelector(`#identifyCounter-${this.containerId}`);
+        this.identifyProgressBar = this.container.querySelector(`#identifyProgressBar-${this.containerId}`);
+        this.identifyPercentage = this.container.querySelector(`#identifyPercentage-${this.containerId}`);
+        this.identifySamples = this.container.querySelector(`#identifySamples-${this.containerId}`);
+
         // Eventos de tabs
         this.tabVerify.onclick = () => this._switchTab('verify');
         this.tabIdentify.onclick = () => this._switchTab('identify');
@@ -324,6 +477,55 @@ class VerificationControl extends BaseComponent {
         this.btnVerify.onclick = () => this.verify();
         this.btnIdentify.onclick = () => this.identify();
         this.btnClear.onclick = () => this.clear();
+    }
+
+    /**
+     * Configurar eventos SSE para progreso de multi-intentos
+     */
+    _setupProgressEvents() {
+        // Eventos de progreso de verificación
+        this.adapter.on('VERIFICATION_ATTEMPT', (data) => {
+            if (this.mode === 'verify' && this.isProcessing) {
+                const attemptNum = data.data?.attemptNumber || 1;
+                const totalAttempts = data.data?.totalAttempts || 4;
+                this._updateVerifyProgress(attemptNum, totalAttempts);
+                console.log(`[${this.componentId}] 📊 Intento de verificación ${attemptNum}/${totalAttempts}`);
+            }
+        });
+
+        this.adapter.on('VERIFICATION_RETRY', (data) => {
+            if (this.mode === 'verify' && this.isProcessing) {
+                const attemptNum = data.data?.attemptNumber || 1;
+                this._updateStatus('verify', `⚠️ Intento ${attemptNum}/4 sin coincidencia, reintentando...`, 'warning');
+            }
+        });
+
+        // Eventos de progreso de identificación
+        this.adapter.on('IDENTIFICATION_ATTEMPT', (data) => {
+            if (this.mode === 'identify' && this.isProcessing) {
+                const attemptNum = data.data?.attemptNumber || 1;
+                const totalAttempts = data.data?.totalAttempts || 4;
+                this._updateIdentifyProgress(attemptNum, totalAttempts);
+                console.log(`[${this.componentId}] 📊 Intento de identificación ${attemptNum}/${totalAttempts}`);
+            }
+        });
+
+        this.adapter.on('IDENTIFICATION_RETRY', (data) => {
+            if (this.mode === 'identify' && this.isProcessing) {
+                const attemptNum = data.data?.attemptNumber || 1;
+                this._updateStatus('identify', `⚠️ Intento ${attemptNum}/4 sin coincidencia, reintentando...`, 'warning');
+            }
+        });
+
+        // Evento CAPTURE_STARTED para mostrar número de intento
+        this.adapter.on('CAPTURE_STARTED', (data) => {
+            if (this.isProcessing) {
+                const attemptNum = data.data?.attemptNumber || 1;
+                const totalAttempts = data.data?.totalAttempts || 4;
+                const currentMode = this.mode === 'verify' ? 'verify' : 'identify';
+                this._updateStatus(currentMode, `Intento ${attemptNum}/${totalAttempts} - Coloque su dedo en el lector`, 'info');
+            }
+        });
     }
 
     /**
@@ -451,6 +653,48 @@ class VerificationControl extends BaseComponent {
     }
 
     /**
+     * Actualizar progreso de verificación
+     */
+    _updateVerifyProgress(current, total) {
+        const percentage = Math.round((current / total) * 100);
+        this.verifyCounter.textContent = `${current}/${total}`;
+        this.verifyProgressBar.style.width = `${percentage}%`;
+        this.verifyPercentage.textContent = `${percentage}%`;
+
+        const indicators = this.verifySamples.querySelectorAll('.sample-indicator');
+        indicators.forEach((indicator, index) => {
+            indicator.classList.remove('captured', 'active');
+            const attemptNum = index + 1;
+            if (attemptNum <= current) {
+                indicator.classList.add('captured');
+            } else if (attemptNum === current + 1 && current < total) {
+                indicator.classList.add('active');
+            }
+        });
+    }
+
+    /**
+     * Actualizar progreso de identificación
+     */
+    _updateIdentifyProgress(current, total) {
+        const percentage = Math.round((current / total) * 100);
+        this.identifyCounter.textContent = `${current}/${total}`;
+        this.identifyProgressBar.style.width = `${percentage}%`;
+        this.identifyPercentage.textContent = `${percentage}%`;
+
+        const indicators = this.identifySamples.querySelectorAll('.sample-indicator');
+        indicators.forEach((indicator, index) => {
+            indicator.classList.remove('captured', 'active');
+            const attemptNum = index + 1;
+            if (attemptNum <= current) {
+                indicator.classList.add('captured');
+            } else if (attemptNum === current + 1 && current < total) {
+                indicator.classList.add('active');
+            }
+        });
+    }
+
+    /**
      * Verificación 1:1
      */
     async verify() {
@@ -469,6 +713,10 @@ class VerificationControl extends BaseComponent {
             this.isProcessing = true;
             this._updateUI();
 
+            // Mostrar progreso
+            this.verifyProgress.style.display = 'block';
+            this._updateVerifyProgress(0, 4);
+
             console.log(`[${this.componentId}] 🔍 Iniciando verificación para: ${this.selectedUserId}`);
             this._updateStatus('verify', `Verificando ${this.selectedUserId}...`, 'loading');
 
@@ -479,10 +727,12 @@ class VerificationControl extends BaseComponent {
 
             // Procesar resultado
             if (result.ok) {
+                const attemptInfo = result.attempt ? ` en intento ${result.attempt}/${result.totalAttempts || 4}` : '';
+
                 if (result.verified) {
-                    this._updateStatus('verify', `✅ VERIFICADO: ${this.selectedUserId} (Score: ${result.score || 'N/A'})`, 'success');
+                    this._updateStatus('verify', `✅ VERIFICADO: ${this.selectedUserId} (Score: ${result.score || 'N/A'})${attemptInfo}`, 'success');
                 } else {
-                    this._updateStatus('verify', `❌ NO COINCIDE: ${this.selectedUserId} (Score: ${result.score || 'N/A'})`, 'error');
+                    this._updateStatus('verify', `❌ NO COINCIDE: ${this.selectedUserId} (Score: ${result.score || 'N/A'}) después de ${result.totalAttempts || 4} intentos`, 'error');
                 }
 
                 // Emitir evento 'verified' para listeners externos
@@ -490,6 +740,7 @@ class VerificationControl extends BaseComponent {
                     userId: this.selectedUserId,
                     verified: result.verified,
                     score: result.score,
+                    attempt: result.attempt,
                     result: result
                 });
             } else {
@@ -497,9 +748,23 @@ class VerificationControl extends BaseComponent {
                 this._updateStatus('verify', result.error || result.msg || 'Error en verificación', 'error');
             }
 
+            // Ocultar progreso después de 3 segundos
+            setTimeout(() => {
+                if (this.verifyProgress) {
+                    this.verifyProgress.style.display = 'none';
+                }
+            }, 3000);
+
         } catch (error) {
             console.error(`[${this.componentId}] ❌ Excepción en verificación:`, error);
             this._updateStatus('verify', `❌ ${error.message}`, 'error');
+
+            // Ocultar progreso en caso de error
+            setTimeout(() => {
+                if (this.verifyProgress) {
+                    this.verifyProgress.style.display = 'none';
+                }
+            }, 3000);
         } finally {
             this.isProcessing = false;
             this._updateUI();
@@ -520,6 +785,10 @@ class VerificationControl extends BaseComponent {
             this.isProcessing = true;
             this._updateUI();
 
+            // Mostrar progreso
+            this.identifyProgress.style.display = 'block';
+            this._updateIdentifyProgress(0, 4);
+
             this._updateStatus('identify', `Buscando coincidencias en ${this.availableUsers.length} usuarios...`, 'loading');
 
             // Llamar al backend
@@ -527,13 +796,15 @@ class VerificationControl extends BaseComponent {
 
             // Procesar resultado
             if (result.ok) {
+                const attemptInfo = result.attempt ? ` en intento ${result.attempt}/${result.totalAttempts || 4}` : '';
+
                 // IMPORTANTE: El backend retorna 'match' (no 'matched')
                 if (result.match) {
                     const userId = result.bestTag || 'Usuario identificado';
                     const score = result.bestScore || 'N/A';
-                    this._updateStatus('identify', `✅ IDENTIFICADO: ${userId} (Score: ${score})`, 'success');
+                    this._updateStatus('identify', `✅ IDENTIFICADO: ${userId} (Score: ${score})${attemptInfo}`, 'success');
                 } else {
-                    this._updateStatus('identify', '⚠️ No se encontraron coincidencias en la base de datos', 'warning');
+                    this._updateStatus('identify', `⚠️ No se encontraron coincidencias después de ${result.totalAttempts || 4} intentos`, 'warning');
                 }
 
                 // Emitir evento 'identified' para listeners externos
@@ -541,14 +812,29 @@ class VerificationControl extends BaseComponent {
                     matched: result.match,
                     userId: result.bestTag,
                     score: result.bestScore,
+                    attempt: result.attempt,
                     result: result
                 });
             } else {
                 this._updateStatus('identify', result.msg || 'Error en identificación', 'error');
             }
 
+            // Ocultar progreso después de 3 segundos
+            setTimeout(() => {
+                if (this.identifyProgress) {
+                    this.identifyProgress.style.display = 'none';
+                }
+            }, 3000);
+
         } catch (error) {
             this._updateStatus('identify', `Error: ${error.message}`, 'error');
+
+            // Ocultar progreso en caso de error
+            setTimeout(() => {
+                if (this.identifyProgress) {
+                    this.identifyProgress.style.display = 'none';
+                }
+            }, 3000);
         } finally {
             this.isProcessing = false;
             this._updateUI();
@@ -574,6 +860,17 @@ class VerificationControl extends BaseComponent {
 
         if (imageContainerIdentify) {
             imageContainerIdentify.innerHTML = '<div class="image-placeholder">🔍</div>';
+        }
+
+        // Ocultar y resetear progreso
+        if (this.verifyProgress) {
+            this.verifyProgress.style.display = 'none';
+            this._updateVerifyProgress(0, 4);
+        }
+
+        if (this.identifyProgress) {
+            this.identifyProgress.style.display = 'none';
+            this._updateIdentifyProgress(0, 4);
         }
 
         this._updateUI();
