@@ -745,11 +745,11 @@
                 </div>
             </div>
 
-            <!-- 8. FINGER MANAGEMENT -->
+            <!-- 8. FINGER MANAGEMENT (Estilo SDK DigitalPersona) -->
             <div class="control-card">
                 <div class="control-header">
                     <h2>🖐️ Gestión de Dedos por Mano</h2>
-                    <p>Enrolar y gestionar huellas de cada dedo específico</p>
+                    <p><strong>Haz clic en cualquier dedo para enrolar</strong></p>
                 </div>
 
                 <!-- Selector de Usuario -->
@@ -758,24 +758,29 @@
                     <input type="text"
                            class="component-input"
                            id="fingerUserId"
-                           placeholder="Ingrese ID de usuario"
+                           placeholder="Ingrese ID de usuario para enrolar"
                            maxlength="50"
                            style="width: 100%;">
                 </div>
 
-                <!-- Selectores de Mano y Dedo -->
+                <!-- Visualización Interactiva de Manos (Estilo SDK DigitalPersona) -->
+                <div id="handsVisualization" style="margin-bottom: 15px;">
+                    <!-- Se renderizará dinámicamente con manos clickeables -->
+                </div>
+
+                <!-- Selectores de Mano y Dedo (Sincronizados con clic - Solo visualización) -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
                     <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Mano:</label>
-                        <select class="component-input" id="fingerHand" style="width: 100%;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Mano Seleccionada:</label>
+                        <select class="component-input" id="fingerHand" style="width: 100%;" disabled>
                             <option value="LEFT">👈 Izquierda</option>
                             <option value="RIGHT">👉 Derecha</option>
                         </select>
                     </div>
 
                     <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Dedo:</label>
-                        <select class="component-input" id="fingerType" style="width: 100%;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Dedo Seleccionado:</label>
+                        <select class="component-input" id="fingerType" style="width: 100%;" disabled>
                             <option value="THUMB">👍 Pulgar</option>
                             <option value="INDEX">☝️ Índice</option>
                             <option value="MIDDLE">🖕 Medio</option>
@@ -806,18 +811,14 @@
                     </div>
                 </div>
 
-                <div class="status-message" id="fingerStatus">Ingresa usuario, mano y dedo</div>
-
-                <button class="btn btn-primary" id="btnEnrollFinger">
-                    📝 Enrolar Dedo Seleccionado
-                </button>
+                <div class="status-message" id="fingerStatus">👆 Haz clic en un dedo de las manos para enrolar</div>
 
                 <button class="btn btn-success" id="btnVerifyFinger">
-                    ✅ Verificar Dedo
+                    ✅ Verificar Dedo Seleccionado
                 </button>
 
                 <button class="btn btn-warning" id="btnIdentifyFinger">
-                    🔍 Identificar Dedo
+                    🔍 Identificar Dedo (Buscar)
                 </button>
 
                 <button class="btn btn-secondary" id="btnRefreshFingers">
@@ -968,8 +969,9 @@
                 techPlatform: document.getElementById('techPlatform'),
                 techLastUpdate: document.getElementById('techLastUpdate'),
 
-                // Finger Management
+                // Finger Management (Estilo SDK DigitalPersona)
                 fingerUserId: document.getElementById('fingerUserId'),
+                handsVisualization: document.getElementById('handsVisualization'),
                 fingerHand: document.getElementById('fingerHand'),
                 fingerType: document.getElementById('fingerType'),
                 fingerPlaceholder: document.getElementById('fingerPlaceholder'),
@@ -978,7 +980,6 @@
                 fingerCounter: document.getElementById('fingerCounter'),
                 fingerProgressBar: document.getElementById('fingerProgressBar'),
                 fingerStatus: document.getElementById('fingerStatus'),
-                btnEnrollFinger: document.getElementById('btnEnrollFinger'),
                 btnVerifyFinger: document.getElementById('btnVerifyFinger'),
                 btnIdentifyFinger: document.getElementById('btnIdentifyFinger'),
                 btnRefreshFingers: document.getElementById('btnRefreshFingers'),
@@ -1491,6 +1492,162 @@
                 });
             }
 
+            // ==========================================
+            // FINGER MANAGEMENT - VISUALIZACIÓN DE MANOS (Estilo SDK DigitalPersona)
+            // ==========================================
+
+            // Definición de dedos (mismo orden que FingerManagementControl.js)
+            const FINGERS = {
+                THUMB: { name: 'THUMB', label: 'Pulgar', emoji: '👍' },
+                INDEX: { name: 'INDEX', label: 'Índice', emoji: '☝️' },
+                MIDDLE: { name: 'MIDDLE', label: 'Medio', emoji: '🖕' },
+                RING: { name: 'RING', label: 'Anular', emoji: '💍' },
+                PINKY: { name: 'PINKY', label: 'Meñique', emoji: '🤙' }
+            };
+
+            /**
+             * Renderizar manos visuales clickeables (Estilo SDK DigitalPersona)
+             */
+            function renderFingerHands() {
+                const userId = dom.fingerUserId.value.trim();
+
+                if (!userId) {
+                    dom.handsVisualization.innerHTML = `
+                        <div style="text-align: center; padding: 30px; color: var(--gray-600); background: var(--gray-50); border-radius: 12px; border: 2px dashed var(--gray-300);">
+                            <p style="font-size: 18px; margin: 0;">👆 Ingresa un ID de usuario arriba para comenzar</p>
+                        </div>`;
+                    return;
+                }
+
+                // Obtener dedos enrolados del usuario (o vacío si no existe)
+                const userFingers = state.fingerEnrolled[userId] || { LEFT: {}, RIGHT: {} };
+
+                let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">';
+
+                // Mano Izquierda
+                html += renderHand('LEFT', userFingers.LEFT);
+
+                // Mano Derecha
+                html += renderHand('RIGHT', userFingers.RIGHT);
+
+                html += '</div>';
+
+                dom.handsVisualization.innerHTML = html;
+
+                // Agregar event listeners a cada dedo después de renderizar
+                attachFingerClickListeners();
+            }
+
+            /**
+             * Renderizar una mano individual con dedos clickeables
+             */
+            function renderHand(hand, fingers) {
+                const handLabel = hand === 'LEFT' ? '👈 Mano Izquierda' : '👉 Mano Derecha';
+                const handEmoji = hand === 'LEFT' ? '🫲' : '🫱';
+
+                let html = `<div style="text-align: center; padding: 20px; background: var(--gray-50); border-radius: 16px; border: 2px solid var(--gray-200);">`;
+                html += `<h4 style="margin-bottom: 20px; color: var(--gray-700); font-size: 16px;">${handEmoji} ${handLabel}</h4>`;
+                html += `<div style="display: flex; justify-content: center; gap: 10px;">`;
+
+                // Renderizar los 5 dedos
+                Object.keys(FINGERS).forEach(fingerKey => {
+                    const finger = FINGERS[fingerKey];
+                    const isEnrolled = fingers[fingerKey];
+                    const bgColor = isEnrolled ? '#dcfce7' : '#fef3c7';
+                    const borderColor = isEnrolled ? '#16a34a' : '#ca8a04';
+                    const statusIcon = isEnrolled ? '✅' : '⭕';
+
+                    html += `<div
+                        class="finger-button-simple"
+                        data-hand="${hand}"
+                        data-finger="${fingerKey}"
+                        style="
+                            width: 55px;
+                            height: 80px;
+                            background: ${bgColor};
+                            border: 3px solid ${borderColor};
+                            border-radius: 10px;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                            user-select: none;
+                        "
+                        title="Clic para enrolar: ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${isEnrolled ? '✅ Ya enrolado' : '⭕ No enrolado'}">
+                        <span style="font-size: 32px;">${finger.emoji}</span>
+                        <span style="font-size: 12px; margin-top: 4px;">${statusIcon}</span>
+                        <span style="font-size: 8px; color: var(--gray-600); margin-top: 2px;">${finger.label.slice(0, 3)}</span>
+                    </div>`;
+                });
+
+                html += `</div></div>`;
+                return html;
+            }
+
+            /**
+             * Adjuntar event listeners a todos los dedos clickeables
+             */
+            function attachFingerClickListeners() {
+                const fingerButtons = dom.handsVisualization.querySelectorAll('.finger-button-simple');
+
+                fingerButtons.forEach(button => {
+                    // Efecto hover
+                    button.addEventListener('mouseenter', (e) => {
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                    });
+
+                    button.addEventListener('mouseleave', (e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                    });
+
+                    // Click para enrolar automáticamente
+                    button.addEventListener('click', (e) => {
+                        const hand = e.currentTarget.dataset.hand;
+                        const finger = e.currentTarget.dataset.finger;
+                        onFingerClick(hand, finger);
+                    });
+                });
+            }
+
+            /**
+             * Manejar clic en un dedo (Estilo SDK DigitalPersona)
+             * Actualiza selectores y auto-inicia el enrolamiento
+             */
+            async function onFingerClick(hand, finger) {
+                const userId = dom.fingerUserId.value.trim();
+
+                if (!userId) {
+                    updateStatus(dom.fingerStatus, '⚠️ Debes ingresar un ID de usuario primero', 'error');
+                    dom.fingerUserId.focus();
+                    return;
+                }
+
+                if (state.isEnrollingFinger) {
+                    updateStatus(dom.fingerStatus, '⚠️ Operación en progreso, espera a que termine', 'warning');
+                    return;
+                }
+
+                // Actualizar selectores (solo visualización)
+                dom.fingerHand.value = hand;
+                dom.fingerType.value = finger;
+
+                const fingerInfo = FINGERS[finger];
+                const handInfo = hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+
+                updateStatus(dom.fingerStatus, `${fingerInfo.emoji} Enrolando: ${fingerInfo.label} - Mano ${handInfo}`, 'info');
+
+                // Iniciar enrolamiento automáticamente
+                await enrollFinger();
+            }
+
+            // ==========================================
+            // FINGER MANAGEMENT - OPERACIONES
+            // ==========================================
+
             async function enrollFinger() {
                 const userId = dom.fingerUserId.value.trim();
                 if (!userId) {
@@ -1532,7 +1689,6 @@
                     updateStatus(dom.fingerStatus, `❌ ${error.message}`, 'error');
                 } finally {
                     state.isEnrollingFinger = false;
-                    dom.btnEnrollFinger.disabled = false;
                 }
             }
 
@@ -1633,6 +1789,7 @@
 
                         state.fingerEnrolled = enrolledFingers;
                         updateFingersList(enrolledFingers);
+                        renderFingerHands(); // Actualizar visualización de manos
                     }
 
                 } catch (error) {
@@ -1753,16 +1910,49 @@
                         break;
 
                     case 'ENROLLMENT_COMPLETED':
-                        state.isEnrolling = false;
-                        updateEnrollProgress(4, 4);
-                        updateStatus(dom.enrollStatus, '🎉 Enrolamiento completado', 'success');
-                        dom.btnEnroll.disabled = false;
-                        setTimeout(() => {
-                            dom.enrollUserId.value = '';
-                            dom.enrollProgress.classList.remove('active');
-                            showImage(dom.enrollImage, dom.enrollPlaceholder, null);
-                            refreshTemplates();
-                        }, 3000);
+                        // Enrolamiento simple (sin dedos)
+                        if (state.isEnrolling) {
+                            state.isEnrolling = false;
+                            updateEnrollProgress(4, 4);
+                            updateStatus(dom.enrollStatus, '🎉 Enrolamiento completado', 'success');
+                            dom.btnEnroll.disabled = false;
+                            setTimeout(() => {
+                                dom.enrollUserId.value = '';
+                                dom.enrollProgress.classList.remove('active');
+                                showImage(dom.enrollImage, dom.enrollPlaceholder, null);
+                                refreshTemplates();
+                            }, 3000);
+                        }
+
+                        // Enrolamiento de dedos (Estilo SDK DigitalPersona)
+                        if (state.isEnrollingFinger) {
+                            state.isEnrollingFinger = false;
+                            updateFingerProgress(4, 4);
+
+                            const userId = dom.fingerUserId.value.trim();
+                            const hand = dom.fingerHand.value;
+                            const finger = dom.fingerType.value;
+
+                            // Actualizar estructura de dedos enrolados
+                            if (!state.fingerEnrolled[userId]) {
+                                state.fingerEnrolled[userId] = { LEFT: {}, RIGHT: {} };
+                            }
+                            state.fingerEnrolled[userId][hand][finger] = true;
+
+                            const fingerInfo = FINGERS[finger];
+                            const handInfo = hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+
+                            updateStatus(dom.fingerStatus, `🎉 ${fingerInfo.emoji} ${fingerInfo.label} ${handInfo} enrolado`, 'success');
+
+                            // Actualizar visualización de manos y lista
+                            renderFingerHands();
+                            refreshFingersList();
+
+                            setTimeout(() => {
+                                dom.fingerProgress.classList.remove('active');
+                                showImage(dom.fingerImage, dom.fingerPlaceholder, null);
+                            }, 2000);
+                        }
                         break;
 
                     case 'ENROLLMENT_FAILED':
@@ -1870,11 +2060,14 @@
                 dom.btnLoadTechInfo.addEventListener('click', loadTechInfo);
                 dom.btnExportTechInfo.addEventListener('click', exportTechInfo);
 
-                // Event listeners UI - Finger Management
-                dom.btnEnrollFinger.addEventListener('click', enrollFinger);
+                // Event listeners UI - Finger Management (Estilo SDK DigitalPersona)
+                dom.fingerUserId.addEventListener('input', renderFingerHands);
                 dom.btnVerifyFinger.addEventListener('click', verifyFinger);
                 dom.btnIdentifyFinger.addEventListener('click', identifyFinger);
                 dom.btnRefreshFingers.addEventListener('click', refreshFingersList);
+
+                // Renderizar visualización inicial de manos
+                renderFingerHands();
 
                 console.log('[DP4500] ✅ Panel listo');
             }

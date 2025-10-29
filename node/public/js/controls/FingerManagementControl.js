@@ -42,7 +42,7 @@ class FingerManagementControl extends BaseComponent {
                 <!-- Header -->
                 <div class="component-header">
                     <h3>🖐️ Gestión de Dedos por Mano</h3>
-                    <p class="component-subtitle">Enrolar y gestionar huellas de cada dedo específico</p>
+                    <p class="component-subtitle">Haz clic en cualquier dedo para enrolar</p>
                 </div>
 
                 <!-- Selector de Usuario -->
@@ -51,23 +51,28 @@ class FingerManagementControl extends BaseComponent {
                     <input type="text"
                            class="component-input"
                            id="fingerUserId-${this.containerId}"
-                           placeholder="Ingrese ID de usuario"
+                           placeholder="Ingrese ID de usuario para enrolar"
                            maxlength="50">
                 </div>
 
-                <!-- Selectores de Mano y Dedo -->
-                <div class="selector-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <!-- Visualización Interactiva de Manos (Estilo SDK DigitalPersona) -->
+                <div id="handsVisualization-${this.containerId}" class="hands-visualization">
+                    <!-- Se llenará dinámicamente con manos clickeables -->
+                </div>
+
+                <!-- Selectores de Mano y Dedo (Sincronizados con clic) -->
+                <div class="selector-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                     <div class="component-input-group">
-                        <label><strong>Mano:</strong></label>
-                        <select class="component-input" id="fingerHand-${this.containerId}">
+                        <label><strong>Mano Seleccionada:</strong></label>
+                        <select class="component-input" id="fingerHand-${this.containerId}" disabled>
                             <option value="LEFT">👈 Izquierda</option>
                             <option value="RIGHT">👉 Derecha</option>
                         </select>
                     </div>
 
                     <div class="component-input-group">
-                        <label><strong>Dedo:</strong></label>
-                        <select class="component-input" id="fingerType-${this.containerId}">
+                        <label><strong>Dedo Seleccionado:</strong></label>
+                        <select class="component-input" id="fingerType-${this.containerId}" disabled>
                             <option value="THUMB">👍 Pulgar</option>
                             <option value="INDEX">☝️ Índice</option>
                             <option value="MIDDLE">🖕 Medio</option>
@@ -75,11 +80,6 @@ class FingerManagementControl extends BaseComponent {
                             <option value="PINKY">🤙 Meñique</option>
                         </select>
                     </div>
-                </div>
-
-                <!-- Visualización de Manos -->
-                <div id="handsVisualization-${this.containerId}" class="hands-visualization">
-                    <!-- Se llenará dinámicamente -->
                 </div>
 
                 <!-- Imagen de huella -->
@@ -116,14 +116,11 @@ class FingerManagementControl extends BaseComponent {
 
                 <!-- Botones de acción -->
                 <div class="component-buttons">
-                    <button class="btn-primary" id="btnEnrollFinger-${this.containerId}">
-                        📝 Enrolar Dedo Seleccionado
-                    </button>
                     <button class="btn-success" id="btnVerifyFinger-${this.containerId}">
-                        ✅ Verificar Dedo
+                        ✅ Verificar Dedo Seleccionado
                     </button>
                     <button class="btn-warning" id="btnIdentifyFinger-${this.containerId}">
-                        🔍 Identificar Dedo
+                        🔍 Identificar Dedo (Buscar)
                     </button>
                     <button class="btn-secondary" id="btnRefreshFingers-${this.containerId}">
                         🔄 Refrescar Lista
@@ -138,23 +135,23 @@ class FingerManagementControl extends BaseComponent {
                     </div>
                 </div>
 
-                <!-- Instrucciones -->
+                <!-- Instrucciones (Estilo SDK DigitalPersona) -->
                 <div class="component-instructions">
                     <div class="instruction-item">
                         <span class="instruction-number">1</span>
-                        <span class="instruction-text">Ingresa ID de usuario</span>
+                        <span class="instruction-text">Ingresa ID de usuario arriba</span>
                     </div>
                     <div class="instruction-item">
                         <span class="instruction-number">2</span>
-                        <span class="instruction-text">Selecciona mano (Izquierda/Derecha) y dedo</span>
+                        <span class="instruction-text"><strong>HAZ CLIC</strong> en cualquier dedo de las manos para enrolar</span>
                     </div>
                     <div class="instruction-item">
                         <span class="instruction-number">3</span>
-                        <span class="instruction-text">Presiona "Enrolar" y coloca el dedo 4 veces</span>
+                        <span class="instruction-text">Coloca el dedo 4 veces cuando se active la captura</span>
                     </div>
                     <div class="instruction-item">
                         <span class="instruction-number">4</span>
-                        <span class="instruction-text">Usa "Verificar" para comprobar o "Identificar" para buscar</span>
+                        <span class="instruction-text">Dedos enrolados se marcarán en verde ✅</span>
                     </div>
                 </div>
             </div>
@@ -183,22 +180,16 @@ class FingerManagementControl extends BaseComponent {
         this.enrolledListContent = this.container.querySelector(`#fingersListContent-${this.containerId}`);
 
         // Botones
-        this.btnEnroll = this.container.querySelector(`#btnEnrollFinger-${this.containerId}`);
         this.btnVerify = this.container.querySelector(`#btnVerifyFinger-${this.containerId}`);
         this.btnIdentify = this.container.querySelector(`#btnIdentifyFinger-${this.containerId}`);
         this.btnRefresh = this.container.querySelector(`#btnRefreshFingers-${this.containerId}`);
 
         // Event listeners
         this.userIdInput.addEventListener('input', () => this._updateVisualization());
-        this.handSelect.addEventListener('change', () => {
-            this.selectedHand = this.handSelect.value;
-            this._updateVisualization();
-        });
-        this.fingerSelect.addEventListener('change', () => {
-            this.selectedFinger = this.fingerSelect.value;
-        });
 
-        this.btnEnroll.addEventListener('click', () => this.enrollFinger());
+        // Los selectores ahora se actualizan automáticamente al hacer clic en dedos
+        // (disabled, solo para visualización)
+
         this.btnVerify.addEventListener('click', () => this.verifyFinger());
         this.btnIdentify.addEventListener('click', () => this.identifyFinger());
         this.btnRefresh.addEventListener('click', () => this._loadEnrolledFingers());
@@ -455,66 +446,145 @@ class FingerManagementControl extends BaseComponent {
     }
 
     /**
-     * Actualizar visualización de manos
+     * Actualizar visualización de manos (Estilo SDK DigitalPersona)
      */
     _updateVisualization() {
         const userId = this.userIdInput.value.trim();
 
-        if (!userId || !this.enrolledFingers[userId]) {
-            this.handsVisualization.innerHTML = '<p style="text-align: center; color: #6b7280;">Ingresa un usuario para ver sus dedos enrolados</p>';
+        if (!userId) {
+            this.handsVisualization.innerHTML = `
+                <div style="text-align: center; padding: 30px; color: #6b7280; background: #f9fafb; border-radius: 12px; border: 2px dashed #d1d5db;">
+                    <p style="font-size: 18px; margin: 0;">👆 Ingresa un ID de usuario arriba para comenzar</p>
+                </div>`;
             return;
         }
 
-        const hands = this.enrolledFingers[userId];
+        // Obtener dedos enrolados del usuario (o vacío si no existe)
+        const hands = this.enrolledFingers[userId] || { LEFT: {}, RIGHT: {} };
 
         let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">';
 
         // Mano Izquierda
-        html += this._renderHand('LEFT', hands.LEFT);
+        html += this._renderHand('LEFT', hands.LEFT, userId);
 
         // Mano Derecha
-        html += this._renderHand('RIGHT', hands.RIGHT);
+        html += this._renderHand('RIGHT', hands.RIGHT, userId);
 
         html += '</div>';
 
         this.handsVisualization.innerHTML = html;
+
+        // Agregar event listeners a cada dedo después de renderizar
+        this._attachFingerClickListeners();
     }
 
     /**
-     * Renderizar una mano
+     * Renderizar una mano (Estilo SDK DigitalPersona - Clickeable)
      */
-    _renderHand(hand, fingers) {
-        const handLabel = hand === 'LEFT' ? '👈 Izquierda' : '👉 Derecha';
+    _renderHand(hand, fingers, userId) {
+        const handLabel = hand === 'LEFT' ? '👈 Mano Izquierda' : '👉 Mano Derecha';
+        const handEmoji = hand === 'LEFT' ? '🫲' : '🫱';
 
-        let html = `<div style="text-align: center; padding: 15px; background: #f9fafb; border-radius: 12px;">`;
-        html += `<h4 style="margin-bottom: 15px; color: #374151;">${handLabel}</h4>`;
-        html += `<div style="display: flex; justify-content: center; gap: 8px;">`;
+        let html = `<div style="text-align: center; padding: 20px; background: #f9fafb; border-radius: 16px; border: 2px solid #e5e7eb;">`;
+        html += `<h4 style="margin-bottom: 20px; color: #374151; font-size: 16px;">${handEmoji} ${handLabel}</h4>`;
+        html += `<div style="display: flex; justify-content: center; gap: 10px;">`;
 
+        // Renderizar los 5 dedos en orden
         Object.keys(this.FINGERS).forEach(fingerKey => {
             const finger = this.FINGERS[fingerKey];
             const isEnrolled = fingers[fingerKey];
-            const bgColor = isEnrolled ? '#dcfce7' : '#fee2e2';
-            const borderColor = isEnrolled ? '#15803d' : '#b91c1c';
+            const bgColor = isEnrolled ? '#dcfce7' : '#fef3c7';
+            const borderColor = isEnrolled ? '#16a34a' : '#ca8a04';
+            const statusIcon = isEnrolled ? '✅' : '⭕';
 
-            html += `<div style="
-                width: 50px;
-                height: 70px;
-                background: ${bgColor};
-                border: 2px solid ${borderColor};
-                border-radius: 8px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                font-size: 24px;
-            " title="${finger.label} - ${isEnrolled ? 'Enrolado' : 'No enrolado'}">`;
-            html += `<span>${finger.emoji}</span>`;
-            html += `<span style="font-size: 10px; margin-top: 4px;">${isEnrolled ? '✅' : '❌'}</span>`;
-            html += `</div>`;
+            html += `<div
+                class="finger-button"
+                data-hand="${hand}"
+                data-finger="${fingerKey}"
+                style="
+                    width: 55px;
+                    height: 80px;
+                    background: ${bgColor};
+                    border: 3px solid ${borderColor};
+                    border-radius: 10px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 28px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    user-select: none;
+                "
+                title="Clic para enrolar: ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${isEnrolled ? '✅ Ya enrolado' : '⭕ No enrolado'}">
+                <span style="font-size: 32px;">${finger.emoji}</span>
+                <span style="font-size: 12px; margin-top: 4px;">${statusIcon}</span>
+                <span style="font-size: 8px; color: #6b7280; margin-top: 2px;">${finger.label.slice(0, 3)}</span>
+            </div>`;
         });
 
         html += `</div></div>`;
         return html;
+    }
+
+    /**
+     * Adjuntar event listeners a los dedos clickeables
+     */
+    _attachFingerClickListeners() {
+        const fingerButtons = this.handsVisualization.querySelectorAll('.finger-button');
+
+        fingerButtons.forEach(button => {
+            // Efecto hover
+            button.addEventListener('mouseenter', (e) => {
+                e.target.style.transform = 'scale(1.1)';
+                e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+            });
+
+            button.addEventListener('mouseleave', (e) => {
+                e.target.style.transform = 'scale(1)';
+                e.target.style.boxShadow = 'none';
+            });
+
+            // Click para enrolar
+            button.addEventListener('click', (e) => {
+                const hand = e.currentTarget.dataset.hand;
+                const finger = e.currentTarget.dataset.finger;
+                this._onFingerClick(hand, finger);
+            });
+        });
+    }
+
+    /**
+     * Manejar clic en un dedo (Estilo SDK DigitalPersona)
+     */
+    async _onFingerClick(hand, finger) {
+        const userId = this.userIdInput.value.trim();
+
+        if (!userId) {
+            this._updateStatus('error', 'Debes ingresar un ID de usuario primero');
+            this.userIdInput.focus();
+            return;
+        }
+
+        if (this.isProcessing) {
+            this._updateStatus('warning', 'Operación en progreso, espera a que termine');
+            return;
+        }
+
+        // Actualizar selectores (solo visualización)
+        this.selectedHand = hand;
+        this.selectedFinger = finger;
+        this.selectedUserId = userId;
+        this.handSelect.value = hand;
+        this.fingerSelect.value = finger;
+
+        const fingerInfo = this.FINGERS[finger];
+        const handInfo = hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+
+        this._updateStatus('info', `${fingerInfo.emoji} Enrolando: ${fingerInfo.label} - Mano ${handInfo}`);
+
+        // Iniciar enrolamiento automáticamente
+        await this.enrollFinger();
     }
 
     /**
