@@ -1498,22 +1498,24 @@
 
             /**
              * Renderizar manos visuales clickeables (Estilo SDK DigitalPersona)
+             * SIEMPRE muestra las manos, incluso sin ID de usuario
              */
             function renderFingerHands() {
                 const userId = dom.fingerUserId.value.trim();
 
-                if (!userId) {
-                    dom.handsVisualization.innerHTML = `
-                        <div style="text-align: center; padding: 30px; color: var(--gray-600); background: var(--gray-50); border-radius: 12px; border: 2px dashed var(--gray-300);">
-                            <p style="font-size: 18px; margin: 0;">👆 Ingresa un ID de usuario arriba para comenzar</p>
-                        </div>`;
-                    return;
-                }
-
-                // Obtener dedos enrolados del usuario (o vacío si no existe)
-                const userFingers = state.fingerEnrolled[userId] || { LEFT: {}, RIGHT: {} };
+                // Obtener dedos enrolados del usuario (o vacío si no existe o no hay ID)
+                const userFingers = userId && state.fingerEnrolled[userId]
+                    ? state.fingerEnrolled[userId]
+                    : { LEFT: {}, RIGHT: {} };
 
                 let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">';
+
+                // Instrucción clara cuando no hay usuario
+                if (!userId) {
+                    html += `<div style="grid-column: 1 / -1; text-align: center; padding: 15px; background: #fef3c7; border-radius: 10px; border: 2px solid #ca8a04; margin-bottom: 10px;">
+                        <p style="margin: 0; font-weight: 600; color: #92400e;">👆 Ingresa un ID de usuario arriba, luego haz clic en cualquier dedo para enrolar</p>
+                    </div>`;
+                }
 
                 // Mano Izquierda
                 html += renderHand('LEFT', userFingers.LEFT);
@@ -1726,34 +1728,46 @@
             async function identifyFinger() {
                 try {
                     dom.btnIdentifyFinger.disabled = true;
-                    updateStatus(dom.fingerStatus, '🔎 Identificando usuario y dedo...', 'info');
+                    updateStatus(dom.fingerStatus, '🔎 Identificando usuario y dedo... Coloca el dedo en el lector', 'info');
 
                     const result = await state.adapter.identifyFingerprint(4);
-                    console.log(`[FingerManagement] Identificación:`, result);
+                    console.log(`[FingerManagement] Identificación resultado:`, result);
 
                     if (result.ok && result.match) {
                         const parsed = parseFingerTag(result.bestTag);
+                        console.log(`[FingerManagement] Tag parseado:`, parsed);
 
                         if (parsed) {
-                            const handLabel = parsed.hand === 'LEFT' ? '👈 Izquierda' : '👉 Derecha';
+                            const handEmoji = parsed.hand === 'LEFT' ? '🫲' : '🫱';
+                            const handLabel = parsed.hand === 'LEFT' ? 'Izquierda' : 'Derecha';
                             const fingerInfo = FINGERS[parsed.finger];
+                            const fingerEmoji = fingerInfo ? fingerInfo.emoji : '👆';
                             const fingerLabel = fingerInfo ? fingerInfo.label : parsed.finger;
 
                             updateStatus(dom.fingerStatus,
-                                `✅ IDENTIFICADO: ${parsed.userId} | ${fingerLabel} ${handLabel} (Score: ${result.bestScore})`,
+                                `✅ IDENTIFICADO: ${parsed.userId} | ${fingerEmoji} ${fingerLabel} ${handEmoji} Mano ${handLabel} (Score: ${result.bestScore})`,
                                 'success');
+
+                            // Actualizar selectores para mostrar qué se identificó
+                            dom.fingerHand.value = parsed.hand;
+                            dom.fingerType.value = parsed.finger;
+                            dom.fingerUserId.value = parsed.userId;
+
+                            // Actualizar visualización de manos
+                            renderFingerHands();
                         } else {
+                            console.warn('[FingerManagement] No se pudo parsear tag:', result.bestTag);
                             updateStatus(dom.fingerStatus,
                                 `✅ IDENTIFICADO: ${result.bestTag} (Score: ${result.bestScore})`,
                                 'success');
                         }
                     } else {
-                        updateStatus(dom.fingerStatus, '⚠️ No se encontró coincidencia', 'warning');
+                        updateStatus(dom.fingerStatus, '⚠️ No se encontró coincidencia - Ningún dedo enrolado coincide', 'warning');
                     }
 
                 } catch (error) {
-                    console.error('[FingerManagement] Error:', error);
-                    updateStatus(dom.fingerStatus, `❌ ${error.message}`, 'error');
+                    console.error('[FingerManagement] Error en identificación:', error);
+                    updateStatus(dom.fingerStatus, `❌ Error: ${error.message}`, 'error');
                 } finally {
                     dom.btnIdentifyFinger.disabled = false;
                 }

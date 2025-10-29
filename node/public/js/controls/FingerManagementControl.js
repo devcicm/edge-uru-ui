@@ -344,20 +344,32 @@ class FingerManagementControl extends BaseComponent {
      */
     async identifyFinger() {
         try {
-            this._updateStatus('info', '🔎 Identificando usuario y dedo...');
+            this._updateStatus('info', '🔎 Identificando usuario y dedo... Coloca el dedo en el lector');
 
             const result = await this.adapter.identifyFingerprint(4);
-            console.log(`[FingerManagement] Identificación:`, result);
+            console.log(`[FingerManagement] Identificación resultado:`, result);
 
             if (result.ok && result.match) {
                 const parsed = this._parseTag(result.bestTag);
+                console.log(`[FingerManagement] Tag parseado:`, parsed);
 
                 if (parsed) {
-                    const handLabel = parsed.hand === 'LEFT' ? '👈 Izquierda' : '👉 Derecha';
-                    const fingerLabel = this.FINGERS[parsed.finger]?.label || parsed.finger;
+                    const handEmoji = parsed.hand === 'LEFT' ? '🫲' : '🫱';
+                    const handLabel = parsed.hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+                    const fingerInfo = this.FINGERS[parsed.finger];
+                    const fingerEmoji = fingerInfo?.emoji || '👆';
+                    const fingerLabel = fingerInfo?.label || parsed.finger;
 
                     this._updateStatus('success',
-                        `✅ IDENTIFICADO: ${parsed.userId} | ${fingerLabel} ${handLabel} (Score: ${result.bestScore})`);
+                        `✅ IDENTIFICADO: ${parsed.userId} | ${fingerEmoji} ${fingerLabel} ${handEmoji} Mano ${handLabel} (Score: ${result.bestScore})`);
+
+                    // Actualizar selectores para mostrar qué se identificó
+                    this.handSelect.value = parsed.hand;
+                    this.fingerSelect.value = parsed.finger;
+                    this.userIdInput.value = parsed.userId;
+
+                    // Actualizar visualización
+                    this._updateVisualization();
 
                     this.emit('fingerIdentified', {
                         userId: parsed.userId,
@@ -366,15 +378,16 @@ class FingerManagementControl extends BaseComponent {
                         score: result.bestScore
                     });
                 } else {
+                    console.warn('[FingerManagement] No se pudo parsear tag:', result.bestTag);
                     this._updateStatus('success', `✅ IDENTIFICADO: ${result.bestTag} (Score: ${result.bestScore})`);
                 }
             } else {
-                this._updateStatus('warning', '⚠️ No se encontró coincidencia');
+                this._updateStatus('warning', '⚠️ No se encontró coincidencia - Ningún dedo enrolado coincide');
             }
 
         } catch (error) {
-            console.error('[FingerManagement] Error:', error);
-            this._updateStatus('error', `❌ ${error.message}`);
+            console.error('[FingerManagement] Error en identificación:', error);
+            this._updateStatus('error', `❌ Error: ${error.message}`);
         }
     }
 
@@ -447,22 +460,24 @@ class FingerManagementControl extends BaseComponent {
 
     /**
      * Actualizar visualización de manos (Estilo SDK DigitalPersona)
+     * SIEMPRE muestra las manos, incluso sin ID de usuario
      */
     _updateVisualization() {
         const userId = this.userIdInput.value.trim();
 
-        if (!userId) {
-            this.handsVisualization.innerHTML = `
-                <div style="text-align: center; padding: 30px; color: #6b7280; background: #f9fafb; border-radius: 12px; border: 2px dashed #d1d5db;">
-                    <p style="font-size: 18px; margin: 0;">👆 Ingresa un ID de usuario arriba para comenzar</p>
-                </div>`;
-            return;
-        }
-
-        // Obtener dedos enrolados del usuario (o vacío si no existe)
-        const hands = this.enrolledFingers[userId] || { LEFT: {}, RIGHT: {} };
+        // Obtener dedos enrolados del usuario (o vacío si no existe o no hay ID)
+        const hands = userId && this.enrolledFingers[userId]
+            ? this.enrolledFingers[userId]
+            : { LEFT: {}, RIGHT: {} };
 
         let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">';
+
+        // Instrucción clara
+        if (!userId) {
+            html += `<div style="grid-column: 1 / -1; text-align: center; padding: 15px; background: #fef3c7; border-radius: 10px; border: 2px solid #ca8a04; margin-bottom: 10px;">
+                <p style="margin: 0; font-weight: 600; color: #92400e;">👆 Ingresa un ID de usuario arriba, luego haz clic en cualquier dedo para enrolar</p>
+            </div>`;
+        }
 
         // Mano Izquierda
         html += this._renderHand('LEFT', hands.LEFT, userId);
