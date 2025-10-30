@@ -159,6 +159,10 @@ class FingerManagementControl extends BaseComponent {
                 </div>
             </div>
         `;
+
+        // IMPORTANTE: Configurar DOM y eventos después de renderizar HTML
+        this._setupDOM();
+        this._setupEvents();
     }
 
     /**
