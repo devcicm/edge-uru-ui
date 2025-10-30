@@ -156,11 +156,11 @@ app.post("/api/enroll-all-fingers", async (req, res) => {
     if (!userId) {
       return res.status(400).json({ ok: false, error: "UserId is required for enrollAllFingers" });
     }
-    const timeoutMs = req.body?.timeoutMs ?? 120000;
+    const timeoutPerFingerMs = req.body?.timeoutPerFingerMs ?? 120000; // 2 minutos POR DEDO
     const targetFarn = req.body?.targetFarn ?? 21474;
     const maxRetriesPerSample = req.body?.maxRetriesPerSample ?? 3;
     const maxSamples = req.body?.maxSamples ?? 4;
-    res.json(await call({ op: "enrollAllFingers", userId, timeoutMs, targetFarn, maxRetriesPerSample, maxSamples }));
+    res.json(await call({ op: "enrollAllFingers", userId, timeoutPerFingerMs, targetFarn, maxRetriesPerSample, maxSamples }));
   } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 

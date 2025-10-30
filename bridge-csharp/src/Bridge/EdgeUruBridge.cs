@@ -504,7 +504,7 @@ namespace EdgeBridge
                         return new { ok = false, error = "UserId is required for enrollAllFingers" };
                     }
 
-                    var timeoutMs = (int?)input?.timeoutMs ?? 120000; // 2 minutos para 10 dedos
+                    var timeoutPerFingerMs = (int?)input?.timeoutPerFingerMs ?? 120000; // 2 minutos POR DEDO
                     var targetFarn = (int?)input?.targetFarn ?? 21474;
                     var maxRetriesPerSample = (int?)input?.maxRetriesPerSample ?? 3;
                     var maxSamples = (int?)input?.maxSamples ?? 4;
@@ -573,7 +573,7 @@ namespace EdgeBridge
                                     new { hand, finger, fingerLabel, progress = (totalFingerCount * 10) });
 
                                 _cts?.Cancel();
-                                _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs / 10));
+                                _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutPerFingerMs));
 
                                 var result = await Task.Run(() => _reader.Enroll3(_cts.Token, targetFarn, maxRetriesPerSample, maxSamples));
 
@@ -625,8 +625,8 @@ namespace EdgeBridge
                                     throw new Exception($"Error enrolando {fingerLabel} {handLabel}: {result.msg}");
                                 }
 
-                                // Pausa breve entre dedos
-                                await Task.Delay(1000);
+                                // Pausa mínima entre dedos para permitir captura rápida
+                                await Task.Delay(300);
                             }
 
                             SendEvent("HAND_ENROLLMENT_COMPLETED", $"✅ {handEmoji} Mano {handLabel} completada (5 dedos)", "SUCCESS",
