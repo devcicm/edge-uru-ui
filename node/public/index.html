@@ -1542,13 +1542,17 @@
             function renderHand(hand, fingers) {
                 const handLabel = hand === 'LEFT' ? '👈 Mano Izquierda' : '👉 Mano Derecha';
                 const handEmoji = hand === 'LEFT' ? '🫲' : '🫱';
+                const orderOffset = hand === 'LEFT' ? 0 : 5; // Izquierda: 1-5, Derecha: 6-10
 
                 let html = `<div style="text-align: center; padding: 20px; background: var(--gray-50); border-radius: 16px; border: 2px solid var(--gray-200);">`;
                 html += `<h4 style="margin-bottom: 20px; color: var(--gray-700); font-size: 16px;">${handEmoji} ${handLabel}</h4>`;
                 html += `<div style="display: flex; justify-content: center; gap: 10px;">`;
 
-                // Renderizar los 5 dedos
+                // Renderizar los 5 dedos con orden de captura
+                let fingerIndex = 0;
                 Object.keys(FINGERS).forEach(fingerKey => {
+                    fingerIndex++;
+                    const captureOrder = orderOffset + fingerIndex; // Orden de captura: 1-10
                     const finger = FINGERS[fingerKey];
                     const isEnrolled = fingers[fingerKey];
                     const bgColor = isEnrolled ? '#dcfce7' : '#fef3c7';
@@ -1560,6 +1564,7 @@
                         data-hand="${hand}"
                         data-finger="${fingerKey}"
                         style="
+                            position: relative;
                             width: 55px;
                             height: 80px;
                             background: ${bgColor};
@@ -1573,7 +1578,9 @@
                             transition: all 0.3s ease;
                             user-select: none;
                         "
-                        title="Clic para enrolar: ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${isEnrolled ? '✅ Ya enrolado' : '⭕ No enrolado'}">
+                        title="Orden #${captureOrder} - Clic para enrolar: ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${isEnrolled ? '✅ Ya enrolado' : '⭕ No enrolado'}">
+                        <!-- Número de orden -->
+                        <span style="position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: bold; color: #6b7280; background: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border: 1px solid #e5e7eb;">${captureOrder}</span>
                         <span style="font-size: 32px;">${finger.emoji}</span>
                         <span style="font-size: 12px; margin-top: 4px;">${statusIcon}</span>
                         <span style="font-size: 8px; color: var(--gray-600); margin-top: 2px;">${finger.label.slice(0, 3)}</span>

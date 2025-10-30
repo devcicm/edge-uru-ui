@@ -153,10 +153,14 @@ class FingerManagementControl extends BaseComponent {
                     </div>
                     <div class="instruction-item">
                         <span class="instruction-number">3</span>
-                        <span class="instruction-text">Coloca el dedo 4 veces cuando se active la captura</span>
+                        <span class="instruction-text">Orden recomendado: 🫲 Mano Izquierda (1-5) → 🫱 Mano Derecha (6-10)</span>
                     </div>
                     <div class="instruction-item">
                         <span class="instruction-number">4</span>
+                        <span class="instruction-text">Coloca el dedo 4 veces cuando se active la captura</span>
+                    </div>
+                    <div class="instruction-item">
+                        <span class="instruction-number">5</span>
                         <span class="instruction-text">Dedos enrolados se marcarán en verde ✅</span>
                     </div>
                 </div>
@@ -458,11 +462,11 @@ class FingerManagementControl extends BaseComponent {
         try {
             const result = await this.adapter.getStoredFingerprints();
 
-            if (result.ok && result.data) {
+            if (result.ok && result.items) {  // ← CORREGIDO: usar result.items
                 this.enrolledFingers = {};
 
                 // Agrupar por usuario, mano y dedo
-                result.data.forEach(item => {
+                result.items.forEach(item => {
                     const parsed = this._parseTag(item.tag);
                     if (parsed) {
                         if (!this.enrolledFingers[parsed.userId]) {
@@ -472,6 +476,7 @@ class FingerManagementControl extends BaseComponent {
                     }
                 });
 
+                console.log('[FingerManagement] Dedos cargados:', this.enrolledFingers);
                 this._updateEnrolledList();
                 this._updateVisualization();
             }
@@ -559,13 +564,17 @@ class FingerManagementControl extends BaseComponent {
     _renderHand(hand, fingers, userId) {
         const handLabel = hand === 'LEFT' ? '👈 Mano Izquierda' : '👉 Mano Derecha';
         const handEmoji = hand === 'LEFT' ? '🫲' : '🫱';
+        const orderOffset = hand === 'LEFT' ? 0 : 5; // Izquierda: 1-5, Derecha: 6-10
 
         let html = `<div style="text-align: center; padding: 20px; background: #f9fafb; border-radius: 16px; border: 2px solid #e5e7eb;">`;
         html += `<h4 style="margin-bottom: 20px; color: #374151; font-size: 16px;">${handEmoji} ${handLabel}</h4>`;
         html += `<div style="display: flex; justify-content: center; gap: 10px;">`;
 
         // Renderizar los 5 dedos en orden
+        let fingerIndex = 0;
         Object.keys(this.FINGERS).forEach(fingerKey => {
+            fingerIndex++;
+            const captureOrder = orderOffset + fingerIndex; // Orden de captura: 1-10
             const finger = this.FINGERS[fingerKey];
             const isEnrolled = fingers[fingerKey];
             const bgColor = isEnrolled ? '#dcfce7' : '#fef3c7';
@@ -577,6 +586,7 @@ class FingerManagementControl extends BaseComponent {
                 data-hand="${hand}"
                 data-finger="${fingerKey}"
                 style="
+                    position: relative;
                     width: 55px;
                     height: 80px;
                     background: ${bgColor};
@@ -591,7 +601,9 @@ class FingerManagementControl extends BaseComponent {
                     transition: all 0.3s ease;
                     user-select: none;
                 "
-                title="Clic para enrolar: ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${isEnrolled ? '✅ Ya enrolado' : '⭕ No enrolado'}">
+                title="Orden #${captureOrder} - Clic para enrolar: ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${isEnrolled ? '✅ Ya enrolado' : '⭕ No enrolado'}">
+                <!-- Número de orden -->
+                <span style="position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: bold; color: #6b7280; background: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border: 1px solid #e5e7eb;">${captureOrder}</span>
                 <span style="font-size: 32px;">${finger.emoji}</span>
                 <span style="font-size: 12px; margin-top: 4px;">${statusIcon}</span>
                 <span style="font-size: 8px; color: #6b7280; margin-top: 2px;">${finger.label.slice(0, 3)}</span>
