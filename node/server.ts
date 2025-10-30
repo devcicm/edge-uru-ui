@@ -150,6 +150,20 @@ app.post("/api/enroll", async (req, res) => {
   } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
+app.post("/api/enroll-all-fingers", async (req, res) => {
+  try {
+    const userId = req.body?.userId;
+    if (!userId) {
+      return res.status(400).json({ ok: false, error: "UserId is required for enrollAllFingers" });
+    }
+    const timeoutMs = req.body?.timeoutMs ?? 120000;
+    const targetFarn = req.body?.targetFarn ?? 21474;
+    const maxRetriesPerSample = req.body?.maxRetriesPerSample ?? 3;
+    const maxSamples = req.body?.maxSamples ?? 4;
+    res.json(await call({ op: "enrollAllFingers", userId, timeoutMs, targetFarn, maxRetriesPerSample, maxSamples }));
+  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
 app.post("/api/verify", async (req, res) => {
   try {
     const tag = req.body?.tag;

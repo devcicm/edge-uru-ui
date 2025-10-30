@@ -398,7 +398,7 @@ class FingerManagementControl extends BaseComponent {
 
     /**
      * Enrolar TODOS los dedos de un usuario (10 dedos completos)
-     * Formato estructurado JSON para envío al backend
+     * El backend captura los 10 dedos y retorna estructura JSON organizada
      */
     async enrollAllFingers() {
         const userId = this.userIdInput.value.trim();
@@ -418,121 +418,33 @@ class FingerManagementControl extends BaseComponent {
             this.isProcessing = true;
             this._updateStatus('info', `📝 Iniciando enrolamiento completo de 10 dedos para: ${userId}`);
 
-            // Estructura para almacenar todos los dedos
-            const enrollmentData = {
-                userId: userId,
-                enrolledAt: new Date().toISOString(),
-                hands: {
-                    left: {
-                        fingers: []
-                    },
-                    right: {
-                        fingers: []
-                    }
-                }
-            };
+            // ⚡ UNA SOLA LLAMADA AL BACKEND - El backend maneja toda la captura
+            const result = await this.adapter.enrollAllFingers(userId);
 
-            // Orden de captura: Mano IZQUIERDA primero (5 dedos)
-            const leftHand = ['THUMB', 'INDEX', 'MIDDLE', 'RING', 'PINKY'];
-            const rightHand = ['THUMB', 'INDEX', 'MIDDLE', 'RING', 'PINKY'];
+            if (result.ok) {
+                this._updateStatus('success', `🎉 ¡ENROLAMIENTO COMPLETO! 10 dedos enrolados para ${userId}`);
 
-            // Capturar mano IZQUIERDA
-            this._updateStatus('info', '🫲 Capturando Mano IZQUIERDA (5 dedos)...');
+                // Emitir evento con estructura completa
+                this.emit('allFingersEnrolled', result.data);
 
-            for (const fingerType of leftHand) {
-                const fingerInfo = this.FINGERS[fingerType];
-                this._updateStatus('info', `🫲 ${fingerInfo.emoji} Coloca ${fingerInfo.label} IZQUIERDO en el lector (4 veces)`);
+                // Log de la estructura completa
+                console.log('[FingerManagement] Estructura JSON completa:', JSON.stringify(result.data, null, 2));
 
-                const tag = this._generateTag(userId, 'LEFT', fingerType);
-                this.fingerProgress.style.display = 'block';
-                this._updateProgress(0, 4);
+                // Recargar lista y visualización
+                await this._loadEnrolledFingers();
 
-                const result = await this.adapter.enrollFingerprint(tag);
-
-                if (result.ok) {
-                    enrollmentData.hands.left.fingers.push({
-                        type: fingerType,
-                        label: fingerInfo.label,
-                        emoji: fingerInfo.emoji,
-                        tag: tag,
-                        template: result.template || null,
-                        hash: result.hash || null,
-                        quality: result.quality || 0,
-                        enrolledAt: new Date().toISOString()
-                    });
-
-                    this._updateStatus('success', `✅ ${fingerInfo.emoji} ${fingerInfo.label} IZQUIERDO enrolado`);
-                } else {
-                    throw new Error(`Error enrolando ${fingerInfo.label} izquierdo: ${result.error}`);
-                }
-
-                // Pequeña pausa entre dedos
-                await this._sleep(1000);
+                return result.data;
+            } else {
+                throw new Error(result.error || 'Error en enrolamiento completo');
             }
-
-            // Capturar mano DERECHA
-            this._updateStatus('info', '🫱 Capturando Mano DERECHA (5 dedos)...');
-
-            for (const fingerType of rightHand) {
-                const fingerInfo = this.FINGERS[fingerType];
-                this._updateStatus('info', `🫱 ${fingerInfo.emoji} Coloca ${fingerInfo.label} DERECHO en el lector (4 veces)`);
-
-                const tag = this._generateTag(userId, 'RIGHT', fingerType);
-                this._updateProgress(0, 4);
-
-                const result = await this.adapter.enrollFingerprint(tag);
-
-                if (result.ok) {
-                    enrollmentData.hands.right.fingers.push({
-                        type: fingerType,
-                        label: fingerInfo.label,
-                        emoji: fingerInfo.emoji,
-                        tag: tag,
-                        template: result.template || null,
-                        hash: result.hash || null,
-                        quality: result.quality || 0,
-                        enrolledAt: new Date().toISOString()
-                    });
-
-                    this._updateStatus('success', `✅ ${fingerInfo.emoji} ${fingerInfo.label} DERECHO enrolado`);
-                } else {
-                    throw new Error(`Error enrolando ${fingerInfo.label} derecho: ${result.error}`);
-                }
-
-                // Pequeña pausa entre dedos
-                await this._sleep(1000);
-            }
-
-            // Enrolamiento completo exitoso
-            this.fingerProgress.style.display = 'none';
-            this._updateStatus('success', `🎉 ¡ENROLAMIENTO COMPLETO! 10 dedos enrolados para ${userId}`);
-
-            // Emitir evento con estructura completa
-            this.emit('allFingersEnrolled', enrollmentData);
-
-            // Log de la estructura completa
-            console.log('[FingerManagement] Estructura JSON completa:', JSON.stringify(enrollmentData, null, 2));
-
-            // Recargar lista y visualización
-            await this._loadEnrolledFingers();
-
-            return enrollmentData;
 
         } catch (error) {
             console.error('[FingerManagement] Error en enrolamiento completo:', error);
             this._updateStatus('error', `❌ Error: ${error.message}`);
-            this.fingerProgress.style.display = 'none';
             throw error;
         } finally {
             this.isProcessing = false;
         }
-    }
-
-    /**
-     * Helper: Sleep para pausas entre dedos
-     */
-    _sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     /**

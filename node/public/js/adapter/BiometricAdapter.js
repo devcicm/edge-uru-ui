@@ -262,6 +262,25 @@ class BiometricAdapter {
     }
 
     /**
+     * Enrolar TODOS los dedos de un usuario (10 dedos completos)
+     * Backend captura secuencialmente y retorna estructura JSON organizada por manos
+     */
+    async enrollAllFingers(userId) {
+        console.log(`[BiometricAdapter] 🖐️ Iniciando enrollment de 10 dedos para: ${userId}`);
+        console.log('[BiometricAdapter] 📊 Estado conexión:', this.isConnected);
+
+        try {
+            console.log(`[BiometricAdapter] 📞 Llamando API /api/enroll-all-fingers`);
+            const result = await this.apiCall('/api/enroll-all-fingers', { userId });
+            console.log(`[BiometricAdapter] ✅ Enrollment de 10 dedos exitoso:`, result);
+            return result;
+        } catch (error) {
+            console.error(`[BiometricAdapter] ❌ Error en enrollment de 10 dedos:`, error);
+            throw error;
+        }
+    }
+
+    /**
      * Verificar huella
      */
     async verifyFingerprint(userId, maxAttempts = 4) {

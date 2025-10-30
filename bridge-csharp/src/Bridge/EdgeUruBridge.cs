@@ -489,6 +489,169 @@ namespace EdgeBridge
                     }
                 }
 
+                case "enrollAllFingers":
+                {
+                    if (_reader == null)
+                    {
+                        var error = "Reader not initialized. Call 'init' first.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    var userId = (string?)input?.userId ?? "";
+                    if (string.IsNullOrEmpty(userId))
+                    {
+                        return new { ok = false, error = "UserId is required for enrollAllFingers" };
+                    }
+
+                    var timeoutMs = (int?)input?.timeoutMs ?? 120000; // 2 minutos para 10 dedos
+                    var targetFarn = (int?)input?.targetFarn ?? 21474;
+                    var maxRetriesPerSample = (int?)input?.maxRetriesPerSample ?? 3;
+                    var maxSamples = (int?)input?.maxSamples ?? 4;
+
+                    SendEvent("ALL_FINGERS_ENROLLMENT_STARTED", $"Iniciando enrolamiento de 10 dedos para: {userId}", "INFO",
+                        new { userId, totalFingers = 10 });
+
+                    try
+                    {
+                        var enrollmentData = new Dictionary<string, object>
+                        {
+                            ["userId"] = userId,
+                            ["enrolledAt"] = DateTime.UtcNow.ToString("O"),
+                            ["hands"] = new Dictionary<string, object>
+                            {
+                                ["left"] = new Dictionary<string, object>
+                                {
+                                    ["fingers"] = new List<object>()
+                                },
+                                ["right"] = new Dictionary<string, object>
+                                {
+                                    ["fingers"] = new List<object>()
+                                }
+                            }
+                        };
+
+                        var hands = new[] { "LEFT", "RIGHT" };
+                        var fingers = new[] { "THUMB", "INDEX", "MIDDLE", "RING", "PINKY" };
+                        var fingerLabels = new Dictionary<string, string>
+                        {
+                            ["THUMB"] = "Pulgar",
+                            ["INDEX"] = "Índice",
+                            ["MIDDLE"] = "Medio",
+                            ["RING"] = "Anular",
+                            ["PINKY"] = "Meñique"
+                        };
+                        var fingerEmojis = new Dictionary<string, string>
+                        {
+                            ["THUMB"] = "👍",
+                            ["INDEX"] = "☝️",
+                            ["MIDDLE"] = "🖕",
+                            ["RING"] = "💍",
+                            ["PINKY"] = "🤙"
+                        };
+
+                        int totalFingerCount = 0;
+
+                        foreach (var hand in hands)
+                        {
+                            var handEmoji = hand == "LEFT" ? "🫲" : "🫱";
+                            var handLabel = hand == "LEFT" ? "IZQUIERDA" : "DERECHA";
+
+                            SendEvent("HAND_ENROLLMENT_STARTED", $"{handEmoji} Iniciando captura mano {handLabel}", "INFO",
+                                new { hand, handLabel });
+
+                            foreach (var finger in fingers)
+                            {
+                                totalFingerCount++;
+                                var fingerLabel = fingerLabels[finger];
+                                var fingerEmoji = fingerEmojis[finger];
+                                var tag = $"{userId}_{hand}_{finger}";
+
+                                SendEvent("FINGER_ENROLLMENT_STARTED",
+                                    $"{handEmoji} {fingerEmoji} Dedo {totalFingerCount}/10: Coloca {fingerLabel} {handLabel} (4 veces)",
+                                    "INFO",
+                                    new { hand, finger, fingerLabel, progress = (totalFingerCount * 10) });
+
+                                _cts?.Cancel();
+                                _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs / 10));
+
+                                var result = await Task.Run(() => _reader.Enroll3(_cts.Token, targetFarn, maxRetriesPerSample, maxSamples));
+
+                                if (result.ok && result.fmdReg != null)
+                                {
+                                    // Guardar en store
+                                    FingerprintTempStore.Add(tag, "DP_REGISTRATION", result.fmdReg, false);
+
+                                    // Generar imagen y template
+                                    string? imageBase64 = null;
+                                    string? templateBase64 = null;
+
+                                    if (_reader.LastFid != null)
+                                    {
+                                        imageBase64 = Dp4500Service.FidToBase64Png(_reader.LastFid);
+                                    }
+
+                                    var regXml = DPUruNet.Fmd.SerializeXml(result.fmdReg);
+                                    templateBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(regXml));
+
+                                    // Obtener hash del store
+                                    var stored = FingerprintTempStore.All().FirstOrDefault(x => x.Tag == tag);
+                                    var hash = stored?.Sha1 ?? "";
+
+                                    var fingerData = new Dictionary<string, object>
+                                    {
+                                        ["type"] = finger,
+                                        ["label"] = fingerLabel,
+                                        ["emoji"] = fingerEmoji,
+                                        ["tag"] = tag,
+                                        ["template"] = templateBase64 ?? "",
+                                        ["hash"] = hash,
+                                        ["quality"] = 0,
+                                        ["enrolledAt"] = DateTime.UtcNow.ToString("O")
+                                    };
+
+                                    var handsDict = (Dictionary<string, object>)enrollmentData["hands"];
+                                    var handDict = (Dictionary<string, object>)handsDict[hand.ToLower()];
+                                    var fingersList = (List<object>)handDict["fingers"];
+                                    fingersList.Add(fingerData);
+
+                                    SendEvent("FINGER_ENROLLMENT_COMPLETED",
+                                        $"✅ {handEmoji} {fingerEmoji} {fingerLabel} {handLabel} enrolado ({totalFingerCount}/10)",
+                                        "SUCCESS",
+                                        new { hand, finger, tag, progress = (totalFingerCount * 10) });
+                                }
+                                else
+                                {
+                                    throw new Exception($"Error enrolando {fingerLabel} {handLabel}: {result.msg}");
+                                }
+
+                                // Pausa breve entre dedos
+                                await Task.Delay(1000);
+                            }
+
+                            SendEvent("HAND_ENROLLMENT_COMPLETED", $"✅ {handEmoji} Mano {handLabel} completada (5 dedos)", "SUCCESS",
+                                new { hand, handLabel });
+                        }
+
+                        SendEvent("ALL_FINGERS_ENROLLMENT_COMPLETED", $"🎉 ¡ENROLAMIENTO COMPLETO! 10 dedos enrolados para {userId}", "SUCCESS",
+                            new { userId, totalFingers = 10 });
+
+                        return new
+                        {
+                            ok = true,
+                            userId,
+                            totalFingers = 10,
+                            message = "Enrolamiento completo exitoso",
+                            data = enrollmentData
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("ALL_FINGERS_ENROLLMENT_FAILED", ex.Message, "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
                 case "storeList":
                 {
                     var items = FingerprintTempStore.All();
