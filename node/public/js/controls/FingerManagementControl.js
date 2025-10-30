@@ -169,9 +169,7 @@ class FingerManagementControl extends BaseComponent {
      * Setup de eventos y referencias DOM
      */
     _setupDOM() {
-        super._setupDOM();
-
-        // Referencias
+        // Referencias DOM
         this.userIdInput = this.container.querySelector(`#fingerUserId-${this.containerId}`);
         this.handSelect = this.container.querySelector(`#fingerHand-${this.containerId}`);
         this.fingerSelect = this.container.querySelector(`#fingerType-${this.containerId}`);
