@@ -29,6 +29,9 @@ class FingerManagementControl extends BaseComponent {
         this.enrolledFingers = {}; // { userId: { LEFT: {THUMB: true, ...}, RIGHT: {...} } }
         this.isProcessing = false;
 
+        // Renderizar visualización inicial (ahora que this.FINGERS está definido)
+        this._updateVisualization();
+
         // Cargar dedos enrolados
         this._loadEnrolledFingers();
     }
@@ -201,8 +204,7 @@ class FingerManagementControl extends BaseComponent {
         this.btnIdentify.addEventListener('click', () => this.identifyFinger());
         this.btnRefresh.addEventListener('click', () => this._loadEnrolledFingers());
 
-        // Renderizar visualización inicial
-        this._updateVisualization();
+        // NO renderizar aquí - se hace al final del constructor
     }
 
     /**
