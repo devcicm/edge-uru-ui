@@ -156,7 +156,7 @@ app.post("/api/enroll-all-fingers", async (req, res) => {
     if (!userId) {
       return res.status(400).json({ ok: false, error: "UserId is required for enrollAllFingers" });
     }
-    const timeoutPerFingerMs = req.body?.timeoutPerFingerMs ?? 120000; // 2 minutos POR DEDO
+    const timeoutPerFingerMs = req.body?.timeoutPerFingerMs ?? 240000; // 4 minutos POR DEDO (1 min por muestra)
     const targetFarn = req.body?.targetFarn ?? 21474;
     const maxRetriesPerSample = req.body?.maxRetriesPerSample ?? 3;
     const maxSamples = req.body?.maxSamples ?? 4;

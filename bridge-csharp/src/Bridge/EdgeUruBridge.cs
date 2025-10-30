@@ -504,7 +504,7 @@ namespace EdgeBridge
                         return new { ok = false, error = "UserId is required for enrollAllFingers" };
                     }
 
-                    var timeoutPerFingerMs = (int?)input?.timeoutPerFingerMs ?? 120000; // 2 minutos POR DEDO
+                    var timeoutPerFingerMs = (int?)input?.timeoutPerFingerMs ?? 240000; // 4 minutos POR DEDO (1 min por muestra × 4)
                     var targetFarn = (int?)input?.targetFarn ?? 21474;
                     var maxRetriesPerSample = (int?)input?.maxRetriesPerSample ?? 3;
                     var maxSamples = (int?)input?.maxSamples ?? 4;
@@ -625,8 +625,8 @@ namespace EdgeBridge
                                     throw new Exception($"Error enrolando {fingerLabel} {handLabel}: {result.msg}");
                                 }
 
-                                // Pausa mínima entre dedos para permitir captura rápida
-                                await Task.Delay(300);
+                                // Pausa entre dedos para estabilización del lector
+                                await Task.Delay(600);
                             }
 
                             SendEvent("HAND_ENROLLMENT_COMPLETED", $"✅ {handEmoji} Mano {handLabel} completada (5 dedos)", "SUCCESS",
