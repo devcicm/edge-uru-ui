@@ -2068,6 +2068,34 @@
                             updateStatus(dom.identifyStatus, `👆 Coloca el dedo en el lector${attemptInfo}`, 'info');
                         }
                         break;
+
+                    case 'FINGER_ENROLLMENT_COMPLETED':
+                        // Actualización en tiempo real durante enrollAllFingers
+                        console.log('[DP4500] FINGER_ENROLLMENT_COMPLETED:', data);
+
+                        // Extraer tag del evento
+                        const tag = data.data?.tag || data.tag;
+                        if (!tag) break;
+
+                        // Parsear tag para obtener userId, hand, finger
+                        const parsed = parseFingerTag(tag);
+                        if (!parsed) {
+                            console.warn('[DP4500] No se pudo parsear tag:', tag);
+                            break;
+                        }
+
+                        console.log('[DP4500] Actualizando visualización en tiempo real:', parsed);
+
+                        // Actualizar fingerEnrolled inmediatamente
+                        if (!state.fingerEnrolled[parsed.userId]) {
+                            state.fingerEnrolled[parsed.userId] = { LEFT: {}, RIGHT: {} };
+                        }
+                        state.fingerEnrolled[parsed.userId][parsed.hand][parsed.finger] = true;
+
+                        // Actualizar visualización EN TIEMPO REAL ✅
+                        renderFingerHands();
+                        refreshFingersList();
+                        break;
                 }
             }
 

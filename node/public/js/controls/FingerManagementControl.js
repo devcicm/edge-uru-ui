@@ -250,6 +250,34 @@ class FingerManagementControl extends BaseComponent {
                 this.fingerProgress.style.display = 'none';
             }
         });
+
+        // Evento de dedo enrolado durante enrollAllFingers (actualización en tiempo real)
+        this.adapter.on('FINGER_ENROLLMENT_COMPLETED', (data) => {
+            console.log('[FingerManagement] FINGER_ENROLLMENT_COMPLETED:', data);
+
+            // Extraer tag del evento
+            const tag = data.data?.tag || data.tag;
+            if (!tag) return;
+
+            // Parsear tag para obtener userId, hand, finger
+            const parsed = this._parseTag(tag);
+            if (!parsed) {
+                console.warn('[FingerManagement] No se pudo parsear tag:', tag);
+                return;
+            }
+
+            console.log('[FingerManagement] Actualizando visualización en tiempo real:', parsed);
+
+            // Actualizar enrolledFingers inmediatamente
+            if (!this.enrolledFingers[parsed.userId]) {
+                this.enrolledFingers[parsed.userId] = { LEFT: {}, RIGHT: {} };
+            }
+            this.enrolledFingers[parsed.userId][parsed.hand][parsed.finger] = true;
+
+            // Actualizar visualización EN TIEMPO REAL ✅
+            this._updateVisualization();
+            this._updateEnrolledList();
+        });
     }
 
     /**
