@@ -394,24 +394,25 @@ edge-uru-ui/
 | Endpoint | Method | Descripción |
 |----------|--------|-------------|
 | `/api/bootstrap` | POST | Inicializar librerías nativas |
-| `/api/registerCallback` | POST | Registrar callbacks de eventos |
 | `/api/init` | POST | Inicializar lector de huellas |
 | `/api/dispose` | POST | Liberar recursos |
-| `/api/getReaderInfo` | POST | Obtener información del dispositivo DP4500 |
+| `/api/reader-info` | GET | Obtener información del dispositivo DP4500 |
+| `/api/store-stats` | GET | Obtener estadísticas del almacenamiento en RAM |
 
 ### Fingerprint Operations
 | Endpoint | Method | Descripción | Parámetros |
 |----------|--------|-------------|------------|
-| `/api/enroll` | POST | Enrolar nueva huella (4 muestras) | `{ userId: string, timeoutMs?: number }` |
-| `/api/verify` | POST | Verificar 1:1 contra usuario | `{ tag: string, timeoutMs?: number }` |
-| `/api/identify` | POST | Identificar 1:N en galería | `{ timeoutMs?: number, top?: number }` |
 | `/api/single` | POST | Captura simple sin enrolar | `{ timeoutMs?: number }` |
+| `/api/enroll` | POST | Enrolar nueva huella (4 muestras) | `{ tag?: string, timeoutMs?: number, targetFarn?: number, maxRetriesPerSample?: number, maxSamples?: number }` |
+| `/api/enroll-all-fingers` | POST | Enrolar todos los dedos (10 dedos) | `{ userId: string, timeoutPerFingerMs?: number, targetFarn?: number, maxRetriesPerSample?: number, maxSamples?: number }` |
+| `/api/verify` | POST | Verificar 1:1 contra usuario (multi-intento) | `{ tag: string, timeoutMs?: number, targetFarn?: number, maxAttempts?: number }` |
+| `/api/identify` | POST | Identificar 1:N en galería (multi-intento) | `{ timeoutMs?: number, targetFarn?: number, top?: number, maxAttempts?: number }` |
 
 ### Gallery Management
 | Endpoint | Method | Descripción |
 |----------|--------|-------------|
-| `/api/storeList` | POST | Listar todas las plantillas |
-| `/api/storeClear` | POST | Limpiar toda la galería |
+| `/api/store` | GET | Listar todas las plantillas almacenadas en RAM |
+| `/api/store` | DELETE | Limpiar toda la galería (elimina todas las huellas de RAM) |
 
 ### Real-time Events
 | Endpoint | Method | Descripción |

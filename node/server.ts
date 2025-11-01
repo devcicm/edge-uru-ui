@@ -112,13 +112,6 @@ app.post("/api/bootstrap", async (req, res) => {
   } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
-app.post("/api/register", async (_, res) => {
-  try {
-    // Callback is already registered in server startup, just return success
-    res.json({ ok: true, msg: "Callback already registered at server startup" });
-  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
-});
-
 app.post("/api/init", async (_, res) => {
   try { res.json(await call({ op: "init" })); }
   catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
