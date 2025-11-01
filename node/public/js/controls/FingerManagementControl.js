@@ -27,7 +27,9 @@ class FingerManagementControl extends BaseComponent {
         this.selectedHand = 'LEFT';
         this.selectedFinger = 'INDEX';
         this.enrolledFingers = {}; // { userId: { LEFT: {THUMB: true, ...}, RIGHT: {...} } }
+        this.failedFingers = {}; // { userId: { LEFT: {THUMB: 'error msg', ...}, RIGHT: {...} } }
         this.isProcessing = false;
+        this.isEnrollingAll = false; // Flag específico para enrollAllFingers
 
         // Renderizar visualización inicial (ahora que this.FINGERS está definido)
         this._updateVisualization();
@@ -274,9 +276,53 @@ class FingerManagementControl extends BaseComponent {
             }
             this.enrolledFingers[parsed.userId][parsed.hand][parsed.finger] = true;
 
+            // Limpiar error si existía
+            if (this.failedFingers[parsed.userId]?.[parsed.hand]?.[parsed.finger]) {
+                delete this.failedFingers[parsed.userId][parsed.hand][parsed.finger];
+            }
+
             // Actualizar visualización EN TIEMPO REAL ✅
             this._updateVisualization();
             this._updateEnrolledList();
+        });
+
+        // Evento de error en enrolamiento de dedo durante enrollAllFingers
+        this.adapter.on('FINGER_ENROLLMENT_FAILED', (data) => {
+            console.log('[FingerManagement] FINGER_ENROLLMENT_FAILED:', data);
+
+            // Extraer información del evento
+            const eventData = data.data || data;
+            const tag = eventData.tag;
+            const error = eventData.error || 'Error desconocido';
+
+            if (!tag) return;
+
+            // Parsear tag para obtener userId, hand, finger
+            const parsed = this._parseTag(tag);
+            if (!parsed) {
+                console.warn('[FingerManagement] No se pudo parsear tag:', tag);
+                return;
+            }
+
+            console.log('[FingerManagement] Dedo fallido:', parsed, 'Error:', error);
+
+            // Registrar dedo fallido
+            if (!this.failedFingers[parsed.userId]) {
+                this.failedFingers[parsed.userId] = { LEFT: {}, RIGHT: {} };
+            }
+            this.failedFingers[parsed.userId][parsed.hand][parsed.finger] = error;
+
+            // Actualizar visualización para mostrar error en ROJO ❌
+            this._updateVisualization();
+
+            // Mostrar mensaje de error en status
+            const fingerInfo = this.FINGERS[parsed.finger];
+            const fingerEmoji = fingerInfo?.emoji || '👆';
+            const fingerLabel = fingerInfo?.label || parsed.finger;
+            const handLabel = parsed.hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+
+            this._updateStatus('error',
+                `❌ Error en ${fingerEmoji} ${fingerLabel} Mano ${handLabel}: ${error} - Haz clic en el dedo para reintentar`);
         });
     }
 
@@ -365,11 +411,18 @@ class FingerManagementControl extends BaseComponent {
 
             if (result.ok) {
                 if (result.verified) {
-                    this._updateStatus('success', `✅ VERIFICADO: ${this.FINGERS[finger].label} de ${userId} (Score: ${result.score})`);
+                    // Usar parsedTag si está disponible (desde backend)
+                    if (result.parsedTag) {
+                        const pt = result.parsedTag;
+                        this._updateStatus('success',
+                            `✅ VERIFICADO: ${pt.userId} | ${pt.fingerEmoji} ${pt.fingerLabel} ${pt.handEmoji} ${pt.handLabel} (Score: ${result.score})`);
+                    } else {
+                        this._updateStatus('success', `✅ VERIFICADO: ${this.FINGERS[finger].label} de ${userId} (Score: ${result.score})`);
+                    }
                 } else {
                     this._updateStatus('error', `❌ NO COINCIDE: ${this.FINGERS[finger].label} (Score: ${result.score})`);
                 }
-                this.emit('fingerVerified', { userId, hand, finger, verified: result.verified, score: result.score });
+                this.emit('fingerVerified', { userId, hand, finger, verified: result.verified, score: result.score, parsedTag: result.parsedTag });
             } else {
                 this._updateStatus('error', `❌ ${result.error || 'Error en verificación'}`);
             }
@@ -391,32 +444,37 @@ class FingerManagementControl extends BaseComponent {
             console.log(`[FingerManagement] Identificación resultado:`, result);
 
             if (result.ok && result.match) {
-                const parsed = this._parseTag(result.bestTag);
+                // Usar parsedTag del backend si está disponible, sino parsear localmente
+                const parsed = result.parsedTag || this._parseTag(result.bestTag);
                 console.log(`[FingerManagement] Tag parseado:`, parsed);
 
                 if (parsed) {
-                    const handEmoji = parsed.hand === 'LEFT' ? '🫲' : '🫱';
-                    const handLabel = parsed.hand === 'LEFT' ? 'Izquierda' : 'Derecha';
-                    const fingerInfo = this.FINGERS[parsed.finger];
-                    const fingerEmoji = fingerInfo?.emoji || '👆';
-                    const fingerLabel = fingerInfo?.label || parsed.finger;
+                    // Si viene del backend, usar directamente sus valores
+                    const userId = parsed.userId;
+                    const hand = parsed.hand;
+                    const finger = parsed.finger;
+                    const handEmoji = parsed.handEmoji || (hand === 'LEFT' ? '🫲' : '🫱');
+                    const handLabel = parsed.handLabel || (hand === 'LEFT' ? 'Izquierda' : 'Derecha');
+                    const fingerEmoji = parsed.fingerEmoji || this.FINGERS[finger]?.emoji || '👆';
+                    const fingerLabel = parsed.fingerLabel || this.FINGERS[finger]?.label || finger;
 
                     this._updateStatus('success',
-                        `✅ IDENTIFICADO: ${parsed.userId} | ${fingerEmoji} ${fingerLabel} ${handEmoji} Mano ${handLabel} (Score: ${result.bestScore})`);
+                        `✅ IDENTIFICADO: ${userId} | ${fingerEmoji} ${fingerLabel} ${handEmoji} Mano ${handLabel} (Score: ${result.bestScore})`);
 
                     // Actualizar selectores para mostrar qué se identificó
-                    this.handSelect.value = parsed.hand;
-                    this.fingerSelect.value = parsed.finger;
-                    this.userIdInput.value = parsed.userId;
+                    this.handSelect.value = hand;
+                    this.fingerSelect.value = finger;
+                    this.userIdInput.value = userId;
 
                     // Actualizar visualización
                     this._updateVisualization();
 
                     this.emit('fingerIdentified', {
-                        userId: parsed.userId,
-                        hand: parsed.hand,
-                        finger: parsed.finger,
-                        score: result.bestScore
+                        userId,
+                        hand,
+                        finger,
+                        score: result.bestScore,
+                        parsedTag: parsed
                     });
                 } else {
                     console.warn('[FingerManagement] No se pudo parsear tag:', result.bestTag);
@@ -452,19 +510,33 @@ class FingerManagementControl extends BaseComponent {
 
         try {
             this.isProcessing = true;
+            this.isEnrollingAll = true;
             this._updateStatus('info', `📝 Iniciando enrolamiento completo de 10 dedos para: ${userId}`);
 
             // ⚡ UNA SOLA LLAMADA AL BACKEND - El backend maneja toda la captura
             const result = await this.adapter.enrollAllFingers(userId);
 
             if (result.ok) {
-                this._updateStatus('success', `🎉 ¡ENROLAMIENTO COMPLETO! 10 dedos enrolados para ${userId}`);
+                // Verificar si todos los dedos se enrolaron exitosamente
+                if (result.allSuccess) {
+                    this._updateStatus('success', `🎉 ¡ENROLAMIENTO COMPLETO! 10 dedos enrolados para ${userId}`);
+                } else if (result.partialSuccess) {
+                    const failedCount = result.failedCount || 0;
+                    const successCount = result.successCount || 0;
+                    this._updateStatus('warning',
+                        `⚠️ ENROLAMIENTO PARCIAL: ${successCount}/10 dedos enrolados. ${failedCount} dedos fallaron. Haz clic en los dedos rojos para reintentar.`);
+                } else {
+                    this._updateStatus('error', `❌ Enrolamiento fallido: 0/10 dedos enrolados`);
+                }
 
                 // Emitir evento con estructura completa
                 this.emit('allFingersEnrolled', result.data);
 
                 // Log de la estructura completa
                 console.log('[FingerManagement] Estructura JSON completa:', JSON.stringify(result.data, null, 2));
+                if (result.failedFingers && result.failedFingers.length > 0) {
+                    console.log('[FingerManagement] Dedos fallidos:', result.failedFingers);
+                }
 
                 // Recargar lista y visualización
                 await this._loadEnrolledFingers();
@@ -480,6 +552,7 @@ class FingerManagementControl extends BaseComponent {
             throw error;
         } finally {
             this.isProcessing = false;
+            this.isEnrollingAll = false;
         }
     }
 
@@ -605,9 +678,29 @@ class FingerManagementControl extends BaseComponent {
             const captureOrder = orderOffset + fingerIndex; // Orden de captura: 1-10
             const finger = this.FINGERS[fingerKey];
             const isEnrolled = fingers[fingerKey];
-            const bgColor = isEnrolled ? '#dcfce7' : '#fef3c7';
-            const borderColor = isEnrolled ? '#16a34a' : '#ca8a04';
-            const statusIcon = isEnrolled ? '✅' : '⭕';
+            const hasFailed = this.failedFingers[userId]?.[hand]?.[fingerKey];
+
+            // Determinar colores según estado
+            let bgColor, borderColor, statusIcon, statusText;
+            if (hasFailed) {
+                // ROJO - Dedo con error
+                bgColor = '#fee2e2';
+                borderColor = '#dc2626';
+                statusIcon = '❌';
+                statusText = 'ERROR';
+            } else if (isEnrolled) {
+                // VERDE - Dedo enrolado
+                bgColor = '#dcfce7';
+                borderColor = '#16a34a';
+                statusIcon = '✅';
+                statusText = 'OK';
+            } else {
+                // AMARILLO - Dedo pendiente
+                bgColor = '#fef3c7';
+                borderColor = '#ca8a04';
+                statusIcon = '⭕';
+                statusText = 'Pendiente';
+            }
 
             html += `<div
                 class="finger-button"
@@ -629,7 +722,7 @@ class FingerManagementControl extends BaseComponent {
                     transition: all 0.3s ease;
                     user-select: none;
                 "
-                title="Orden #${captureOrder} - Clic para enrolar: ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${isEnrolled ? '✅ Ya enrolado' : '⭕ No enrolado'}">
+                title="Orden #${captureOrder} - ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${hasFailed ? `❌ ERROR: ${hasFailed}\nClic para reintentar` : isEnrolled ? '✅ Ya enrolado' : '⭕ Clic para enrolar'}">
                 <!-- Número de orden -->
                 <span style="position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: bold; color: #6b7280; background: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border: 1px solid #e5e7eb;">${captureOrder}</span>
                 <span style="font-size: 32px;">${finger.emoji}</span>
