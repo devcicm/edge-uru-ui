@@ -42,102 +42,478 @@ internal static class NativeLoader
 }
 
 /* ===============================
- * Store temporal (thread-safe)
+ * Enums para Datos Estructurados
  * ===============================*/
-public sealed class StoredFmd
+public enum Hand
 {
-    public string Tag { get; set; } = "";
-    public string Format { get; set; } = "";
-    public DateTime Utc { get; set; } = DateTime.UtcNow;
-    public DPUruNet.Fmd Fmd { get; set; } = null!; // asignado en runtime
+    Left,
+    Right,
+    Unknown
+}
+
+public enum Finger
+{
+    Thumb,      // Pulgar
+    Index,      // Índice
+    Middle,     // Medio
+    Ring,       // Anular
+    Pinky,      // Meñique
+    Unknown
+}
+
+public enum EnrollmentType
+{
+    SimpleCapture,    // Captura simple (sin enrolar)
+    SingleFinger,     // Enroll normal (4 muestras de 1 dedo)
+    AllFingers        // Enroll de 10 dedos
+}
+
+/* ===============================
+ * DTOs (Data Transfer Objects)
+ * ===============================*/
+
+/// <summary>
+/// DTO de una huella individual con toda su metadata
+/// </summary>
+public sealed class FingerprintDto
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string UserId { get; set; } = "";
+    public Hand Hand { get; set; } = Hand.Unknown;
+    public Finger Finger { get; set; } = Finger.Unknown;
+    public DPUruNet.Fmd Fmd { get; set; } = null!;
+    public string Format { get; set; } = "DP_REGISTRATION";
+    public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
+    public string Sha1 { get; set; } = "";
     public int Bytes { get; set; }
+    public EnrollmentType EnrollmentType { get; set; } = EnrollmentType.SimpleCapture;
+
+    // Metadata adicional (de StoredFmd original)
+    public string Tag { get; set; } = ""; // Tag para compatibilidad
     public int XmlLength { get; set; }
     public string XmlPreview { get; set; } = "";
-    public string Sha1 { get; set; } = "";
 }
 
 /// <summary>
-/// Almacenamiento TEMPORAL en memoria RAM (se pierde al reiniciar)
+/// DTO de un usuario completo con todas sus huellas organizadas por mano y dedo
+/// </summary>
+public sealed class UserFingerprintsDto
+{
+    public string UserId { get; set; } = "";
+    public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
+
+    // Estructura jerárquica: Mano → Dedo → Huella
+    public Dictionary<Hand, Dictionary<Finger, FingerprintDto>> Fingerprints { get; set; }
+        = new Dictionary<Hand, Dictionary<Finger, FingerprintDto>>();
+
+    public int TotalFingerprints { get; set; }
+    public EnrollmentType EnrollmentType { get; set; } = EnrollmentType.SingleFinger;
+}
+
+/// <summary>
+/// DTO para resultados de búsqueda/identificación
+/// </summary>
+public sealed class FingerprintSearchResult
+{
+    public bool Found { get; set; }
+    public string UserId { get; set; } = "";
+    public Hand Hand { get; set; } = Hand.Unknown;
+    public Finger Finger { get; set; } = Finger.Unknown;
+    public string FingerprintId { get; set; } = "";
+    public int Score { get; set; }
+    public string Format { get; set; } = "";
+    public string Tag { get; set; } = "";
+}
+
+/// <summary>
+/// Almacenamiento TEMPORAL en memoria RAM con estructura organizada
 /// NO persiste en disco por razones de seguridad - datos biométricos sensibles
+/// Solo almacena plantillas FINALES (DP_REGISTRATION), no intermedias (PRE/VER/ANSI)
 /// </summary>
 public static class FingerprintTempStore
 {
     private static readonly object _sync = new object();
-    private static readonly List<StoredFmd> _fmds = new List<StoredFmd>();
+
+    // Almacenamiento principal: userId → UserFingerprintsDto
+    private static readonly Dictionary<string, UserFingerprintsDto> _users
+        = new Dictionary<string, UserFingerprintsDto>();
+
+    // Índice rápido: fingerprintId → FingerprintDto
+    private static readonly Dictionary<string, FingerprintDto> _fingerprintIndex
+        = new Dictionary<string, FingerprintDto>();
+
+    // Índice para compatibilidad con tags (userId_HAND_FINGER o legacy)
+    private static readonly Dictionary<string, FingerprintDto> _tagIndex
+        = new Dictionary<string, FingerprintDto>();
 
     /// <summary>
-    /// Agregar huella a memoria RAM (volátil, se pierde al reiniciar)
+    /// Agregar huella con estructura completa (usuario/mano/dedo)
     /// </summary>
-    public static StoredFmd Add(string tag, string formatName, DPUruNet.Fmd fmd, bool keepXmlPreview = false)
+    public static FingerprintDto AddFingerprint(
+        string userId,
+        Hand hand,
+        Finger finger,
+        DPUruNet.Fmd fmd,
+        EnrollmentType enrollmentType,
+        bool keepXmlPreview = false)
     {
-        var xml = keepXmlPreview ? DPUruNet.Fmd.SerializeXml(fmd) : string.Empty;
-        using var sha1 = SHA1.Create();
-        var bytes = fmd.Bytes ?? Array.Empty<byte>();
-        var sha = BitConverter.ToString(sha1.ComputeHash(bytes)).Replace("-", "");
-
-        var rec = new StoredFmd
+        lock (_sync)
         {
-            Tag = tag,
-            Format = formatName,
-            Utc = DateTime.UtcNow,
-            Fmd = fmd,
-            Bytes = bytes.Length,
-            XmlLength = keepXmlPreview ? xml.Length : 0,
-            XmlPreview = keepXmlPreview ? (xml.Length > 160 ? xml.Substring(0, 160) + "…" : xml) : "(omitido)",
-            Sha1 = sha
-        };
-        lock (_sync) _fmds.Add(rec);
-        Console.WriteLine($"[Store RAM] ➕ Agregado: {tag} (Total: {_fmds.Count} huellas en memoria)");
-        return rec;
+            // Crear DTO de la huella
+            using var sha1 = SHA1.Create();
+            var bytes = fmd.Bytes ?? Array.Empty<byte>();
+            var sha = BitConverter.ToString(sha1.ComputeHash(bytes)).Replace("-", "");
+
+            var xml = keepXmlPreview ? DPUruNet.Fmd.SerializeXml(fmd) : string.Empty;
+
+            var fingerprint = new FingerprintDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = userId,
+                Hand = hand,
+                Finger = finger,
+                Fmd = fmd,
+                Format = "DP_REGISTRATION",
+                EnrolledAt = DateTime.UtcNow,
+                Sha1 = sha,
+                Bytes = bytes.Length,
+                EnrollmentType = enrollmentType,
+                Tag = GenerateTag(userId, hand, finger),
+                XmlLength = keepXmlPreview ? xml.Length : 0,
+                XmlPreview = keepXmlPreview ? (xml.Length > 160 ? xml.Substring(0, 160) + "…" : xml) : "(omitido)"
+            };
+
+            // Crear usuario si no existe
+            if (!_users.ContainsKey(userId))
+            {
+                _users[userId] = new UserFingerprintsDto
+                {
+                    UserId = userId,
+                    RegisteredAt = DateTime.UtcNow,
+                    EnrollmentType = enrollmentType,
+                    Fingerprints = new Dictionary<Hand, Dictionary<Finger, FingerprintDto>>()
+                };
+            }
+
+            var user = _users[userId];
+
+            // Crear mano si no existe
+            if (!user.Fingerprints.ContainsKey(hand))
+            {
+                user.Fingerprints[hand] = new Dictionary<Finger, FingerprintDto>();
+            }
+
+            // Agregar/actualizar huella
+            user.Fingerprints[hand][finger] = fingerprint;
+            user.TotalFingerprints = CountUserFingerprints(user);
+
+            // Agregar a índices
+            _fingerprintIndex[fingerprint.Id] = fingerprint;
+            _tagIndex[fingerprint.Tag] = fingerprint;
+
+            Console.WriteLine($"[Store RAM] ➕ {userId} | {GetHandEmoji(hand)} {GetFingerEmoji(finger)} | {bytes.Length} bytes");
+            Console.WriteLine($"[Store RAM] 📊 Total: {_fingerprintIndex.Count} huellas | {_users.Count} usuarios");
+
+            return fingerprint;
+        }
     }
 
     /// <summary>
-    /// Obtener todas las huellas de memoria RAM
+    /// Obtener huella específica por usuario/mano/dedo
     /// </summary>
-    public static IReadOnlyList<StoredFmd> All()
+    public static FingerprintDto? GetFingerprint(string userId, Hand hand, Finger finger)
     {
-        lock (_sync) return _fmds.ToList();
+        lock (_sync)
+        {
+            if (_users.TryGetValue(userId, out var user))
+            {
+                if (user.Fingerprints.TryGetValue(hand, out var handFingerprints))
+                {
+                    if (handFingerprints.TryGetValue(finger, out var fingerprint))
+                    {
+                        return fingerprint;
+                    }
+                }
+            }
+            return null;
+        }
     }
 
     /// <summary>
-    /// Limpiar memoria RAM (elimina todas las huellas)
+    /// Obtener huella por Tag (compatibilidad: userId_HAND_FINGER)
+    /// </summary>
+    public static FingerprintDto? GetFingerprintByTag(string tag)
+    {
+        lock (_sync)
+        {
+            return _tagIndex.TryGetValue(tag, out var fingerprint) ? fingerprint : null;
+        }
+    }
+
+    /// <summary>
+    /// Obtener usuario completo con todas sus huellas
+    /// </summary>
+    public static UserFingerprintsDto? GetUser(string userId)
+    {
+        lock (_sync)
+        {
+            return _users.TryGetValue(userId, out var user) ? user : null;
+        }
+    }
+
+    /// <summary>
+    /// Obtener todas las huellas de un usuario en formato plano (lista)
+    /// </summary>
+    public static List<FingerprintDto> GetUserFingerprints(string userId)
+    {
+        lock (_sync)
+        {
+            if (!_users.TryGetValue(userId, out var user))
+                return new List<FingerprintDto>();
+
+            var fingerprints = new List<FingerprintDto>();
+            foreach (var handEntry in user.Fingerprints)
+            {
+                foreach (var fingerEntry in handEntry.Value)
+                {
+                    fingerprints.Add(fingerEntry.Value);
+                }
+            }
+            return fingerprints;
+        }
+    }
+
+    /// <summary>
+    /// Obtener todas las huellas (para identificación 1:N)
+    /// </summary>
+    public static List<FingerprintDto> GetAllFingerprints()
+    {
+        lock (_sync)
+        {
+            return new List<FingerprintDto>(_fingerprintIndex.Values);
+        }
+    }
+
+    /// <summary>
+    /// Obtener todos los usuarios
+    /// </summary>
+    public static List<UserFingerprintsDto> GetAllUsers()
+    {
+        lock (_sync)
+        {
+            return new List<UserFingerprintsDto>(_users.Values);
+        }
+    }
+
+    /// <summary>
+    /// Buscar a qué usuario/mano/dedo pertenece una huella por tag
+    /// </summary>
+    public static FingerprintSearchResult FindFingerprintOwnerByTag(string tag)
+    {
+        lock (_sync)
+        {
+            if (_tagIndex.TryGetValue(tag, out var fp))
+            {
+                return new FingerprintSearchResult
+                {
+                    Found = true,
+                    UserId = fp.UserId,
+                    Hand = fp.Hand,
+                    Finger = fp.Finger,
+                    FingerprintId = fp.Id,
+                    Format = fp.Format,
+                    Tag = fp.Tag
+                };
+            }
+
+            return new FingerprintSearchResult { Found = false };
+        }
+    }
+
+    /// <summary>
+    /// Limpiar memoria RAM (eliminar todas las huellas y usuarios)
     /// </summary>
     public static void Clear()
     {
         lock (_sync)
         {
-            var count = _fmds.Count;
-            _fmds.Clear();
-            Console.WriteLine($"[Store RAM] 🗑️ Limpiado - {count} huellas eliminadas de memoria");
+            var fpCount = _fingerprintIndex.Count;
+            var userCount = _users.Count;
+
+            _users.Clear();
+            _fingerprintIndex.Clear();
+            _tagIndex.Clear();
+
+            Console.WriteLine($"[Store RAM] 🗑️ Limpiado - {fpCount} huellas y {userCount} usuarios eliminados de memoria");
         }
     }
 
     /// <summary>
-    /// Obtener estadísticas del store en RAM
+    /// Eliminar usuario completo con todas sus huellas
+    /// </summary>
+    public static bool DeleteUser(string userId)
+    {
+        lock (_sync)
+        {
+            if (!_users.TryGetValue(userId, out var user))
+                return false;
+
+            // Eliminar todas las huellas del usuario de los índices
+            foreach (var handEntry in user.Fingerprints)
+            {
+                foreach (var fingerEntry in handEntry.Value)
+                {
+                    var fp = fingerEntry.Value;
+                    _fingerprintIndex.Remove(fp.Id);
+                    _tagIndex.Remove(fp.Tag);
+                }
+            }
+
+            _users.Remove(userId);
+            Console.WriteLine($"[Store RAM] 🗑️ Usuario eliminado: {userId} ({user.TotalFingerprints} huellas)");
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Eliminar huella específica
+    /// </summary>
+    public static bool DeleteFingerprint(string userId, Hand hand, Finger finger)
+    {
+        lock (_sync)
+        {
+            if (!_users.TryGetValue(userId, out var user))
+                return false;
+
+            if (!user.Fingerprints.TryGetValue(hand, out var handFingerprints))
+                return false;
+
+            if (!handFingerprints.TryGetValue(finger, out var fingerprint))
+                return false;
+
+            // Eliminar de índices
+            _fingerprintIndex.Remove(fingerprint.Id);
+            _tagIndex.Remove(fingerprint.Tag);
+
+            // Eliminar de usuario
+            handFingerprints.Remove(finger);
+
+            // Si la mano quedó vacía, eliminarla
+            if (handFingerprints.Count == 0)
+            {
+                user.Fingerprints.Remove(hand);
+            }
+
+            // Actualizar contador
+            user.TotalFingerprints = CountUserFingerprints(user);
+
+            // Si el usuario quedó sin huellas, eliminarlo
+            if (user.TotalFingerprints == 0)
+            {
+                _users.Remove(userId);
+            }
+
+            Console.WriteLine($"[Store RAM] 🗑️ Huella eliminada: {userId} | {GetHandEmoji(hand)} {GetFingerEmoji(finger)}");
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Obtener estadísticas del almacenamiento
     /// </summary>
     public static object GetStats()
     {
         lock (_sync)
         {
-            var structured = _fmds.Where(f => f.Tag.Split('_').Length >= 3).ToList();
-            var legacy = _fmds.Where(f => f.Tag.Split('_').Length < 3).ToList();
+            var singleFingerUsers = _users.Values.Count(u => u.EnrollmentType == EnrollmentType.SingleFinger);
+            var allFingersUsers = _users.Values.Count(u => u.EnrollmentType == EnrollmentType.AllFingers);
 
-            var users = structured
-                .Select(f => string.Join("_", f.Tag.Split('_').Take(f.Tag.Split('_').Length - 2)))
-                .Distinct()
-                .ToList();
+            var fingerprintsByHand = new Dictionary<string, int>();
+            foreach (var user in _users.Values)
+            {
+                foreach (var hand in user.Fingerprints.Keys)
+                {
+                    var handKey = hand.ToString();
+                    if (!fingerprintsByHand.ContainsKey(handKey))
+                        fingerprintsByHand[handKey] = 0;
+                    fingerprintsByHand[handKey] += user.Fingerprints[hand].Count;
+                }
+            }
 
             return new
             {
                 storage = "RAM (volátil)",
-                totalFingerprints = _fmds.Count,
-                structuredFingerprints = structured.Count,
-                legacyFingerprints = legacy.Count,
-                totalUsers = users.Count,
+                totalFingerprints = _fingerprintIndex.Count,
+                totalUsers = _users.Count,
+                singleFingerEnrollments = singleFingerUsers,
+                allFingersEnrollments = allFingersUsers,
+                fingerprintsByHand,
                 persistentFile = "NINGUNO - Solo RAM por seguridad",
                 warningMessage = "Los datos se pierden al reiniciar el servidor (por diseño de seguridad)"
             };
         }
+    }
+
+    // ===== Helpers privados =====
+
+    private static int CountUserFingerprints(UserFingerprintsDto user)
+    {
+        int count = 0;
+        foreach (var handEntry in user.Fingerprints)
+        {
+            count += handEntry.Value.Count;
+        }
+        return count;
+    }
+
+    private static string GenerateTag(string userId, Hand hand, Finger finger)
+    {
+        if (hand == Hand.Unknown || finger == Finger.Unknown)
+        {
+            return userId; // Tag simple para casos legacy
+        }
+
+        var handStr = hand switch
+        {
+            Hand.Left => "LEFT",
+            Hand.Right => "RIGHT",
+            _ => "UNKNOWN"
+        };
+
+        var fingerStr = finger switch
+        {
+            Finger.Thumb => "THUMB",
+            Finger.Index => "INDEX",
+            Finger.Middle => "MIDDLE",
+            Finger.Ring => "RING",
+            Finger.Pinky => "PINKY",
+            _ => "UNKNOWN"
+        };
+
+        return $"{userId}_{handStr}_{fingerStr}";
+    }
+
+    private static string GetHandEmoji(Hand hand)
+    {
+        return hand switch
+        {
+            Hand.Left => "🫲",
+            Hand.Right => "🫱",
+            _ => "❓"
+        };
+    }
+
+    private static string GetFingerEmoji(Finger finger)
+    {
+        return finger switch
+        {
+            Finger.Thumb => "👍",
+            Finger.Index => "☝️",
+            Finger.Middle => "🖕",
+            Finger.Ring => "💍",
+            Finger.Pinky => "🤙",
+            _ => "👆"
+        };
     }
 }
 
@@ -374,19 +750,13 @@ public sealed class Dp4500Service : IDisposable
             Console.WriteLine($"[WARNING] Could not generate base64 image: {ex.Message}");
         }
 
+        // Generar plantillas PRE/VER/ANSI solo para logging (NO se almacenan)
         var preFmt = "";
         var fmdPre = FidToPreFmd(cap.Data!, out preFmt);
         var fmdVer = FidToVerFmd(cap.Data!);
         var fmdAnsi = FidToAnsiFmd(cap.Data!);
 
-        var t = $"{DateTime.UtcNow:yyyyMMdd-HHmmss}";
-        var recPre = FingerprintTempStore.Add($"PRE-{t}", preFmt, fmdPre, keepXmlPreview: false);
-        var recVer = FingerprintTempStore.Add($"VER-{t}", "DP_VERIFICATION", fmdVer, keepXmlPreview: true);
-        var recAnsi = FingerprintTempStore.Add($"ANSI-{t}", "ANSI", fmdAnsi, keepXmlPreview: false);
-
-        PrintFmdSummary(recPre, "[PRE] ");
-        PrintFmdFull(recVer, "[VER] ");
-        PrintFmdSummary(recAnsi, "[ANS] ");
+        Console.WriteLine($"[Captura Simple] PRE: {preFmt}, VER y ANSI generados (no almacenados)");
     }
 
     // ==== Selección de la mejor tríada (VER→ANSI) ====
@@ -511,29 +881,16 @@ public sealed class Dp4500Service : IDisposable
         return (false, int.MaxValue, "FAIL", $"Compare falló (rc={cmp.ResultCode}, score={(cmp.Score == int.MaxValue ? "MAX" : cmp.Score.ToString())})");
     }
 
-    // ===== 1:N en vivo contra galería (REG→VER→ANSI) =====
+    // ===== 1:N en vivo contra galería (solo DP_REGISTRATION) =====
     public (bool match, int bestScore, string bestTag, string galleryFormat, System.Collections.Generic.List<(string tag, int score)> topK, string msg)
         IdentifyLive1N(CancellationToken ct, int targetFarn = 21474, int top = 5)
     {
-        var all = FingerprintTempStore.All();
-        if (all.Count == 0) return (false, int.MaxValue, "", "", new System.Collections.Generic.List<(string tag, int score)>(), "Galería vacía.");
+        var gallery = FingerprintTempStore.GetAllFingerprints();
+        if (gallery.Count == 0) return (false, int.MaxValue, "", "", new System.Collections.Generic.List<(string tag, int score)>(), "Galería vacía.");
 
-        string galleryFmt;
-        var gallery = new System.Collections.Generic.List<StoredFmd>(all).FindAll(r => r.Format == "DP_REGISTRATION");
-        if (gallery.Count > 0) galleryFmt = "DP_REGISTRATION";
-        else
-        {
-            gallery = new System.Collections.Generic.List<StoredFmd>(all).FindAll(r => r.Format == "DP_VERIFICATION");
-            if (gallery.Count > 0) galleryFmt = "DP_VERIFICATION";
-            else
-            {
-                gallery = new System.Collections.Generic.List<StoredFmd>(all).FindAll(r => r.Format == "ANSI");
-                if (gallery.Count == 0) return (false, int.MaxValue, "", "", new System.Collections.Generic.List<(string tag, int score)>(), "No hay REG/VER/ANSI en galería.");
-                galleryFmt = "ANSI";
-            }
-        }
+        string galleryFmt = "DP_REGISTRATION"; // Ahora solo almacenamos REG finales
 
-        OnStatus?.Invoke($"Identificación 1:N… coloca el dedo. (galería: {galleryFmt})");
+        OnStatus?.Invoke($"Identificación 1:N… coloca el dedo. (galería: {gallery.Count} huellas)");
         RequestCaptureGentle(ct);
         if (!_sampleReady.Wait(TimeSpan.FromSeconds(12), ct))
             return (false, int.MaxValue, "", galleryFmt, new System.Collections.Generic.List<(string tag, int score)>(), "Timeout en captura de identificación.");
@@ -555,23 +912,18 @@ public sealed class Dp4500Service : IDisposable
             Console.WriteLine($"[WARNING] Could not generate base64 image during identification: {ex.Message}");
         }
 
-        DPUruNet.Fmd? probe = null;
-        string usedProbe = "";
-        if (galleryFmt == "DP_REGISTRATION" || galleryFmt == "DP_VERIFICATION")
-        {
-            var fx = DPUruNet.FeatureExtraction.CreateFmdFromFid(cap.Data!, DPUruNet.Constants.Formats.Fmd.DP_VERIFICATION);
-            if (fx.ResultCode == DPUruNet.Constants.ResultCode.DP_SUCCESS) { probe = fx.Data; usedProbe = "VER"; }
-        }
-        else
-        {
-            var fx = DPUruNet.FeatureExtraction.CreateFmdFromFid(cap.Data!, DPUruNet.Constants.Formats.Fmd.ANSI);
-            if (fx.ResultCode == DPUruNet.Constants.ResultCode.DP_SUCCESS) { probe = fx.Data; usedProbe = "ANSI"; }
-        }
-        if (probe == null) return (false, int.MaxValue, "", galleryFmt, new System.Collections.Generic.List<(string tag, int score)>(), "No se pudo generar el probe.");
+        // Generar probe en formato VER para comparar contra REG
+        var fx = DPUruNet.FeatureExtraction.CreateFmdFromFid(cap.Data!, DPUruNet.Constants.Formats.Fmd.DP_VERIFICATION);
+        if (fx.ResultCode != DPUruNet.Constants.ResultCode.DP_SUCCESS || fx.Data == null)
+            return (false, int.MaxValue, "", galleryFmt, new System.Collections.Generic.List<(string tag, int score)>(), "No se pudo generar el probe.");
+
+        var probe = fx.Data;
+        string usedProbe = "VER";
 
         var ranking = new System.Collections.Generic.List<(string tag, int score)>();
         int best = int.MaxValue; string bestTag = "";
-        foreach (var cand in new System.Collections.Generic.List<StoredFmd>(all).FindAll(r => r.Format == galleryFmt))
+
+        foreach (var cand in gallery)
         {
             var c = DPUruNet.Comparison.Compare(probe, 0, cand.Fmd, 0);
             if (c.ResultCode != DPUruNet.Constants.ResultCode.DP_SUCCESS || c.Score == int.MaxValue) continue; // IGNORA inválidos
@@ -642,19 +994,14 @@ public sealed class Dp4500Service : IDisposable
                     Console.WriteLine($"[WARNING] Could not generate base64 image during enrollment sample {sampleIndex + 1}: {ex.Message}");
                 }
 
+                // Generar plantillas intermedias (PRE/VER/ANSI) solo para validación interna
+                // NO se almacenan en FingerprintTempStore - solo variables locales
                 var preFmt = "";
                 var fmdPre = FidToPreFmd(cap.Data!, out preFmt);
                 var fmdVer = FidToVerFmd(cap.Data!);
                 var fmdAnsi = FidToAnsiFmd(cap.Data!);
 
-                var t = $"{DateTime.UtcNow:yyyyMMdd-HHmmss}";
-                var recPre = FingerprintTempStore.Add($"PRE-{sampleIndex + 1}-{t}", preFmt, fmdPre, keepXmlPreview: false);
-                var recVer = FingerprintTempStore.Add($"VER-{sampleIndex + 1}-{t}", "DP_VERIFICATION", fmdVer, keepXmlPreview: true);
-                var recAnsi = FingerprintTempStore.Add($"ANSI-{sampleIndex + 1}-{t}", "ANSI", fmdAnsi, keepXmlPreview: false);
-
-                PrintFmdSummary(recPre, "[PRE] ");
-                PrintFmdFull(recVer, "[VER] ");
-                PrintFmdSummary(recAnsi, "[ANS] ");
+                Console.WriteLine($"[Enroll3] Muestra {sampleIndex + 1}: PRE={preFmt}, VER, ANSI generados (no almacenados)");
 
                 if (verFirst == null) { verFirst = fmdVer; ansiFirst = fmdAnsi; }
                 else
@@ -690,8 +1037,7 @@ public sealed class Dp4500Service : IDisposable
                 var (ok, reg, regMsg) = TryEnrollmentWithStrategies(preList, ansiList, verList);
                 if (ok && reg != null)
                 {
-                    var recReg = FingerprintTempStore.Add($"REG-{DateTime.UtcNow:yyyyMMdd-HHmmss}", "DP_REGISTRATION", reg, keepXmlPreview: true);
-                    PrintFmdFull(recReg, "[REG] ");
+                    Console.WriteLine($"[Enroll3] ✅ REG generado exitosamente ({regMsg}) - NO almacenado (se hará desde EdgeUruBridge)");
                     return (true, reg, $"Enrolamiento exitoso ({regMsg}).");
                 }
             }
@@ -704,8 +1050,7 @@ public sealed class Dp4500Service : IDisposable
                 var regFx = DPUruNet.FeatureExtraction.CreateFmdFromFid(_lastFid, DPUruNet.Constants.Formats.Fmd.DP_REGISTRATION);
                 if (regFx.ResultCode == DPUruNet.Constants.ResultCode.DP_SUCCESS && regFx.Data != null)
                 {
-                    var recReg = FingerprintTempStore.Add($"REG-{DateTime.UtcNow:yyyyMMdd-HHmmss}", "DP_REGISTRATION", regFx.Data, keepXmlPreview: true);
-                    PrintFmdFull(recReg, "[REG*] ");
+                    Console.WriteLine($"[Enroll3] ✅ REG generado desde FID (fallback) - NO almacenado (se hará desde EdgeUruBridge)");
                     return (true, regFx.Data, "Enrolamiento (REG directo desde FID).");
                 }
             }
@@ -713,17 +1058,6 @@ public sealed class Dp4500Service : IDisposable
         catch { }
 
         return (false, null, "Enrollment falló: DP_ENROLLMENT_NOT_READY.");
-    }
-
-    // ===== helpers de impresión =====
-    public static void PrintFmdSummary(StoredFmd rec, string prefix = "")
-    {
-        Console.WriteLine($"{prefix}Tag={rec.Tag}  Format={rec.Format}  Bytes={rec.Bytes}  XmlLen={rec.XmlLength}  SHA1={rec.Sha1}  Utc={rec.Utc:O}");
-    }
-    public static void PrintFmdFull(StoredFmd rec, string prefix = "")
-    {
-        Console.WriteLine($"{prefix}Tag={rec.Tag}  Format={rec.Format}  Bytes={rec.Bytes}  XmlLen={rec.XmlLength}  SHA1={rec.Sha1}  Utc={rec.Utc:O}");
-        Console.WriteLine($"{prefix}XML: {rec.XmlPreview}");
     }
 
     public void Dispose()

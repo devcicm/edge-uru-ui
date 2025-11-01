@@ -310,7 +310,8 @@ namespace EdgeBridge
 
                         if (result.ok && result.fmdReg != null)
                         {
-                            FingerprintTempStore.Add(userId, "DP_REGISTRATION", result.fmdReg, false);
+                            // Almacenar con nueva estructura (enroll simple = Hand/Finger desconocido)
+                            FingerprintTempStore.AddFingerprint(userId, Hand.Unknown, Finger.Unknown, result.fmdReg, EnrollmentType.SingleFinger, false);
 
                             // Generar imagen
                             if (_reader.LastFid != null)
@@ -380,7 +381,7 @@ namespace EdgeBridge
 
                     try
                     {
-                        var stored = FingerprintTempStore.All().FirstOrDefault(x => x.Tag == userId);
+                        var stored = FingerprintTempStore.GetFingerprintByTag(userId);
                         if (stored == null)
                         {
                             return new { ok = false, error = $"Fingerprint with tag '{userId}' not found" };
@@ -478,7 +479,7 @@ namespace EdgeBridge
                     var top = (int?)input?.top ?? 5;
                     var maxAttempts = (int?)input?.maxAttempts ?? 4;
 
-                    var gallerySize = FingerprintTempStore.All().Count;
+                    var gallerySize = FingerprintTempStore.GetAllFingerprints().Count;
 
                     SendEvent("IDENTIFICATION_STARTED", $"Iniciando identificación 1:N (galería: {gallerySize} usuarios)", "INFO",
                         new { gallerySize, maxAttempts });
@@ -659,8 +660,20 @@ namespace EdgeBridge
 
                                 if (result.ok && result.fmdReg != null)
                                 {
-                                    // Guardar en store
-                                    FingerprintTempStore.Add(tag, "DP_REGISTRATION", result.fmdReg, false);
+                                    // Parsear hand y finger de strings a enums
+                                    var handEnum = hand == "LEFT" ? Hand.Left : Hand.Right;
+                                    var fingerEnum = finger switch
+                                    {
+                                        "THUMB" => Finger.Thumb,
+                                        "INDEX" => Finger.Index,
+                                        "MIDDLE" => Finger.Middle,
+                                        "RING" => Finger.Ring,
+                                        "PINKY" => Finger.Pinky,
+                                        _ => Finger.Unknown
+                                    };
+
+                                    // Guardar en store con nueva API
+                                    var storedFingerprint = FingerprintTempStore.AddFingerprint(userId, handEnum, fingerEnum, result.fmdReg, EnrollmentType.AllFingers, false);
 
                                     // Generar imagen y template
                                     string? imageBase64 = null;
@@ -674,9 +687,8 @@ namespace EdgeBridge
                                     var regXml = DPUruNet.Fmd.SerializeXml(result.fmdReg);
                                     templateBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(regXml));
 
-                                    // Obtener hash del store
-                                    var stored = FingerprintTempStore.All().FirstOrDefault(x => x.Tag == tag);
-                                    var hash = stored?.Sha1 ?? "";
+                                    // Hash ya está disponible en el objeto retornado
+                                    var hash = storedFingerprint.Sha1;
 
                                     var fingerData = new Dictionary<string, object>
                                     {
@@ -789,18 +801,23 @@ namespace EdgeBridge
 
                 case "storeList":
                 {
-                    var items = FingerprintTempStore.All();
+                    var items = FingerprintTempStore.GetAllFingerprints();
                     return new
                     {
                         ok = true,
                         count = items.Count,
                         items = items.Select(x => new
                         {
+                            id = x.Id,
                             tag = x.Tag,
+                            userId = x.UserId,
+                            hand = x.Hand.ToString(),
+                            finger = x.Finger.ToString(),
                             format = x.Format,
                             bytes = x.Bytes,
                             sha1 = x.Sha1,
-                            utc = x.Utc
+                            enrolledAt = x.EnrolledAt,
+                            enrollmentType = x.EnrollmentType.ToString()
                         }).ToArray()
                     };
                 }
