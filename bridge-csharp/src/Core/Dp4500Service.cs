@@ -8,6 +8,8 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using DPUruNet;
 
 [assembly: DefaultDllImportSearchPaths(
@@ -59,10 +61,16 @@ public sealed class StoredFmd
 public static class FingerprintTempStore
 {
     private static readonly object _sync = new object();
-    private static readonly List<StoredFmd> _fmds = new List<StoredFmd>();
 
+    /// <summary>
+    /// Agregar huella al store persistente
+    /// </summary>
     public static StoredFmd Add(string tag, string formatName, DPUruNet.Fmd fmd, bool keepXmlPreview = false)
     {
+        // Agregar al store persistente
+        FingerprintPersistentStore.Add(tag, formatName, fmd);
+
+        // Retornar objeto compatible
         var xml = keepXmlPreview ? DPUruNet.Fmd.SerializeXml(fmd) : string.Empty;
         using var sha1 = SHA1.Create();
         var bytes = fmd.Bytes ?? Array.Empty<byte>();
@@ -79,12 +87,365 @@ public static class FingerprintTempStore
             XmlPreview = keepXmlPreview ? (xml.Length > 160 ? xml.Substring(0, 160) + "…" : xml) : "(omitido)",
             Sha1 = sha
         };
-        lock (_sync) _fmds.Add(rec);
         return rec;
     }
 
-    public static IReadOnlyList<StoredFmd> All() { lock (_sync) return _fmds.ToList(); }
-    public static void Clear() { lock (_sync) _fmds.Clear(); }
+    /// <summary>
+    /// Obtener todas las huellas del store persistente
+    /// </summary>
+    public static IReadOnlyList<StoredFmd> All()
+    {
+        lock (_sync)
+        {
+            return FingerprintPersistentStore.GetAll();
+        }
+    }
+
+    /// <summary>
+    /// Limpiar todo el store persistente
+    /// </summary>
+    public static void Clear()
+    {
+        lock (_sync)
+        {
+            FingerprintPersistentStore.Clear();
+        }
+    }
+}
+
+/* ===============================
+ * Store Persistente (JSON)
+ * ===============================*/
+public static class FingerprintPersistentStore
+{
+    private static readonly object _sync = new object();
+    private static readonly string _dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+    private static readonly string _filePath = Path.Combine(_dataDir, "fingerprints.json");
+
+    private static StoreData _store = new StoreData();
+    private static bool _initialized = false;
+
+    public class StoreData
+    {
+        [JsonPropertyName("version")]
+        public string Version { get; set; } = "1.0";
+
+        [JsonPropertyName("lastModified")]
+        public DateTime LastModified { get; set; } = DateTime.UtcNow;
+
+        [JsonPropertyName("users")]
+        public Dictionary<string, UserFingerprints> Users { get; set; } = new Dictionary<string, UserFingerprints>();
+
+        [JsonPropertyName("legacy")]
+        public List<LegacyFingerprint> Legacy { get; set; } = new List<LegacyFingerprint>();
+    }
+
+    public class UserFingerprints
+    {
+        [JsonPropertyName("userId")]
+        public string UserId { get; set; } = "";
+
+        [JsonPropertyName("enrolledAt")]
+        public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
+
+        [JsonPropertyName("lastModified")]
+        public DateTime LastModified { get; set; } = DateTime.UtcNow;
+
+        [JsonPropertyName("hands")]
+        public Dictionary<string, HandFingerprints> Hands { get; set; } = new Dictionary<string, HandFingerprints>();
+    }
+
+    public class HandFingerprints
+    {
+        [JsonPropertyName("fingers")]
+        public Dictionary<string, FingerprintData> Fingers { get; set; } = new Dictionary<string, FingerprintData>();
+    }
+
+    public class FingerprintData
+    {
+        [JsonPropertyName("tag")]
+        public string Tag { get; set; } = "";
+
+        [JsonPropertyName("format")]
+        public string Format { get; set; } = "DP_REGISTRATION";
+
+        [JsonPropertyName("templateXml")]
+        public string TemplateXml { get; set; } = "";
+
+        [JsonPropertyName("sha1")]
+        public string Sha1 { get; set; } = "";
+
+        [JsonPropertyName("enrolledAt")]
+        public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
+
+        [JsonPropertyName("quality")]
+        public int Quality { get; set; } = 0;
+
+        [JsonIgnore]
+        public DPUruNet.Fmd? Fmd { get; set; }
+    }
+
+    public class LegacyFingerprint
+    {
+        [JsonPropertyName("tag")]
+        public string Tag { get; set; } = "";
+
+        [JsonPropertyName("format")]
+        public string Format { get; set; } = "DP_REGISTRATION";
+
+        [JsonPropertyName("templateXml")]
+        public string TemplateXml { get; set; } = "";
+
+        [JsonPropertyName("sha1")]
+        public string Sha1 { get; set; } = "";
+
+        [JsonPropertyName("enrolledAt")]
+        public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
+
+        [JsonIgnore]
+        public DPUruNet.Fmd? Fmd { get; set; }
+    }
+
+    public static void Initialize()
+    {
+        lock (_sync)
+        {
+            if (_initialized) return;
+
+            if (!Directory.Exists(_dataDir))
+            {
+                Directory.CreateDirectory(_dataDir);
+                Console.WriteLine($"[Store] Directorio creado: {_dataDir}");
+            }
+
+            if (File.Exists(_filePath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(_filePath);
+                    _store = JsonSerializer.Deserialize<StoreData>(json) ?? new StoreData();
+
+                    int reconstructed = 0;
+                    foreach (var user in _store.Users.Values)
+                    {
+                        foreach (var hand in user.Hands.Values)
+                        {
+                            foreach (var finger in hand.Fingers.Values)
+                            {
+                                if (!string.IsNullOrEmpty(finger.TemplateXml))
+                                {
+                                    finger.Fmd = DPUruNet.Fmd.DeserializeXml(finger.TemplateXml);
+                                    reconstructed++;
+                                }
+                            }
+                        }
+                    }
+
+                    foreach (var legacy in _store.Legacy)
+                    {
+                        if (!string.IsNullOrEmpty(legacy.TemplateXml))
+                        {
+                            legacy.Fmd = DPUruNet.Fmd.DeserializeXml(legacy.TemplateXml);
+                            reconstructed++;
+                        }
+                    }
+
+                    Console.WriteLine($"[Store] ✅ Cargadas {reconstructed} huellas desde {_filePath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Store] ❌ Error cargando: {ex.Message}");
+                    _store = new StoreData();
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[Store] Archivo no existe, iniciando store vacío");
+            }
+
+            _initialized = true;
+        }
+    }
+
+    private static void Save()
+    {
+        lock (_sync)
+        {
+            try
+            {
+                _store.LastModified = DateTime.UtcNow;
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    DefaultIgnoreCondition = JsonIgnoreCondition.Never
+                };
+                var json = JsonSerializer.Serialize(_store, options);
+                File.WriteAllText(_filePath, json);
+                Console.WriteLine($"[Store] 💾 Guardado en {_filePath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Store] ❌ Error guardando: {ex.Message}");
+            }
+        }
+    }
+
+    public static void Add(string tag, string formatName, DPUruNet.Fmd fmd)
+    {
+        if (!_initialized) Initialize();
+
+        lock (_sync)
+        {
+            var parts = tag.Split('_');
+            var xml = DPUruNet.Fmd.SerializeXml(fmd);
+
+            using var sha1 = SHA1.Create();
+            var bytes = fmd.Bytes ?? Array.Empty<byte>();
+            var sha = BitConverter.ToString(sha1.ComputeHash(bytes)).Replace("-", "");
+
+            if (parts.Length >= 3)
+            {
+                var userId = string.Join("_", parts.Take(parts.Length - 2));
+                var hand = parts[parts.Length - 2];
+                var finger = parts[parts.Length - 1];
+
+                if (!_store.Users.ContainsKey(userId))
+                {
+                    _store.Users[userId] = new UserFingerprints
+                    {
+                        UserId = userId,
+                        EnrolledAt = DateTime.UtcNow,
+                        Hands = new Dictionary<string, HandFingerprints>
+                        {
+                            ["LEFT"] = new HandFingerprints(),
+                            ["RIGHT"] = new HandFingerprints()
+                        }
+                    };
+                }
+
+                var user = _store.Users[userId];
+                user.LastModified = DateTime.UtcNow;
+
+                if (!user.Hands.ContainsKey(hand))
+                {
+                    user.Hands[hand] = new HandFingerprints();
+                }
+
+                user.Hands[hand].Fingers[finger] = new FingerprintData
+                {
+                    Tag = tag,
+                    Format = formatName,
+                    TemplateXml = xml,
+                    Sha1 = sha,
+                    EnrolledAt = DateTime.UtcNow,
+                    Fmd = fmd
+                };
+
+                Console.WriteLine($"[Store] ➕ Agregado estructurado: {tag}");
+            }
+            else
+            {
+                _store.Legacy.Add(new LegacyFingerprint
+                {
+                    Tag = tag,
+                    Format = formatName,
+                    TemplateXml = xml,
+                    Sha1 = sha,
+                    EnrolledAt = DateTime.UtcNow,
+                    Fmd = fmd
+                });
+
+                Console.WriteLine($"[Store] ➕ Agregado legacy: {tag}");
+            }
+
+            Save();
+        }
+    }
+
+    public static List<StoredFmd> GetAll()
+    {
+        if (!_initialized) Initialize();
+
+        lock (_sync)
+        {
+            var result = new List<StoredFmd>();
+
+            foreach (var user in _store.Users.Values)
+            {
+                foreach (var handPair in user.Hands)
+                {
+                    foreach (var fingerPair in handPair.Value.Fingers)
+                    {
+                        var data = fingerPair.Value;
+                        if (data.Fmd != null)
+                        {
+                            result.Add(new StoredFmd
+                            {
+                                Tag = data.Tag,
+                                Format = data.Format,
+                                Utc = data.EnrolledAt,
+                                Fmd = data.Fmd,
+                                Bytes = data.Fmd.Bytes?.Length ?? 0,
+                                Sha1 = data.Sha1
+                            });
+                        }
+                    }
+                }
+            }
+
+            foreach (var legacy in _store.Legacy)
+            {
+                if (legacy.Fmd != null)
+                {
+                    result.Add(new StoredFmd
+                    {
+                        Tag = legacy.Tag,
+                        Format = legacy.Format,
+                        Utc = legacy.EnrolledAt,
+                        Fmd = legacy.Fmd,
+                        Bytes = legacy.Fmd.Bytes?.Length ?? 0,
+                        Sha1 = legacy.Sha1
+                    });
+                }
+            }
+
+            return result;
+        }
+    }
+
+    public static void Clear()
+    {
+        lock (_sync)
+        {
+            _store = new StoreData();
+            Save();
+            Console.WriteLine($"[Store] 🗑️ Store limpiado");
+        }
+    }
+
+    public static object GetStats()
+    {
+        if (!_initialized) Initialize();
+
+        lock (_sync)
+        {
+            var userCount = _store.Users.Count;
+            var structuredCount = _store.Users.Values.Sum(u =>
+                u.Hands.Values.Sum(h => h.Fingers.Count));
+            var legacyCount = _store.Legacy.Count;
+
+            return new
+            {
+                totalUsers = userCount,
+                totalFingerprints = structuredCount + legacyCount,
+                structuredFingerprints = structuredCount,
+                legacyFingerprints = legacyCount,
+                filePath = _filePath,
+                fileExists = File.Exists(_filePath),
+                lastModified = _store.LastModified
+            };
+        }
+    }
 }
 
 /* ===============================

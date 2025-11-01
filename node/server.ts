@@ -197,6 +197,11 @@ app.get("/api/reader-info", async (_, res) => {
   catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
+app.get("/api/store-stats", async (_, res) => {
+  try { res.json(await call({ op: "storeStats" })); }
+  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
 
 // Static file serving - MUST be after API routes
 const sourcePublicDir = path.join(__dirname, "..", "public");

@@ -140,6 +140,10 @@ namespace EdgeBridge
                     try
                     {
                         NativeLoader.Bootstrap(AppDomain.CurrentDomain.BaseDirectory, extra ?? "", @"..\bin-deps");
+
+                        // Inicializar store persistente
+                        FingerprintPersistentStore.Initialize();
+
                         SendEvent("SYSTEM_STATUS", "Sistema inicializado correctamente", "SUCCESS");
                         return new { ok = true, message = "Bootstrap successful" };
                     }
@@ -882,6 +886,21 @@ namespace EdgeBridge
                     catch (Exception ex)
                     {
                         SendEvent("SYSTEM_ERROR", $"Error obteniendo info: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
+                case "storeStats":
+                {
+                    try
+                    {
+                        var stats = FingerprintPersistentStore.GetStats();
+                        SendEvent("STORE_STATS_RETRIEVED", "Estadísticas del almacenamiento obtenidas", "INFO");
+                        return new { ok = true, stats };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("SYSTEM_ERROR", $"Error obteniendo estadísticas: {ex.Message}", "ERROR");
                         return new { ok = false, error = ex.Message };
                     }
                 }
