@@ -19,14 +19,32 @@ namespace EdgeBridge
 
         /// <summary>
         /// Parsea un tag con formato "userId_HAND_FINGER" y retorna componentes individuales
+        /// Si el tag es formato antiguo (sin HAND_FINGER), retorna info básica
         /// </summary>
         private static object? ParseTag(string tag)
         {
             if (string.IsNullOrEmpty(tag)) return null;
 
             var parts = tag.Split('_');
-            if (parts.Length < 3) return null;
 
+            // Formato antiguo (sin estructura de mano/dedo)
+            if (parts.Length < 3)
+            {
+                return new
+                {
+                    userId = tag,
+                    hand = "UNKNOWN",
+                    finger = "UNKNOWN",
+                    handLabel = "Desconocida",
+                    fingerLabel = "Desconocido",
+                    handEmoji = "❓",
+                    fingerEmoji = "👆",
+                    displayName = $"{tag} | 👆 Dedo desconocido ❓ (Formato antiguo)",
+                    isLegacyFormat = true
+                };
+            }
+
+            // Formato nuevo estructurado: userId_HAND_FINGER
             var userId = string.Join("_", parts.Take(parts.Length - 2));
             var hand = parts[parts.Length - 2];
             var finger = parts[parts.Length - 1];
@@ -63,7 +81,8 @@ namespace EdgeBridge
                 fingerLabel,
                 handEmoji,
                 fingerEmoji,
-                displayName = $"{userId} | {fingerEmoji} {fingerLabel} {handEmoji} {handLabel}"
+                displayName = $"{userId} | {fingerEmoji} {fingerLabel} {handEmoji} {handLabel}",
+                isLegacyFormat = false
             };
         }
 
