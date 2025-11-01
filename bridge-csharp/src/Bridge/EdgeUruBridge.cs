@@ -141,11 +141,9 @@ namespace EdgeBridge
                     {
                         NativeLoader.Bootstrap(AppDomain.CurrentDomain.BaseDirectory, extra ?? "", @"..\bin-deps");
 
-                        // Inicializar store persistente
-                        FingerprintPersistentStore.Initialize();
-
-                        SendEvent("SYSTEM_STATUS", "Sistema inicializado correctamente", "SUCCESS");
-                        return new { ok = true, message = "Bootstrap successful" };
+                        // Store solo en RAM - NO persistencia por seguridad
+                        SendEvent("SYSTEM_STATUS", "Sistema inicializado (Store en RAM - volátil)", "SUCCESS");
+                        return new { ok = true, message = "Bootstrap successful - RAM storage only" };
                     }
                     catch (Exception ex)
                     {
@@ -894,8 +892,8 @@ namespace EdgeBridge
                 {
                     try
                     {
-                        var stats = FingerprintPersistentStore.GetStats();
-                        SendEvent("STORE_STATS_RETRIEVED", "Estadísticas del almacenamiento obtenidas", "INFO");
+                        var stats = FingerprintTempStore.GetStats();
+                        SendEvent("STORE_STATS_RETRIEVED", "Estadísticas del almacenamiento RAM obtenidas", "INFO");
                         return new { ok = true, stats };
                     }
                     catch (Exception ex)
