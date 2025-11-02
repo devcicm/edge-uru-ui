@@ -17,13 +17,15 @@ js/
 │   ├── BaseComponent.js        # Base class for all UI components
 │   └── ComponentFactory.js     # Factory pattern for component creation
 │
-└── controls/                   # Biometric controls (business logic)
-    ├── EnrollmentControl.js    # Enrollment workflow (4 samples)
-    ├── VerificationControl.js  # Verification (1:1) & Identification (1:N)
-    ├── SimpleCaptureControl.js # Basic fingerprint capture
-    ├── ReaderControl.js        # Device management & initialization
-    ├── LogDeviceControl.js     # Device logging & debugging
-    └── TechDeviceControl.js    # Technical device information
+└── controls/                      # Biometric controls (business logic)
+    ├── EnrollmentControl.js       # Enrollment workflow (4 samples)
+    ├── VerificationControl.js     # Verification (1:1) & Identification (1:N)
+    ├── SimpleCaptureControl.js    # Basic fingerprint capture
+    ├── ReaderControl.js           # Device management & initialization
+    ├── LogDeviceControl.js        # Device logging & debugging
+    ├── TechDeviceControl.js       # Technical device information
+    ├── TemplateManagerControl.js  # Template gallery management
+    └── FingerManagementControl.js # Multi-finger enrollment per user
 ```
 
 ---
@@ -263,6 +265,71 @@ Technical device information display.
 - Show device capabilities
 - Technical diagnostics
 
+#### `TemplateManagerControl.js`
+
+Biometric template gallery management.
+
+**Extends**: `BaseComponent`
+
+**Responsibilities**:
+- Display all enrolled fingerprint templates
+- Show template metadata (tag, format, size, hash)
+- Filter templates by format type
+- Delete individual or all templates
+- Refresh template list
+- Template statistics
+
+**Usage**:
+```html
+<div id="template-manager-container"></div>
+
+<script>
+    const templateMgr = new TemplateManagerControl(
+        'template-manager-container',
+        biometricAdapter
+    );
+
+    templateMgr.on('templatesLoaded', (data) => {
+        console.log(`Loaded ${data.count} templates`);
+    });
+
+    await templateMgr.loadTemplates();
+</script>
+```
+
+#### `FingerManagementControl.js`
+
+Multi-finger enrollment and management per user (10 fingers: 5 per hand).
+
+**Extends**: `BaseComponent`
+
+**Responsibilities**:
+- Enroll individual fingers (LEFT/RIGHT hand, THUMB/INDEX/MIDDLE/RING/PINKY)
+- Verify specific finger against stored template
+- Identify which finger was scanned (1:N with finger detection)
+- Display enrolled fingers per user organized by hand
+- Generate structured tags: `userId_HAND_FINGER` (e.g., `juan_LEFT_THUMB`)
+- Support up to 10 fingers per user (5 × 2 hands)
+
+**Usage**:
+```html
+<div id="finger-management-container"></div>
+
+<script>
+    const fingerMgr = new FingerManagementControl(
+        'finger-management-container',
+        biometricAdapter
+    );
+
+    fingerMgr.on('fingerEnrolled', (data) => {
+        console.log(`Enrolled: ${data.userId} - ${data.hand} ${data.finger}`);
+    });
+
+    // Enroll specific finger
+    await fingerMgr.enrollFinger('USER001', 'LEFT', 'THUMB');
+</script>
+```
+
 ---
 
 ## Architecture Principles
@@ -283,6 +350,8 @@ SimpleCaptureControl (biometric-controls)
 ReaderControl (biometric-controls)
 LogDeviceControl (biometric-controls)
 TechDeviceControl (biometric-controls)
+TemplateManagerControl (biometric-controls)
+FingerManagementControl (biometric-controls)
 ```
 
 ### Event-Driven Communication
@@ -316,11 +385,13 @@ Components must be loaded in dependency order:
 <script src="/js/controls/ReaderControl.js"></script>
 <script src="/js/controls/LogDeviceControl.js"></script>
 <script src="/js/controls/TechDeviceControl.js"></script>
+<script src="/js/controls/TemplateManagerControl.js"></script>
+<script src="/js/controls/FingerManagementControl.js"></script>
 ```
 
 ### Example HTML
 
-See `v2-ceddfa/template-workflow-ceddfa.html` for complete implementation.
+See `demo-avance.html` or `index.html` in `node/public/` for complete implementation examples.
 
 ---
 
@@ -427,12 +498,14 @@ js/
 
 ## Related Documentation
 
-- **Project Structure**: See `ESTRUCTURA-PROYECTO.md` in project root
-- **CEDDFA Architecture**: See `arquitectura CEDDFA.md`
+- **Project README**: See [README.md](../../README.md) in project root
+- **Component System**: See [COMPONENTES-MODULARES.md](./COMPONENTES-MODULARES.md) for modular architecture
+- **Events Architecture**: See [ARQUITECTURA-EVENTOS.md](../ARQUITECTURA-EVENTOS.md) for event system
+- **Real-time Events**: See [SOLUCION-EVENTOS-TIEMPO-REAL.md](../SOLUCION-EVENTOS-TIEMPO-REAL.md) for SSE implementation
 - **API Reference**: See inline comments in each component file
-- **V2 CEDDFA UI**: See `v2-ceddfa/template-workflow-ceddfa.html`
+- **Live Examples**: See `demo-avance.html` and `index.html` in `node/public/`
 
 ---
 
-**Last Updated**: 2025-10-12
-**Version**: 1.0
+**Last Updated**: 2025-11-02
+**Version**: 1.1

@@ -806,6 +806,7 @@ rm -rf node/dist/
 - **[ARQUITECTURA-EVENTOS.md](./docs/ARQUITECTURA-EVENTOS.md)** - Arquitectura del sistema de eventos
 - **[SOLUCION-EVENTOS-TIEMPO-REAL.md](./docs/SOLUCION-EVENTOS-TIEMPO-REAL.md)** - Cómo se solucionó el problema de eventos en tiempo real
 - **[COMPONENTES-MODULARES.md](./docs/frontend/COMPONENTES-MODULARES.md)** - Sistema modular de componentes
+- **[ARQUITECTURA-COMPONENTES-JS.md](./docs/frontend/ARQUITECTURA-COMPONENTES-JS.md)** - Arquitectura completa de componentes JavaScript
 - **[ALMACENAMIENTO-ESTRUCTURADO.md](./docs/ALMACENAMIENTO-ESTRUCTURADO.md)** - Documentación de almacenamiento estructurado
 - **[FINGER-DETECTION-COMPLETE.md](./docs/FINGER-DETECTION-COMPLETE.md)** - Detección de dedo en tiempo real (histórico)
 
