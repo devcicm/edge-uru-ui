@@ -33,7 +33,7 @@ Sistema completo de captura, enrolamiento, verificación e identificación de hu
 ### Detección de Dedo en Tiempo Real
 **Fecha de eliminación**: 2025-11-01
 **Commit de respaldo**: `441894f`
-**Documentación completa**: [FINGER-DETECTION-COMPLETE.md](./FINGER-DETECTION-COMPLETE.md)
+**Documentación completa**: [FINGER-DETECTION-COMPLETE.md](./docs/FINGER-DETECTION-COMPLETE.md)
 
 La funcionalidad de **detección de dedo en tiempo real** (finger touch/release monitoring) fue implementada y posteriormente removida del proyecto. Esta funcionalidad incluía:
 
@@ -52,7 +52,7 @@ La funcionalidad de **detección de dedo en tiempo real** (finger touch/release 
 git checkout 441894f
 
 # O ver la documentación completa sin cambiar de rama
-git show 441894f:FINGER-DETECTION-COMPLETE.md
+git show 441894f:docs/FINGER-DETECTION-COMPLETE.md
 ```
 
 ---
@@ -359,7 +359,7 @@ UI Update (Real-time)
 - `VERIFICATION_SUCCESS/FAILED` - Resultado de verificación
 - `IDENTIFICATION_MATCH/NO_MATCH` - Resultado de identificación
 
-> **Documentación Detallada**: Ver [SOLUCION-EVENTOS-TIEMPO-REAL.md](./SOLUCION-EVENTOS-TIEMPO-REAL.md)
+> **Documentación Detallada**: Ver [SOLUCION-EVENTOS-TIEMPO-REAL.md](./docs/SOLUCION-EVENTOS-TIEMPO-REAL.md)
 
 ---
 
@@ -410,8 +410,16 @@ edge-uru-ui/
 │   ├── bridge-csharp.dll
 │   └── bridge-csharp.pdb
 │
-├── ARQUITECTURA-EVENTOS.md            # Event architecture documentation
-├── SOLUCION-EVENTOS-TIEMPO-REAL.md    # Real-time events solution
+├── docs/                               # Documentation files
+│   ├── ARQUITECTURA-EVENTOS.md        # Event architecture documentation
+│   ├── SOLUCION-EVENTOS-TIEMPO-REAL.md # Real-time events solution
+│   ├── FINGER-DETECTION-COMPLETE.md   # Finger detection (historical)
+│   ├── ALMACENAMIENTO-ESTRUCTURADO.md # Structured storage documentation
+│   ├── frontend/
+│   │   └── COMPONENTES-MODULARES.md   # Modular components system
+│   └── investigacion/
+│       └── SCRIPTS-INVESTIGACION-SDK.md # SDK investigation scripts
+│
 └── README.md                           # This file
 ```
 
@@ -795,9 +803,11 @@ rm -rf node/dist/
 
 ## 📚 Documentación Adicional
 
-- **[ARQUITECTURA-EVENTOS.md](./ARQUITECTURA-EVENTOS.md)** - Arquitectura del sistema de eventos
-- **[SOLUCION-EVENTOS-TIEMPO-REAL.md](./SOLUCION-EVENTOS-TIEMPO-REAL.md)** - Cómo se solucionó el problema de eventos en tiempo real
-- **[node/public/README-MODULAR.md](./node/public/README-MODULAR.md)** - Sistema modular de componentes
+- **[ARQUITECTURA-EVENTOS.md](./docs/ARQUITECTURA-EVENTOS.md)** - Arquitectura del sistema de eventos
+- **[SOLUCION-EVENTOS-TIEMPO-REAL.md](./docs/SOLUCION-EVENTOS-TIEMPO-REAL.md)** - Cómo se solucionó el problema de eventos en tiempo real
+- **[COMPONENTES-MODULARES.md](./docs/frontend/COMPONENTES-MODULARES.md)** - Sistema modular de componentes
+- **[ALMACENAMIENTO-ESTRUCTURADO.md](./docs/ALMACENAMIENTO-ESTRUCTURADO.md)** - Documentación de almacenamiento estructurado
+- **[FINGER-DETECTION-COMPLETE.md](./docs/FINGER-DETECTION-COMPLETE.md)** - Detección de dedo en tiempo real (histórico)
 
 ---
 
@@ -889,7 +899,7 @@ Este proyecto es para propósitos demostrativos y educativos.
 
 ### Aplicación
 - **Issues**: [GitHub Issues](https://github.com/devcicm/edge-uru-ui/issues)
-- **Documentación**: Ver archivos .md en el repositorio
+- **Documentación**: Ver archivos .md en la carpeta `docs/`
 - **Troubleshooting**: Sección de solución de problemas arriba
 
 ---
