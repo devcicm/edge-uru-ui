@@ -28,6 +28,35 @@ Sistema completo de captura, enrolamiento, verificación e identificación de hu
 
 ---
 
+## ⚠️ Funcionalidad Removida (Histórico)
+
+### Detección de Dedo en Tiempo Real
+**Fecha de eliminación**: 2025-11-01
+**Commit de respaldo**: `441894f`
+**Documentación completa**: [FINGER-DETECTION-COMPLETE.md](./FINGER-DETECTION-COMPLETE.md)
+
+La funcionalidad de **detección de dedo en tiempo real** (finger touch/release monitoring) fue implementada y posteriormente removida del proyecto. Esta funcionalidad incluía:
+
+- Monitoreo continuo de presencia de dedo en el sensor (polling cada 200ms)
+- Dos modos de implementación:
+  - **Modo 1**: DPUruNet SDK con polling de `Reader.Status.FingerDetected`
+  - **Modo 2**: DigitalPersona Web SDK con eventos nativos
+- Eventos SSE: `FINGER_PLACED`, `FINGER_REMOVED`
+- Interfaz de monitoreo en tiempo real
+
+**Razón de la eliminación**: Se implementó como prueba de concepto y respaldo histórico. La funcionalidad está completamente documentada y puede ser recuperada del historial de git si es necesaria en el futuro.
+
+**Para recuperar esta funcionalidad**:
+```bash
+# Checkout del commit con la implementación completa
+git checkout 441894f
+
+# O ver la documentación completa sin cambiar de rama
+git show 441894f:FINGER-DETECTION-COMPLETE.md
+```
+
+---
+
 ## 📋 Requisitos del Sistema
 
 ### Hardware

@@ -528,12 +528,6 @@ public sealed class Dp4500Service : IDisposable
     private bool _subscribed;
     private int _dpi = 500;
 
-    // Finger detection monitoring
-    private System.Threading.Timer? _fingerDetectionTimer;
-    private volatile int _lastFingerDetected = 0;
-    private volatile bool _fingerMonitoringEnabled = false;
-    private readonly object _fingerDetectionLock = new object();
-
     public DPUruNet.Fid? LastFid => _lastFid;
 
     private readonly Lazy<DPUruNet.Reader> _readerLazy = new Lazy<DPUruNet.Reader>(() =>
@@ -552,7 +546,6 @@ public sealed class Dp4500Service : IDisposable
     public event Action<int>? OnSampleCountChanged;
     public event Action<int, bool, string?>? OnAttemptResult;
     public event Action<string>? OnImageCaptured;
-    public event Action<bool, int>? OnFingerDetectionChanged; // (isDetected, detectionValue)
 
     private const int TARGET_FARN_ENROLL_CHECK = 100_000; // filtro intra-enrolamiento
 
@@ -1067,127 +1060,8 @@ public sealed class Dp4500Service : IDisposable
         return (false, null, "Enrollment falló: DP_ENROLLMENT_NOT_READY.");
     }
 
-    /// <summary>
-    /// Inicia el monitoreo de detección de dedo en el sensor
-    /// </summary>
-    public void StartFingerDetectionMonitoring(int pollIntervalMs = 200)
-    {
-        lock (_fingerDetectionLock)
-        {
-            if (_fingerMonitoringEnabled)
-            {
-                Console.WriteLine("[FingerDetection] Monitoring already started");
-                return;
-            }
-
-            _fingerMonitoringEnabled = true;
-            _lastFingerDetected = 0;
-
-            Console.WriteLine($"[FingerDetection] DEBUG: Reader created: {_readerLazy.IsValueCreated}");
-            Console.WriteLine($"[FingerDetection] DEBUG: Creating timer with interval {pollIntervalMs}ms");
-
-            _fingerDetectionTimer = new System.Threading.Timer(
-                FingerDetectionTimerCallback,
-                null,
-                TimeSpan.FromMilliseconds(pollIntervalMs),
-                TimeSpan.FromMilliseconds(pollIntervalMs)
-            );
-
-            Console.WriteLine($"[FingerDetection] Monitoring started (polling every {pollIntervalMs}ms)");
-            Console.WriteLine("[FingerDetection] DEBUG: Timer callback should start firing in 200ms...");
-        }
-    }
-
-    /// <summary>
-    /// Detiene el monitoreo de detección de dedo
-    /// </summary>
-    public void StopFingerDetectionMonitoring()
-    {
-        lock (_fingerDetectionLock)
-        {
-            if (!_fingerMonitoringEnabled)
-                return;
-
-            _fingerMonitoringEnabled = false;
-
-            if (_fingerDetectionTimer != null)
-            {
-                _fingerDetectionTimer.Dispose();
-                _fingerDetectionTimer = null;
-            }
-
-            Console.WriteLine("[FingerDetection] Monitoring stopped");
-        }
-    }
-
-    /// <summary>
-    /// Callback del timer que verifica el estado del sensor periódicamente
-    /// </summary>
-    private void FingerDetectionTimerCallback(object? state)
-    {
-        if (!_fingerMonitoringEnabled)
-        {
-            Console.WriteLine("[FingerDetection] DEBUG: Monitoring disabled");
-            return;
-        }
-
-        if (!_readerLazy.IsValueCreated)
-        {
-            Console.WriteLine("[FingerDetection] DEBUG: Reader not created yet");
-            return;
-        }
-
-        try
-        {
-            // Obtener estado actual del lector
-            var rc = Reader.GetStatus();
-            if (rc != DPUruNet.Constants.ResultCode.DP_SUCCESS)
-            {
-                Console.WriteLine($"[FingerDetection] DEBUG: GetStatus failed with code: {rc}");
-                return;
-            }
-
-            var status = Reader.Status;
-            if (status == null)
-            {
-                Console.WriteLine("[FingerDetection] DEBUG: Status is null");
-                return;
-            }
-
-            var currentFingerDetected = status.FingerDetected;
-
-            // Log periódico del valor actual (cada 5 segundos aprox, solo cuando cambia)
-            if (currentFingerDetected != _lastFingerDetected)
-            {
-                Console.WriteLine($"[FingerDetection] DEBUG: FingerDetected value changed from {_lastFingerDetected} to {currentFingerDetected}");
-            }
-
-            // Detectar cambio de estado
-            if (currentFingerDetected != _lastFingerDetected)
-            {
-                var isDetected = currentFingerDetected > 0;
-                var wasDetected = _lastFingerDetected > 0;
-
-                // Emitir evento solo en cambios de estado binario (presente/ausente)
-                if (isDetected != wasDetected)
-                {
-                    Console.WriteLine($"[FingerDetection] {(isDetected ? "✋ FINGER PLACED" : "👋 FINGER REMOVED")} (value: {currentFingerDetected})");
-                    OnFingerDetectionChanged?.Invoke(isDetected, currentFingerDetected);
-                }
-
-                _lastFingerDetected = currentFingerDetected;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[FingerDetection] Error polling status: {ex.Message}");
-            Console.WriteLine($"[FingerDetection] Stack trace: {ex.StackTrace}");
-        }
-    }
-
     public void Dispose()
     {
-        StopFingerDetectionMonitoring();
         try
         {
             if (_subscribed) { Reader.On_Captured -= OnCaptured; _subscribed = false; }

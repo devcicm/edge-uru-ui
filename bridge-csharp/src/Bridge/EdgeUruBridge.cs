@@ -200,21 +200,6 @@ namespace EdgeBridge
                             }
                         };
 
-                        // Evento: Detección de dedo (finger placed/removed)
-                        _reader.OnFingerDetectionChanged += (isDetected, detectionValue) =>
-                        {
-                            if (isDetected)
-                            {
-                                SendEvent("FINGER_PLACED", "Dedo detectado en el sensor", "INFO",
-                                    new { fingerDetected = true, detectionValue });
-                            }
-                            else
-                            {
-                                SendEvent("FINGER_REMOVED", "Dedo retirado del sensor", "INFO",
-                                    new { fingerDetected = false, detectionValue });
-                            }
-                        };
-
                         _reader.Init();
 
                         SendEvent("READER_READY", "Lector biométrico inicializado y listo", "SUCCESS",
@@ -853,52 +838,6 @@ namespace EdgeBridge
                     }
                     SendEvent("READER_DISPOSED", "Lector liberado", "INFO");
                     return new { ok = true, message = "Reader disposed" };
-                }
-
-                case "startFingerMonitoring":
-                {
-                    if (_reader == null)
-                    {
-                        var error = "Reader not initialized. Call 'init' first.";
-                        SendEvent("SYSTEM_ERROR", error, "ERROR");
-                        return new { ok = false, error };
-                    }
-
-                    try
-                    {
-                        int pollIntervalMs = (int?)input?.pollIntervalMs ?? 200;
-                        _reader.StartFingerDetectionMonitoring(pollIntervalMs);
-                        SendEvent("FINGER_MONITORING_STARTED", $"Monitoreo de dedo iniciado (polling: {pollIntervalMs}ms)", "SUCCESS",
-                            new { pollIntervalMs });
-                        return new { ok = true, message = "Finger detection monitoring started", pollIntervalMs };
-                    }
-                    catch (Exception ex)
-                    {
-                        SendEvent("SYSTEM_ERROR", $"Error starting finger monitoring: {ex.Message}", "ERROR");
-                        return new { ok = false, error = ex.Message };
-                    }
-                }
-
-                case "stopFingerMonitoring":
-                {
-                    if (_reader == null)
-                    {
-                        var error = "Reader not initialized. Call 'init' first.";
-                        SendEvent("SYSTEM_ERROR", error, "ERROR");
-                        return new { ok = false, error };
-                    }
-
-                    try
-                    {
-                        _reader.StopFingerDetectionMonitoring();
-                        SendEvent("FINGER_MONITORING_STOPPED", "Monitoreo de dedo detenido", "INFO");
-                        return new { ok = true, message = "Finger detection monitoring stopped" };
-                    }
-                    catch (Exception ex)
-                    {
-                        SendEvent("SYSTEM_ERROR", $"Error stopping finger monitoring: {ex.Message}", "ERROR");
-                        return new { ok = false, error = ex.Message };
-                    }
                 }
 
                 case "getReaderInfo":

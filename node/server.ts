@@ -195,19 +195,6 @@ app.get("/api/store-stats", async (_, res) => {
   catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
-app.post("/api/start-finger-monitoring", async (req, res) => {
-  try {
-    const pollIntervalMs = req.body?.pollIntervalMs ?? 200;
-    res.json(await call({ op: "startFingerMonitoring", pollIntervalMs }));
-  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
-});
-
-app.post("/api/stop-finger-monitoring", async (_, res) => {
-  try { res.json(await call({ op: "stopFingerMonitoring" })); }
-  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
-});
-
-
 // Static file serving - MUST be after API routes
 const sourcePublicDir = path.join(__dirname, "..", "public");
 console.log(`[STATIC ROUTES] Serving static files from: ${sourcePublicDir}`);
