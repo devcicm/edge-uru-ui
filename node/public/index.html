@@ -752,15 +752,36 @@
                     <p><strong>Haz clic en cualquier dedo para enrolar</strong></p>
                 </div>
 
-                <!-- Selector de Usuario -->
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Usuario:</label>
-                    <input type="text"
-                           class="component-input"
-                           id="fingerUserId"
-                           placeholder="Ingrese ID de usuario para enrolar"
-                           maxlength="50"
-                           style="width: 100%;">
+                <!-- Selector de Usuario con Dropdown -->
+                <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Usuario:</label>
+                        <input type="text"
+                               class="component-input"
+                               id="fingerUserId"
+                               placeholder="Ingrese ID de usuario para enrolar"
+                               maxlength="50"
+                               style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Cargar Usuario:</label>
+                        <select class="component-input" id="fingerUserSelector" style="width: 100%;">
+                            <option value="">-- Seleccionar --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Indicador de progreso de usuario -->
+                <div id="fingerUserProgress" style="display: none; margin-bottom: 15px; padding: 10px; background: #f0f9ff; border: 2px solid #0284c7; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600; color: #0c4a6e;">👤 <span id="fingerUserProgressName"></span></span>
+                        <span style="font-size: 14px; color: #0369a1;">
+                            <span id="fingerUserProgressCount">0</span>/10 dedos
+                        </span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #e0f2fe; border-radius: 4px; margin-top: 8px; overflow: hidden;">
+                        <div id="fingerUserProgressBar" style="height: 100%; background: linear-gradient(90deg, #0ea5e9, #0284c7); width: 0%; transition: width 0.3s ease;"></div>
+                    </div>
                 </div>
 
                 <!-- Visualización Interactiva de Manos (Estilo SDK DigitalPersona) -->
@@ -817,12 +838,24 @@
                     🖐️ Enrolar TODOS los Dedos (10 Completos)
                 </button>
 
+                <button class="btn btn-primary" id="btnCompleteMissing" style="display: none;">
+                    ⚡ Completar Dedos Faltantes
+                </button>
+
+                <button class="btn btn-warning" id="btnRecaptureFinger" style="display: none;">
+                    🔄 Re-Capturar Dedo Seleccionado
+                </button>
+
                 <button class="btn btn-success" id="btnVerifyFinger">
                     ✅ Verificar Dedo Seleccionado
                 </button>
 
                 <button class="btn btn-warning" id="btnIdentifyFinger">
                     🔍 Identificar Dedo (Buscar)
+                </button>
+
+                <button class="btn btn-secondary" id="btnToggleView">
+                    👥 Ver Todos los Usuarios
                 </button>
 
                 <button class="btn btn-secondary" id="btnRefreshFingers">
@@ -834,6 +867,37 @@
                     <h4 style="margin-bottom: 10px;">Dedos Enrolados</h4>
                     <div id="fingersListContent" style="max-height: 200px; overflow-y: auto;">
                         <p style="text-align: center; color: var(--gray-600);">No hay dedos enrolados</p>
+                    </div>
+                </div>
+
+                <!-- Instrucciones (Estilo SDK DigitalPersona) -->
+                <div style="margin-top: 20px; padding: 15px; background: #f0f9ff; border: 2px solid #0284c7; border-radius: 8px;">
+                    <h4 style="margin-bottom: 12px; color: #0c4a6e; font-size: 14px;">📋 Instrucciones de Uso</h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">1</span>
+                            <span style="font-size: 12px; line-height: 20px;">Ingresa ID de usuario o selecciona uno existente del dropdown</span>
+                        </div>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">2</span>
+                            <span style="font-size: 12px; line-height: 20px;"><strong>HAZ CLIC</strong> en cualquier dedo amarillo ⭕ para enrolarlo</span>
+                        </div>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">3</span>
+                            <span style="font-size: 12px; line-height: 20px;">Orden recomendado: 🫲 Mano Izquierda (1-5) → 🫱 Mano Derecha (6-10)</span>
+                        </div>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">4</span>
+                            <span style="font-size: 12px; line-height: 20px;">Coloca el dedo 4 veces cuando se active la captura</span>
+                        </div>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">5</span>
+                            <span style="font-size: 12px; line-height: 20px;">Dedos: Verde ✅ = Enrolado | Rojo ❌ = Error | Amarillo ⭕ = Pendiente</span>
+                        </div>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">6</span>
+                            <span style="font-size: 12px; line-height: 20px;"><strong>RE-CAPTURAR</strong>: Clic en dedo verde ✅ → Presiona botón "🔄 Re-Capturar"</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -866,7 +930,12 @@
                 currentOperation: null,
                 techDeviceInfo: null,
                 fingerEnrolled: {},
-                isEnrollingFinger: false
+                failedFingers: {},
+                isEnrollingFinger: false,
+                viewMode: 'single', // 'single' or 'multiple'
+                availableUsers: [],
+                selectedHand: 'LEFT',
+                selectedFinger: 'THUMB'
             };
 
             // ==========================================
@@ -975,6 +1044,11 @@
 
                 // Finger Management (Estilo SDK DigitalPersona)
                 fingerUserId: document.getElementById('fingerUserId'),
+                fingerUserSelector: document.getElementById('fingerUserSelector'),
+                fingerUserProgress: document.getElementById('fingerUserProgress'),
+                fingerUserProgressName: document.getElementById('fingerUserProgressName'),
+                fingerUserProgressCount: document.getElementById('fingerUserProgressCount'),
+                fingerUserProgressBar: document.getElementById('fingerUserProgressBar'),
                 handsVisualization: document.getElementById('handsVisualization'),
                 fingerHand: document.getElementById('fingerHand'),
                 fingerType: document.getElementById('fingerType'),
@@ -985,8 +1059,11 @@
                 fingerProgressBar: document.getElementById('fingerProgressBar'),
                 fingerStatus: document.getElementById('fingerStatus'),
                 btnEnrollAllFingers: document.getElementById('btnEnrollAllFingers'),
+                btnCompleteMissing: document.getElementById('btnCompleteMissing'),
+                btnRecaptureFinger: document.getElementById('btnRecaptureFinger'),
                 btnVerifyFinger: document.getElementById('btnVerifyFinger'),
                 btnIdentifyFinger: document.getElementById('btnIdentifyFinger'),
+                btnToggleView: document.getElementById('btnToggleView'),
                 btnRefreshFingers: document.getElementById('btnRefreshFingers'),
                 fingersListContent: document.getElementById('fingersListContent'),
                 fingerDots: [
