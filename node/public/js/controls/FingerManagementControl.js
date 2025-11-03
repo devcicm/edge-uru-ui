@@ -90,18 +90,18 @@ class FingerManagementControl extends BaseComponent {
                 </div>
 
                 <!-- Selectores de Mano y Dedo (Sincronizados con clic) -->
-                <div class="selector-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                <div id="selectorContainer-${this.containerId}" class="selector-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; padding: 15px; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb; transition: all 0.3s ease;">
                     <div class="component-input-group">
-                        <label><strong>Mano Seleccionada:</strong></label>
-                        <select class="component-input" id="fingerHand-${this.containerId}" disabled>
+                        <label id="handLabel-${this.containerId}" style="font-weight: 600; transition: all 0.3s ease;"><strong>Mano Seleccionada:</strong></label>
+                        <select class="component-input" id="fingerHand-${this.containerId}" disabled style="font-weight: 600;">
                             <option value="LEFT">👈 Izquierda</option>
                             <option value="RIGHT">👉 Derecha</option>
                         </select>
                     </div>
 
                     <div class="component-input-group">
-                        <label><strong>Dedo Seleccionado:</strong></label>
-                        <select class="component-input" id="fingerType-${this.containerId}" disabled>
+                        <label id="fingerLabel-${this.containerId}" style="font-weight: 600; transition: all 0.3s ease;"><strong>Dedo Seleccionado:</strong></label>
+                        <select class="component-input" id="fingerType-${this.containerId}" disabled style="font-weight: 600;">
                             <option value="THUMB">👍 Pulgar</option>
                             <option value="INDEX">☝️ Índice</option>
                             <option value="MIDDLE">🖕 Medio</option>
@@ -222,6 +222,9 @@ class FingerManagementControl extends BaseComponent {
         this.userProgressName = this.container.querySelector(`#userProgressName-${this.containerId}`);
         this.userProgressCount = this.container.querySelector(`#userProgressCount-${this.containerId}`);
         this.userProgressBar = this.container.querySelector(`#userProgressBar-${this.containerId}`);
+        this.selectorContainer = this.container.querySelector(`#selectorContainer-${this.containerId}`);
+        this.handLabel = this.container.querySelector(`#handLabel-${this.containerId}`);
+        this.fingerLabel = this.container.querySelector(`#fingerLabel-${this.containerId}`);
         this.handSelect = this.container.querySelector(`#fingerHand-${this.containerId}`);
         this.fingerSelect = this.container.querySelector(`#fingerType-${this.containerId}`);
         this.handsVisualization = this.container.querySelector(`#handsVisualization-${this.containerId}`);
@@ -450,6 +453,7 @@ class FingerManagementControl extends BaseComponent {
 
         try {
             this.isProcessing = true;
+            this._updateSelectorLabels('enrolling'); // Indicar que está capturando
             this._updateStatus('info', `📝 Enrolando ${this.FINGERS[finger].label} de mano ${hand === 'LEFT' ? 'izquierda' : 'derecha'}...`);
 
             // Mostrar progreso
@@ -472,6 +476,7 @@ class FingerManagementControl extends BaseComponent {
             this._updateStatus('error', `❌ ${error.message}`);
         } finally {
             this.isProcessing = false;
+            this._updateSelectorLabels('idle'); // Restaurar a estado normal
         }
     }
 
@@ -490,6 +495,7 @@ class FingerManagementControl extends BaseComponent {
         const tag = this._generateTag(userId, hand, finger);
 
         try {
+            this._updateSelectorLabels('verifying'); // Indicar que está verificando
             this._updateStatus('info', `🔍 Verificando ${this.FINGERS[finger].label}...`);
 
             const result = await this.adapter.verifyFingerprint(tag, 4);
@@ -516,6 +522,8 @@ class FingerManagementControl extends BaseComponent {
         } catch (error) {
             console.error('[FingerManagement] Error:', error);
             this._updateStatus('error', `❌ ${error.message}`);
+        } finally {
+            this._updateSelectorLabels('idle'); // Restaurar a estado normal
         }
     }
 
@@ -524,6 +532,7 @@ class FingerManagementControl extends BaseComponent {
      */
     async identifyFinger() {
         try {
+            this._updateSelectorLabels('identifying'); // Indicar que está identificando
             this._updateStatus('info', '🔎 Identificando usuario y dedo... Coloca el dedo en el lector');
 
             const result = await this.adapter.identifyFingerprint(4);
@@ -573,6 +582,8 @@ class FingerManagementControl extends BaseComponent {
         } catch (error) {
             console.error('[FingerManagement] Error en identificación:', error);
             this._updateStatus('error', `❌ Error: ${error.message}`);
+        } finally {
+            this._updateSelectorLabels('idle'); // Restaurar a estado normal
         }
     }
 
@@ -1300,6 +1311,7 @@ class FingerManagementControl extends BaseComponent {
 
         try {
             this.isProcessing = true;
+            this._updateSelectorLabels('recapturing'); // Indicar que está re-capturando
             this._updateStatus('warning',
                 `🔄 RE-CAPTURANDO: ${fingerInfo.emoji} ${fingerInfo.label} Mano ${handLabel} (Sobrescribiendo huella anterior)`);
 
@@ -1331,6 +1343,7 @@ class FingerManagementControl extends BaseComponent {
             this._updateStatus('error', `❌ Error: ${error.message}`);
         } finally {
             this.isProcessing = false;
+            this._updateSelectorLabels('idle'); // Restaurar a estado normal
         }
     }
 
@@ -1357,6 +1370,62 @@ class FingerManagementControl extends BaseComponent {
         } else {
             this.btnRecapture.style.display = 'none';
         }
+    }
+
+    /**
+     * Actualizar labels y estilos de selectores según operación
+     * @param {string} operation - 'idle', 'enrolling', 'recapturing', 'verifying', 'identifying'
+     */
+    _updateSelectorLabels(operation = 'idle') {
+        const operations = {
+            idle: {
+                handLabel: '<strong>Mano Seleccionada:</strong>',
+                fingerLabel: '<strong>Dedo Seleccionado:</strong>',
+                bgColor: '#f9fafb',
+                borderColor: '#e5e7eb',
+                textColor: '#374151'
+            },
+            enrolling: {
+                handLabel: '<strong>📝 CAPTURANDO Mano:</strong>',
+                fingerLabel: '<strong>📝 CAPTURANDO Dedo:</strong>',
+                bgColor: '#dbeafe',
+                borderColor: '#3b82f6',
+                textColor: '#1e40af'
+            },
+            recapturing: {
+                handLabel: '<strong>🔄 RE-CAPTURANDO Mano:</strong>',
+                fingerLabel: '<strong>🔄 RE-CAPTURANDO Dedo:</strong>',
+                bgColor: '#fef3c7',
+                borderColor: '#f59e0b',
+                textColor: '#92400e'
+            },
+            verifying: {
+                handLabel: '<strong>✅ VERIFICANDO Mano:</strong>',
+                fingerLabel: '<strong>✅ VERIFICANDO Dedo:</strong>',
+                bgColor: '#dcfce7',
+                borderColor: '#22c55e',
+                textColor: '#166534'
+            },
+            identifying: {
+                handLabel: '<strong>🔍 IDENTIFICANDO Mano:</strong>',
+                fingerLabel: '<strong>🔍 IDENTIFICANDO Dedo:</strong>',
+                bgColor: '#f3e8ff',
+                borderColor: '#a855f7',
+                textColor: '#6b21a8'
+            }
+        };
+
+        const config = operations[operation] || operations.idle;
+
+        // Actualizar labels
+        this.handLabel.innerHTML = config.handLabel;
+        this.fingerLabel.innerHTML = config.fingerLabel;
+
+        // Actualizar estilos del contenedor
+        this.selectorContainer.style.background = config.bgColor;
+        this.selectorContainer.style.borderColor = config.borderColor;
+        this.handLabel.style.color = config.textColor;
+        this.fingerLabel.style.color = config.textColor;
     }
 
     /**
