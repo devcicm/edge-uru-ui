@@ -286,15 +286,23 @@ class FingerManagementControl extends BaseComponent {
     _setupEvents() {
         // Eventos de enrolamiento
         this.adapter.on('SAMPLE_COLLECTED', (data) => {
-            if (this.isProcessing) {
+            // Procesar si hay una operación activa (individual o múltiple)
+            if (this.isProcessing || this.isEnrollingAll) {
                 const sampleNum = data.data?.sampleNumber || data.sampleNumber || 1;
+
+                // Asegurar que la barra de progreso sea visible
+                if (this.fingerProgress.style.display !== 'block') {
+                    this.fingerProgress.style.display = 'block';
+                }
+
                 this._updateProgress(sampleNum, 4);
                 this._updateStatus('info', `✅ Muestra ${sampleNum}/4 capturada`);
             }
         });
 
         this.adapter.on('IMAGE_CAPTURED', (data) => {
-            if (this.isProcessing) {
+            // Procesar si hay una operación activa
+            if (this.isProcessing || this.isEnrollingAll) {
                 const imageBase64 = data.data?.imageBase64 || data.imageBase64;
                 if (imageBase64) {
                     this._showImage(imageBase64);
@@ -303,9 +311,14 @@ class FingerManagementControl extends BaseComponent {
         });
 
         this.adapter.on('ENROLLMENT_COMPLETED', (data) => {
-            if (this.isProcessing) {
+            // Procesar si hay una operación activa
+            if (this.isProcessing || this.isEnrollingAll) {
                 this._updateProgress(4, 4);
-                this._updateStatus('success', '🎉 Dedo enrolado exitosamente');
+
+                // Solo mostrar mensaje de éxito si NO es parte de enrollAllFingers
+                if (!this.isEnrollingAll) {
+                    this._updateStatus('success', '🎉 Dedo enrolado exitosamente');
+                }
 
                 // Actualizar enrolledFingers inmediatamente para actualización en tiempo real
                 const userId = this.userIdInput.value.trim();
@@ -328,17 +341,23 @@ class FingerManagementControl extends BaseComponent {
                     this._updateUserProgress();
                 }
 
-                setTimeout(() => {
-                    this.fingerProgress.style.display = 'none';
-                    this._loadEnrolledFingers();
-                }, 2000);
+                // Solo ocultar progreso automáticamente si NO es parte de enrollAllFingers
+                if (!this.isEnrollingAll) {
+                    setTimeout(() => {
+                        this.fingerProgress.style.display = 'none';
+                        this._loadEnrolledFingers();
+                    }, 2000);
+                }
             }
         });
 
         this.adapter.on('ENROLLMENT_FAILED', (data) => {
-            if (this.isProcessing) {
-                this._updateStatus('error', `❌ ${data.message || 'Error en enrolamiento'}`);
-                this.fingerProgress.style.display = 'none';
+            if (this.isProcessing || this.isEnrollingAll) {
+                // Solo mostrar error si NO es parte de enrollAllFingers (se maneja en FINGER_ENROLLMENT_FAILED)
+                if (!this.isEnrollingAll) {
+                    this._updateStatus('error', `❌ ${data.message || 'Error en enrolamiento'}`);
+                    this.fingerProgress.style.display = 'none';
+                }
             }
         });
 
@@ -373,6 +392,11 @@ class FingerManagementControl extends BaseComponent {
             // Actualizar visualización EN TIEMPO REAL ✅
             this._updateVisualization();
             this._updateEnrolledList();
+
+            // Resetear progreso para el siguiente dedo (solo en enrollAllFingers)
+            if (this.isEnrollingAll) {
+                this._updateProgress(0, 4);
+            }
         });
 
         // Evento de error en enrolamiento de dedo durante enrollAllFingers
@@ -610,6 +634,10 @@ class FingerManagementControl extends BaseComponent {
             this.isEnrollingAll = true;
             this._updateStatus('info', `📝 Iniciando enrolamiento completo de 10 dedos para: ${userId}`);
 
+            // Mostrar barra de progreso para ver las 4 muestras de cada dedo
+            this.fingerProgress.style.display = 'block';
+            this._updateProgress(0, 4);
+
             // ⚡ UNA SOLA LLAMADA AL BACKEND - El backend maneja toda la captura
             const result = await this.adapter.enrollAllFingers(userId);
 
@@ -650,6 +678,8 @@ class FingerManagementControl extends BaseComponent {
         } finally {
             this.isProcessing = false;
             this.isEnrollingAll = false;
+            // Ocultar barra de progreso al finalizar
+            this.fingerProgress.style.display = 'none';
         }
     }
 
@@ -1344,6 +1374,10 @@ class FingerManagementControl extends BaseComponent {
         } finally {
             this.isProcessing = false;
             this._updateSelectorLabels('idle'); // Restaurar a estado normal
+            // Ocultar barra de progreso después de completar (con delay para ver resultado)
+            setTimeout(() => {
+                this.fingerProgress.style.display = 'none';
+            }, 2000);
         }
     }
 
