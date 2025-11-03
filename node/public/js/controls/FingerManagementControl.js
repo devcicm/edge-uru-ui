@@ -30,6 +30,8 @@ class FingerManagementControl extends BaseComponent {
         this.failedFingers = {}; // { userId: { LEFT: {THUMB: 'error msg', ...}, RIGHT: {...} } }
         this.isProcessing = false;
         this.isEnrollingAll = false; // Flag específico para enrollAllFingers
+        this.viewMode = 'single'; // 'single' or 'multiple'
+        this.availableUsers = []; // Lista de usuarios almacenados
 
         // Renderizar visualización inicial (ahora que this.FINGERS está definido)
         this._updateVisualization();
@@ -51,13 +53,34 @@ class FingerManagementControl extends BaseComponent {
                 </div>
 
                 <!-- Selector de Usuario -->
-                <div class="component-input-group">
-                    <label><strong>Usuario:</strong></label>
-                    <input type="text"
-                           class="component-input"
-                           id="fingerUserId-${this.containerId}"
-                           placeholder="Ingrese ID de usuario para enrolar"
-                           maxlength="50">
+                <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: 10px;">
+                    <div class="component-input-group" style="margin: 0;">
+                        <label><strong>Usuario:</strong></label>
+                        <input type="text"
+                               class="component-input"
+                               id="fingerUserId-${this.containerId}"
+                               placeholder="Ingrese ID de usuario para enrolar"
+                               maxlength="50">
+                    </div>
+                    <div class="component-input-group" style="margin: 0;">
+                        <label><strong>Cargar Usuario:</strong></label>
+                        <select class="component-input" id="userSelector-${this.containerId}">
+                            <option value="">-- Seleccionar --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Indicador de progreso de usuario -->
+                <div id="userProgress-${this.containerId}" style="display: none; margin-bottom: 10px; padding: 10px; background: #f0f9ff; border: 2px solid #0284c7; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600; color: #0c4a6e;">👤 <span id="userProgressName-${this.containerId}"></span></span>
+                        <span style="font-size: 14px; color: #0369a1;">
+                            <span id="userProgressCount-${this.containerId}">0</span>/10 dedos
+                        </span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #e0f2fe; border-radius: 4px; margin-top: 8px; overflow: hidden;">
+                        <div id="userProgressBar-${this.containerId}" style="height: 100%; background: linear-gradient(90deg, #0ea5e9, #0284c7); width: 0%; transition: width 0.3s ease;"></div>
+                    </div>
                 </div>
 
                 <!-- Visualización Interactiva de Manos (Estilo SDK DigitalPersona) -->
@@ -124,11 +147,17 @@ class FingerManagementControl extends BaseComponent {
                     <button class="btn-primary" id="btnEnrollAllFingers-${this.containerId}" style="font-size: 16px; font-weight: bold;">
                         🖐️ Enrolar TODOS los Dedos (10 Completos)
                     </button>
+                    <button class="btn-info" id="btnCompleteMissing-${this.containerId}" style="display: none;">
+                        ⚡ Completar Dedos Faltantes
+                    </button>
                     <button class="btn-success" id="btnVerifyFinger-${this.containerId}">
                         ✅ Verificar Dedo Seleccionado
                     </button>
                     <button class="btn-warning" id="btnIdentifyFinger-${this.containerId}">
                         🔍 Identificar Dedo (Buscar)
+                    </button>
+                    <button class="btn-secondary" id="btnToggleView-${this.containerId}">
+                        👥 Ver Todos los Usuarios
                     </button>
                     <button class="btn-secondary" id="btnRefreshFingers-${this.containerId}">
                         🔄 Refrescar Lista
@@ -180,6 +209,11 @@ class FingerManagementControl extends BaseComponent {
     _setupDOM() {
         // Referencias DOM
         this.userIdInput = this.container.querySelector(`#fingerUserId-${this.containerId}`);
+        this.userSelector = this.container.querySelector(`#userSelector-${this.containerId}`);
+        this.userProgressDiv = this.container.querySelector(`#userProgress-${this.containerId}`);
+        this.userProgressName = this.container.querySelector(`#userProgressName-${this.containerId}`);
+        this.userProgressCount = this.container.querySelector(`#userProgressCount-${this.containerId}`);
+        this.userProgressBar = this.container.querySelector(`#userProgressBar-${this.containerId}`);
         this.handSelect = this.container.querySelector(`#fingerHand-${this.containerId}`);
         this.fingerSelect = this.container.querySelector(`#fingerType-${this.containerId}`);
         this.handsVisualization = this.container.querySelector(`#handsVisualization-${this.containerId}`);
@@ -195,19 +229,36 @@ class FingerManagementControl extends BaseComponent {
 
         // Botones
         this.btnEnrollAll = this.container.querySelector(`#btnEnrollAllFingers-${this.containerId}`);
+        this.btnCompleteMissing = this.container.querySelector(`#btnCompleteMissing-${this.containerId}`);
         this.btnVerify = this.container.querySelector(`#btnVerifyFinger-${this.containerId}`);
         this.btnIdentify = this.container.querySelector(`#btnIdentifyFinger-${this.containerId}`);
+        this.btnToggleView = this.container.querySelector(`#btnToggleView-${this.containerId}`);
         this.btnRefresh = this.container.querySelector(`#btnRefreshFingers-${this.containerId}`);
 
         // Event listeners
-        this.userIdInput.addEventListener('input', () => this._updateVisualization());
+        this.userIdInput.addEventListener('input', () => {
+            this._updateVisualization();
+            this._updateUserProgress();
+        });
+
+        this.userSelector.addEventListener('change', (e) => {
+            const userId = e.target.value;
+            if (userId) {
+                this.userIdInput.value = userId;
+                this._updateVisualization();
+                this._updateUserProgress();
+                this._updateStatus('info', `📋 Usuario cargado: ${userId}`);
+            }
+        });
 
         // Los selectores ahora se actualizan automáticamente al hacer clic en dedos
         // (disabled, solo para visualización)
 
         this.btnEnrollAll.addEventListener('click', () => this.enrollAllFingers());
+        this.btnCompleteMissing.addEventListener('click', () => this.completeMissingFingers());
         this.btnVerify.addEventListener('click', () => this.verifyFinger());
         this.btnIdentify.addEventListener('click', () => this.identifyFinger());
+        this.btnToggleView.addEventListener('click', () => this._toggleViewMode());
         this.btnRefresh.addEventListener('click', () => this._loadEnrolledFingers());
 
         // NO renderizar aquí - se hace al final del constructor
@@ -239,6 +290,28 @@ class FingerManagementControl extends BaseComponent {
             if (this.isProcessing) {
                 this._updateProgress(4, 4);
                 this._updateStatus('success', '🎉 Dedo enrolado exitosamente');
+
+                // Actualizar enrolledFingers inmediatamente para actualización en tiempo real
+                const userId = this.userIdInput.value.trim();
+                const hand = this.selectedHand;
+                const finger = this.selectedFinger;
+
+                if (userId && hand && finger) {
+                    if (!this.enrolledFingers[userId]) {
+                        this.enrolledFingers[userId] = { LEFT: {}, RIGHT: {} };
+                    }
+                    this.enrolledFingers[userId][hand][finger] = true;
+
+                    // Limpiar error si existía
+                    if (this.failedFingers[userId]?.[hand]?.[finger]) {
+                        delete this.failedFingers[userId][hand][finger];
+                    }
+
+                    // Actualizar visualización EN TIEMPO REAL
+                    this._updateVisualization();
+                    this._updateUserProgress();
+                }
+
                 setTimeout(() => {
                     this.fingerProgress.style.display = 'none';
                     this._loadEnrolledFingers();
@@ -557,6 +630,239 @@ class FingerManagementControl extends BaseComponent {
     }
 
     /**
+     * Completar dedos faltantes de un usuario (enrolar solo los que faltan)
+     */
+    async completeMissingFingers() {
+        const userId = this.userIdInput.value.trim();
+
+        if (!userId) {
+            this._updateStatus('error', '⚠️ Debes ingresar un ID de usuario primero');
+            this.userIdInput.focus();
+            return;
+        }
+
+        if (this.isProcessing) {
+            this._updateStatus('warning', '⚠️ Operación en progreso, espera a que termine');
+            return;
+        }
+
+        // Obtener dedos enrolados del usuario
+        const userHands = this.enrolledFingers[userId];
+        if (!userHands) {
+            this._updateStatus('error', `⚠️ El usuario ${userId} no tiene dedos enrolados. Usa "Enrolar TODOS los Dedos" primero.`);
+            return;
+        }
+
+        // Calcular dedos faltantes
+        const missingFingers = [];
+        ['LEFT', 'RIGHT'].forEach(hand => {
+            Object.keys(this.FINGERS).forEach(finger => {
+                if (!userHands[hand]?.[finger]) {
+                    missingFingers.push({ hand, finger });
+                }
+            });
+        });
+
+        if (missingFingers.length === 0) {
+            this._updateStatus('success', `✅ ¡Perfecto! El usuario ${userId} ya tiene todos los dedos enrolados (10/10)`);
+            return;
+        }
+
+        this._updateStatus('info', `🔄 Enrolando ${missingFingers.length} dedos faltantes para: ${userId}`);
+        console.log(`[FingerManagement] Dedos faltantes:`, missingFingers);
+
+        try {
+            this.isProcessing = true;
+            this.isEnrollingAll = true;
+
+            // Enrolar cada dedo faltante
+            for (let i = 0; i < missingFingers.length; i++) {
+                const { hand, finger } = missingFingers[i];
+                const tag = this._generateTag(userId, hand, finger);
+                const fingerInfo = this.FINGERS[finger];
+                const handLabel = hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+
+                this._updateStatus('info',
+                    `📝 [${i + 1}/${missingFingers.length}] Enrolando ${fingerInfo.emoji} ${fingerInfo.label} Mano ${handLabel}...`);
+
+                // Actualizar selectores para mostrar progreso
+                this.selectedHand = hand;
+                this.selectedFinger = finger;
+                this.handSelect.value = hand;
+                this.fingerSelect.value = finger;
+
+                // Mostrar progreso
+                this.fingerProgress.style.display = 'block';
+                this._updateProgress(0, 4);
+
+                try {
+                    const result = await this.adapter.enrollFingerprint(tag);
+
+                    if (result.ok) {
+                        // Actualizar enrolledFingers inmediatamente
+                        this.enrolledFingers[userId][hand][finger] = true;
+
+                        // Limpiar error si existía
+                        if (this.failedFingers[userId]?.[hand]?.[finger]) {
+                            delete this.failedFingers[userId][hand][finger];
+                        }
+
+                        // Actualizar visualización EN TIEMPO REAL
+                        this._updateVisualization();
+                        this._updateUserProgress();
+
+                        this._updateStatus('success',
+                            `✅ [${i + 1}/${missingFingers.length}] ${fingerInfo.emoji} ${fingerInfo.label} Mano ${handLabel} enrolado`);
+                    } else {
+                        // Registrar error
+                        if (!this.failedFingers[userId]) {
+                            this.failedFingers[userId] = { LEFT: {}, RIGHT: {} };
+                        }
+                        this.failedFingers[userId][hand][finger] = result.error || 'Error desconocido';
+
+                        this._updateStatus('error',
+                            `❌ [${i + 1}/${missingFingers.length}] Error en ${fingerInfo.emoji} ${fingerInfo.label}: ${result.error}`);
+                    }
+
+                    // Pequeña pausa entre dedos
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                } catch (error) {
+                    console.error(`[FingerManagement] Error enrolando ${tag}:`, error);
+                    this._updateStatus('error', `❌ Error: ${error.message}`);
+                }
+            }
+
+            // Resumen final
+            const successCount = missingFingers.filter(({ hand, finger }) =>
+                this.enrolledFingers[userId][hand][finger]
+            ).length;
+            const failedCount = missingFingers.length - successCount;
+
+            if (failedCount === 0) {
+                this._updateStatus('success',
+                    `🎉 ¡COMPLETADO! ${successCount} dedos faltantes enrolados exitosamente`);
+            } else {
+                this._updateStatus('warning',
+                    `⚠️ PARCIAL: ${successCount}/${missingFingers.length} dedos enrolados. ${failedCount} fallaron. Haz clic en dedos rojos para reintentar.`);
+            }
+
+            // Recargar lista
+            await this._loadEnrolledFingers();
+
+        } catch (error) {
+            console.error('[FingerManagement] Error en completeMissingFingers:', error);
+            this._updateStatus('error', `❌ Error: ${error.message}`);
+        } finally {
+            this.isProcessing = false;
+            this.isEnrollingAll = false;
+            this.fingerProgress.style.display = 'none';
+        }
+    }
+
+    /**
+     * Alternar entre modo single y multiple
+     */
+    _toggleViewMode() {
+        this.viewMode = this.viewMode === 'single' ? 'multiple' : 'single';
+
+        if (this.viewMode === 'multiple') {
+            this.btnToggleView.textContent = '👤 Ver Usuario Individual';
+            this.btnToggleView.classList.remove('btn-secondary');
+            this.btnToggleView.classList.add('btn-info');
+            this._updateStatus('info', '👥 Modo múltiples usuarios activado');
+        } else {
+            this.btnToggleView.textContent = '👥 Ver Todos los Usuarios';
+            this.btnToggleView.classList.remove('btn-info');
+            this.btnToggleView.classList.add('btn-secondary');
+            this._updateStatus('info', '👤 Modo usuario individual activado');
+        }
+
+        this._updateVisualization();
+    }
+
+    /**
+     * Actualizar progreso del usuario actual
+     */
+    _updateUserProgress() {
+        const userId = this.userIdInput.value.trim();
+
+        if (!userId || !this.enrolledFingers[userId]) {
+            this.userProgressDiv.style.display = 'none';
+            this.btnCompleteMissing.style.display = 'none';
+            return;
+        }
+
+        const hands = this.enrolledFingers[userId];
+        let enrolledCount = 0;
+
+        // Contar dedos enrolados
+        ['LEFT', 'RIGHT'].forEach(hand => {
+            Object.keys(this.FINGERS).forEach(finger => {
+                if (hands[hand]?.[finger]) {
+                    enrolledCount++;
+                }
+            });
+        });
+
+        // Mostrar progreso
+        this.userProgressDiv.style.display = 'block';
+        this.userProgressName.textContent = userId;
+        this.userProgressCount.textContent = enrolledCount;
+
+        const percentage = (enrolledCount / 10) * 100;
+        this.userProgressBar.style.width = `${percentage}%`;
+
+        // Mostrar botón "Completar Faltantes" si hay dedos faltantes
+        if (enrolledCount > 0 && enrolledCount < 10) {
+            this.btnCompleteMissing.style.display = 'inline-block';
+            const missingCount = 10 - enrolledCount;
+            this.btnCompleteMissing.textContent = `⚡ Completar ${missingCount} Dedo${missingCount > 1 ? 's' : ''} Faltante${missingCount > 1 ? 's' : ''}`;
+        } else {
+            this.btnCompleteMissing.style.display = 'none';
+        }
+
+        // Cambiar color según progreso
+        if (enrolledCount === 10) {
+            this.userProgressBar.style.background = 'linear-gradient(90deg, #10b981, #059669)'; // Verde
+        } else if (enrolledCount >= 5) {
+            this.userProgressBar.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)'; // Naranja
+        } else {
+            this.userProgressBar.style.background = 'linear-gradient(90deg, #0ea5e9, #0284c7)'; // Azul
+        }
+    }
+
+    /**
+     * Actualizar selector de usuarios
+     */
+    _updateUserSelector() {
+        // Limpiar opciones actuales
+        this.userSelector.innerHTML = '<option value="">-- Seleccionar --</option>';
+
+        // Obtener lista de usuarios únicos
+        this.availableUsers = Object.keys(this.enrolledFingers).sort();
+
+        // Agregar opciones
+        this.availableUsers.forEach(userId => {
+            const hands = this.enrolledFingers[userId];
+            let enrolledCount = 0;
+
+            ['LEFT', 'RIGHT'].forEach(hand => {
+                Object.keys(this.FINGERS).forEach(finger => {
+                    if (hands[hand]?.[finger]) {
+                        enrolledCount++;
+                    }
+                });
+            });
+
+            const option = document.createElement('option');
+            option.value = userId;
+            option.textContent = `${userId} (${enrolledCount}/10)`;
+            this.userSelector.appendChild(option);
+        });
+    }
+
+    /**
      * Cargar dedos enrolados del store
      */
     async _loadEnrolledFingers() {
@@ -579,7 +885,9 @@ class FingerManagementControl extends BaseComponent {
 
                 console.log('[FingerManagement] Dedos cargados:', this.enrolledFingers);
                 this._updateEnrolledList();
+                this._updateUserSelector();
                 this._updateVisualization();
+                this._updateUserProgress();
             }
 
         } catch (error) {
@@ -626,9 +934,20 @@ class FingerManagementControl extends BaseComponent {
 
     /**
      * Actualizar visualización de manos (Estilo SDK DigitalPersona)
-     * SIEMPRE muestra las manos, incluso sin ID de usuario
+     * Soporta modo single (un usuario) y modo multiple (todos los usuarios)
      */
     _updateVisualization() {
+        if (this.viewMode === 'multiple') {
+            this._renderMultipleUsers();
+        } else {
+            this._renderSingleUser();
+        }
+    }
+
+    /**
+     * Renderizar un solo usuario (modo single)
+     */
+    _renderSingleUser() {
         const userId = this.userIdInput.value.trim();
 
         // Obtener dedos enrolados del usuario (o vacío si no existe o no hay ID)
@@ -660,9 +979,130 @@ class FingerManagementControl extends BaseComponent {
     }
 
     /**
-     * Renderizar una mano (Estilo SDK DigitalPersona - Clickeable)
+     * Renderizar múltiples usuarios (modo multiple)
      */
-    _renderHand(hand, fingers, userId) {
+    _renderMultipleUsers() {
+        const userIds = Object.keys(this.enrolledFingers).sort();
+
+        if (userIds.length === 0) {
+            this.handsVisualization.innerHTML = `
+                <div style="text-align: center; padding: 40px; background: #f9fafb; border-radius: 12px; border: 2px dashed #d1d5db;">
+                    <p style="color: #6b7280; font-size: 16px; margin: 0;">
+                        👥 No hay usuarios enrolados aún
+                    </p>
+                    <p style="color: #9ca3af; font-size: 14px; margin-top: 8px;">
+                        Cambia a modo individual para enrolar usuarios
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 30px; margin: 20px 0;">';
+
+        userIds.forEach(userId => {
+            const hands = this.enrolledFingers[userId];
+            let enrolledCount = 0;
+
+            // Contar dedos enrolados
+            ['LEFT', 'RIGHT'].forEach(hand => {
+                Object.keys(this.FINGERS).forEach(finger => {
+                    if (hands[hand]?.[finger]) {
+                        enrolledCount++;
+                    }
+                });
+            });
+
+            // Determinar color según progreso
+            let progressColor, borderColor;
+            if (enrolledCount === 10) {
+                progressColor = '#10b981'; // Verde
+                borderColor = '#059669';
+            } else if (enrolledCount >= 5) {
+                progressColor = '#f59e0b'; // Naranja
+                borderColor = '#d97706';
+            } else {
+                progressColor = '#0ea5e9'; // Azul
+                borderColor = '#0284c7';
+            }
+
+            // Contenedor del usuario
+            html += `
+                <div style="border: 3px solid ${borderColor}; border-radius: 16px; padding: 20px; background: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" data-user-container="${userId}">
+                    <!-- Header del usuario -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid ${borderColor};">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 24px;">👤</span>
+                            <div>
+                                <div style="font-weight: 700; font-size: 18px; color: #1f2937;">${userId}</div>
+                                <div style="font-size: 13px; color: #6b7280;">${enrolledCount}/10 dedos enrolados</div>
+                            </div>
+                        </div>
+                        <button
+                            class="btn-sm-info user-load-btn"
+                            data-user-id="${userId}"
+                            style="padding: 8px 16px; font-size: 13px; border-radius: 6px; cursor: pointer; background: ${progressColor}; color: white; border: none; font-weight: 600;">
+                            📂 Cargar
+                        </button>
+                    </div>
+
+                    <!-- Barra de progreso -->
+                    <div style="width: 100%; height: 10px; background: #e5e7eb; border-radius: 5px; margin-bottom: 20px; overflow: hidden;">
+                        <div style="height: 100%; background: ${progressColor}; width: ${(enrolledCount / 10) * 100}%; transition: width 0.3s ease;"></div>
+                    </div>
+
+                    <!-- Manos del usuario -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        ${this._renderHand('LEFT', hands.LEFT, userId, true)}
+                        ${this._renderHand('RIGHT', hands.RIGHT, userId, true)}
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+
+        this.handsVisualization.innerHTML = html;
+
+        // Agregar event listeners a cada dedo y botón de carga
+        this._attachFingerClickListeners();
+        this._attachUserLoadButtons();
+    }
+
+    /**
+     * Adjuntar event listeners a botones de carga de usuarios
+     */
+    _attachUserLoadButtons() {
+        const loadButtons = this.handsVisualization.querySelectorAll('.user-load-btn');
+
+        loadButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const userId = e.target.dataset.userId;
+                if (userId) {
+                    // Cambiar a modo single
+                    if (this.viewMode === 'multiple') {
+                        this._toggleViewMode();
+                    }
+
+                    // Cargar usuario
+                    this.userIdInput.value = userId;
+                    this.userSelector.value = userId;
+                    this._updateVisualization();
+                    this._updateUserProgress();
+                    this._updateStatus('info', `📂 Usuario ${userId} cargado correctamente`);
+                }
+            });
+        });
+    }
+
+    /**
+     * Renderizar una mano (Estilo SDK DigitalPersona - Clickeable)
+     * @param {string} hand - 'LEFT' or 'RIGHT'
+     * @param {Object} fingers - Object con dedos enrolados {THUMB: true, ...}
+     * @param {string} userId - ID del usuario
+     * @param {boolean} readOnly - Si true, los dedos no son clickeables (modo multiple)
+     */
+    _renderHand(hand, fingers, userId, readOnly = false) {
         const handLabel = hand === 'LEFT' ? '👈 Mano Izquierda' : '👉 Mano Derecha';
         const handEmoji = hand === 'LEFT' ? '🫲' : '🫱';
         const orderOffset = hand === 'LEFT' ? 0 : 5; // Izquierda: 1-5, Derecha: 6-10
@@ -703,7 +1143,7 @@ class FingerManagementControl extends BaseComponent {
             }
 
             html += `<div
-                class="finger-button"
+                class="${readOnly ? 'finger-display' : 'finger-button'}"
                 data-hand="${hand}"
                 data-finger="${fingerKey}"
                 style="
@@ -718,11 +1158,12 @@ class FingerManagementControl extends BaseComponent {
                     align-items: center;
                     justify-content: center;
                     font-size: 28px;
-                    cursor: pointer;
+                    cursor: ${readOnly ? 'default' : 'pointer'};
                     transition: all 0.3s ease;
                     user-select: none;
+                    ${readOnly ? 'opacity: 0.9;' : ''}
                 "
-                title="Orden #${captureOrder} - ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${hasFailed ? `❌ ERROR: ${hasFailed}\nClic para reintentar` : isEnrolled ? '✅ Ya enrolado' : '⭕ Clic para enrolar'}">
+                title="Orden #${captureOrder} - ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${hasFailed ? `❌ ERROR: ${hasFailed}${readOnly ? '' : '\nClic para reintentar'}` : isEnrolled ? '✅ Ya enrolado' : `⭕ ${readOnly ? 'Pendiente' : 'Clic para enrolar'}`}">
                 <!-- Número de orden -->
                 <span style="position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: bold; color: #6b7280; background: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border: 1px solid #e5e7eb;">${captureOrder}</span>
                 <span style="font-size: 32px;">${finger.emoji}</span>
@@ -737,20 +1178,22 @@ class FingerManagementControl extends BaseComponent {
 
     /**
      * Adjuntar event listeners a los dedos clickeables
+     * Solo los dedos con clase 'finger-button' son clickeables
      */
     _attachFingerClickListeners() {
+        // Solo dedos clickeables (no los de modo readonly)
         const fingerButtons = this.handsVisualization.querySelectorAll('.finger-button');
 
         fingerButtons.forEach(button => {
-            // Efecto hover
+            // Efecto hover solo en modo clickeable
             button.addEventListener('mouseenter', (e) => {
-                e.target.style.transform = 'scale(1.1)';
-                e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                e.currentTarget.style.transform = 'scale(1.1)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
             });
 
             button.addEventListener('mouseleave', (e) => {
-                e.target.style.transform = 'scale(1)';
-                e.target.style.boxShadow = 'none';
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
             });
 
             // Click para enrolar
