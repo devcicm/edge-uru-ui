@@ -32,6 +32,7 @@ class FingerManagementControl extends BaseComponent {
         this.isEnrollingAll = false; // Flag específico para enrollAllFingers
         this.viewMode = 'single'; // 'single' or 'multiple'
         this.availableUsers = []; // Lista de usuarios almacenados
+        this._recaptureConfirmation = null; // Flag para confirmar recaptura: { hand, finger, userId }
 
         // Renderizar visualización inicial (ahora que this.FINGERS está definido)
         this._updateVisualization();
@@ -176,7 +177,7 @@ class FingerManagementControl extends BaseComponent {
                 <div class="component-instructions">
                     <div class="instruction-item">
                         <span class="instruction-number">1</span>
-                        <span class="instruction-text">Ingresa ID de usuario arriba</span>
+                        <span class="instruction-text">Ingresa ID de usuario o selecciona uno existente del dropdown</span>
                     </div>
                     <div class="instruction-item">
                         <span class="instruction-number">2</span>
@@ -192,7 +193,11 @@ class FingerManagementControl extends BaseComponent {
                     </div>
                     <div class="instruction-item">
                         <span class="instruction-number">5</span>
-                        <span class="instruction-text">Dedos enrolados se marcarán en verde ✅</span>
+                        <span class="instruction-text">Dedos: Verde ✅ = Enrolado | Rojo ❌ = Error | Amarillo ⭕ = Pendiente</span>
+                    </div>
+                    <div class="instruction-item">
+                        <span class="instruction-number">6</span>
+                        <span class="instruction-text"><strong>RE-CAPTURAR</strong>: Haz clic 2 veces en un dedo verde ✅ para sobrescribirlo</span>
                     </div>
                 </div>
             </div>
@@ -1163,7 +1168,7 @@ class FingerManagementControl extends BaseComponent {
                     user-select: none;
                     ${readOnly ? 'opacity: 0.9;' : ''}
                 "
-                title="Orden #${captureOrder} - ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${hasFailed ? `❌ ERROR: ${hasFailed}${readOnly ? '' : '\nClic para reintentar'}` : isEnrolled ? '✅ Ya enrolado' : `⭕ ${readOnly ? 'Pendiente' : 'Clic para enrolar'}`}">
+                title="Orden #${captureOrder} - ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${hasFailed ? `❌ ERROR: ${hasFailed}${readOnly ? '' : '\nClic para reintentar'}` : isEnrolled ? `✅ Ya enrolado${readOnly ? '' : '\n🔄 Clic 2 veces para RE-CAPTURAR'}` : `⭕ ${readOnly ? 'Pendiente' : 'Clic para enrolar'}`}">
                 <!-- Número de orden -->
                 <span style="position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: bold; color: #6b7280; background: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border: 1px solid #e5e7eb;">${captureOrder}</span>
                 <span style="font-size: 32px;">${finger.emoji}</span>
@@ -1232,6 +1237,56 @@ class FingerManagementControl extends BaseComponent {
         const fingerInfo = this.FINGERS[finger];
         const handInfo = hand === 'LEFT' ? 'Izquierda' : 'Derecha';
 
+        // Verificar si el dedo ya está enrolado
+        const isAlreadyEnrolled = this.enrolledFingers[userId]?.[hand]?.[finger];
+
+        if (isAlreadyEnrolled) {
+            // RE-CAPTURA: Dedo ya enrolado, preguntar si quiere sobrescribirlo
+            this._updateStatus('warning',
+                `⚠️ ${fingerInfo.emoji} ${fingerInfo.label} Mano ${handInfo} ya está enrolado. ¿Recapturar? Click de nuevo para confirmar.`);
+
+            // Dar feedback visual temporal
+            const allFingerButtons = this.handsVisualization.querySelectorAll('.finger-button');
+            allFingerButtons.forEach(btn => {
+                if (btn.dataset.hand === hand && btn.dataset.finger === finger) {
+                    const originalBorder = btn.style.border;
+                    btn.style.border = '3px solid #f59e0b'; // Naranja para recaptura
+                    btn.style.animation = 'pulse 0.5s ease-in-out';
+
+                    // Restaurar después de 3 segundos si no hace clic
+                    setTimeout(() => {
+                        btn.style.border = originalBorder;
+                        btn.style.animation = '';
+                    }, 3000);
+                }
+            });
+
+            // Configurar flag para confirmar recaptura en el próximo clic
+            this._recaptureConfirmation = { hand, finger, userId };
+            return;
+        }
+
+        // Si hay confirmación pendiente y coincide con el dedo clickeado
+        if (this._recaptureConfirmation &&
+            this._recaptureConfirmation.hand === hand &&
+            this._recaptureConfirmation.finger === finger &&
+            this._recaptureConfirmation.userId === userId) {
+
+            this._updateStatus('info',
+                `🔄 RE-CAPTURANDO: ${fingerInfo.emoji} ${fingerInfo.label} - Mano ${handInfo} (Sobrescribiendo huella anterior)`);
+
+            // Limpiar confirmación
+            this._recaptureConfirmation = null;
+
+            // Iniciar enrolamiento (sobrescribirá la huella anterior)
+            await this.enrollFinger();
+            return;
+        }
+
+        // Limpar cualquier confirmación previa si hace clic en otro dedo
+        this._recaptureConfirmation = null;
+
+        // CAPTURA NORMAL: Dedo no enrolado
         this._updateStatus('info', `${fingerInfo.emoji} Enrolando: ${fingerInfo.label} - Mano ${handInfo}`);
 
         // Iniciar enrolamiento automáticamente
