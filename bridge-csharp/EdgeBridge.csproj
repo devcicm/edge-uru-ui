@@ -26,5 +26,7 @@
   <ItemGroup Label="Source Files">
     <Compile Include="src\Core\**\*.cs" />
     <Compile Include="src\Bridge\**\*.cs" />
+    <Compile Include="src\Services\**\*.cs" />
+    <Compile Include="src\DTOs\**\*.cs" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integración API Externa - Edge Uru Bridge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: monospace;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-box {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .result-box pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #2d3748;
+        }
+
+        .status-indicator {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .status-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 2px solid #48bb78;
+        }
+
+        .status-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 2px solid #f56565;
+        }
+
+        .status-info {
+            background: #bee3f8;
+            color: #2c5282;
+            border: 2px solid #4299e1;
+        }
+
+        .status-warning {
+            background: #feebc8;
+            color: #7c2d12;
+            border: 2px solid #ed8936;
+        }
+
+        .finger-selection {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .finger-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: #f7fafc;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .finger-checkbox:hover {
+            background: #edf2f7;
+        }
+
+        .finger-checkbox input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+
+        .api-config {
+            background: #f7fafc;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .api-config h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .progress-indicator {
+            margin-top: 15px;
+            padding: 15px;
+            background: #edf2f7;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .progress-indicator.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e2e8f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .instructions {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .instructions h4 {
+            color: #92400e;
+            margin-bottom: 8px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+            color: #78350f;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .header p {
+                font-size: 1em;
+            }
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+        }
+
+        .connection-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #48bb78;
+            animation: pulse 2s infinite;
+        }
+
+        .connection-dot.disconnected {
+            background: #f56565;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .match-result {
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .match-result.match {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .match-result.no-match {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            color: white;
+        }
+
+        .match-result h3 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .match-result .confidence {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .match-result .details {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">
+        <div class="connection-dot" id="connectionDot"></div>
+        <span id="connectionText">Conectando...</span>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🌐 Integración API Externa</h1>
+            <p>Sistema de Registro y Verificación Biométrica con APIs Externas</p>
+        </div>
+
+        <div class="main-content">
+            <!-- PANEL DE REGISTRO -->
+            <div class="card">
+                <h2>📝 Registro de Huellas</h2>
+
+                <div class="instructions">
+                    <h4>Flujo de Registro:</h4>
+                    <ul>
+                        <li>Captura huellas localmente</li>
+                        <li>Genera DTO estandarizado</li>
+                        <li>Envía a tu API externa</li>
+                    </ul>
+                </div>
+
+                <div class="form-group">
+                    <label for="regUserId">ID de Usuario:</label>
+                    <input type="text" id="regUserId" placeholder="ej: JUAN_PEREZ_123">
+                </div>
+
+                <div class="form-group">
+                    <label for="regFirstName">Nombre:</label>
+                    <input type="text" id="regFirstName" placeholder="Juan">
+                </div>
+
+                <div class="form-group">
+                    <label for="regLastName">Apellido:</label>
+                    <input type="text" id="regLastName" placeholder="Pérez">
+                </div>
+
+                <div class="form-group">
+                    <label for="regEmail">Email:</label>
+                    <input type="email" id="regEmail" placeholder="juan.perez@ejemplo.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Dedos a Capturar:</label>
+                    <div class="finger-selection" id="fingerSelection">
+                        <!-- Generado dinámicamente -->
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="btnCaptureRegistration">
+                    🖐️ Capturar Huellas para Registro
+                </button>
+
+                <div class="progress-indicator" id="regProgress">
+                    <div id="regProgressText">Capturando...</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="regProgressBar" style="width: 0%;">0%</div>
+                    </div>
+                </div>
+
+                <div class="api-config">
+                    <h3>📤 Enviar a API Externa:</h3>
+                    <div class="form-group">
+                        <label for="regApiUrl">URL de tu API:</label>
+                        <input type="text" id="regApiUrl" placeholder="https://tu-api.com/biometric/register">
+                    </div>
+                    <button class="btn btn-secondary" id="btnSendToApi" disabled>
+                        🚀 Enviar DTO a API Externa
+                    </button>
+                </div>
+
+                <div id="regResult" class="result-box" style="display: none;">
+                    <pre id="regResultContent"></pre>
+                </div>
+            </div>
+
+            <!-- PANEL DE VERIFICACIÓN -->
+            <div class="card">
+                <h2>✅ Verificación de Huellas</h2>
+
+                <div class="instructions">
+                    <h4>Flujo de Verificación:</h4>
+                    <ul>
+                        <li>Solicita datos de usuario a tu API</li>
+                        <li>Captura huella localmente</li>
+                        <li>Verifica contra plantilla recibida</li>
+                    </ul>
+                </div>
+
+                <div class="form-group">
+                    <label for="verUserId">ID de Usuario a Verificar:</label>
+                    <input type="text" id="verUserId" placeholder="ej: JUAN_PEREZ_123">
+                </div>
+
+                <div class="api-config">
+                    <h3>📥 Obtener desde API Externa:</h3>
+                    <div class="form-group">
+                        <label for="verApiUrl">URL de tu API:</label>
+                        <input type="text" id="verApiUrl" placeholder="https://tu-api.com/biometric/user/{userId}">
+                    </div>
+                    <button class="btn btn-secondary" id="btnFetchFromApi">
+                        📡 Obtener Datos desde API
+                    </button>
+                </div>
+
+                <div class="form-group" style="display: none;" id="verTemplateGroup">
+                    <label>Plantilla Recibida (para pruebas):</label>
+                    <textarea id="verTemplateData" placeholder='{"hand": "LEFT", "finger": "THUMB", "templateBase64": "..."}'></textarea>
+                    <button class="btn btn-secondary" id="btnLoadTemplate">
+                        📋 Cargar Plantilla Manual
+                    </button>
+                </div>
+
+                <button class="btn btn-primary" id="btnVerifyFingerprint" disabled>
+                    🔍 Capturar y Verificar Huella
+                </button>
+
+                <div class="progress-indicator" id="verProgress">
+                    <div id="verProgressText">Verificando...</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="verProgressBar" style="width: 0%;">0%</div>
+                    </div>
+                </div>
+
+                <div id="verResult" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- PANEL DE INFORMACIÓN TÉCNICA -->
+        <div class="card">
+            <h2>ℹ️ Información Técnica</h2>
+            <div class="form-group">
+                <label>DTOs Disponibles:</label>
+                <select id="dtoSelector" style="margin-bottom: 10px;">
+                    <option value="">-- Seleccionar DTO --</option>
+                    <option value="registration">BiometricRegistrationRequest</option>
+                    <option value="verification">BiometricVerificationResponse</option>
+                    <option value="fingerprint">FingerprintData</option>
+                    <option value="match">BiometricMatchResult</option>
+                </select>
+            </div>
+            <div id="dtoExample" class="result-box" style="display: none;">
+                <pre id="dtoExampleContent"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cargar Adapter -->
+    <script src="/js/adapter/BiometricAdapter.js"></script>
+
+    <script>
+        // ==========================================
+        // VARIABLES GLOBALES
+        // ==========================================
+        let capturedDTO = null;
+        let receivedFingerprintData = null;
+
+        // ==========================================
+        // INICIALIZACIÓN
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeConnection();
+            initializeFingerSelection();
+            initializeDTOExamples();
+            attachEventListeners();
+        });
+
+        async function initializeConnection() {
+            try {
+                await window.BiometricAdapter.connect();
+                updateConnectionStatus(true);
+
+                // Inicializar lector
+                await window.BiometricAdapter.initializeReader();
+                console.log('[ExternalAPI] Lector inicializado correctamente');
+            } catch (error) {
+                console.error('[ExternalAPI] Error conectando:', error);
+                updateConnectionStatus(false);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('connectionDot');
+            const text = document.getElementById('connectionText');
+
+            if (connected) {
+                dot.classList.remove('disconnected');
+                text.textContent = 'Conectado';
+            } else {
+                dot.classList.add('disconnected');
+                text.textContent = 'Desconectado';
+            }
+        }
+
+        function initializeFingerSelection() {
+            const container = document.getElementById('fingerSelection');
+            const hands = ['LEFT', 'RIGHT'];
+            const fingers = ['THUMB', 'INDEX', 'MIDDLE', 'RING', 'PINKY'];
+            const fingerLabels = {
+                'THUMB': 'Pulgar',
+                'INDEX': 'Índice',
+                'MIDDLE': 'Medio',
+                'RING': 'Anular',
+                'PINKY': 'Meñique'
+            };
+
+            hands.forEach(hand => {
+                fingers.forEach(finger => {
+                    const label = document.createElement('label');
+                    label.className = 'finger-checkbox';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = `${hand}_${finger}`;
+                    checkbox.checked = true;
+
+                    const text = document.createTextNode(
+                        `${hand === 'LEFT' ? '🤚' : '✋'} ${fingerLabels[finger]} ${hand === 'LEFT' ? 'Izq' : 'Der'}`
+                    );
+
+                    label.appendChild(checkbox);
+                    label.appendChild(text);
+                    container.appendChild(label);
+                });
+            });
+        }
+
+        function initializeDTOExamples() {
+            const examples = {
+                registration: {
+                    userId: "JUAN_PEREZ_123",
+                    userInfo: {
+                        userId: "JUAN_PEREZ_123",
+                        firstName: "Juan",
+                        lastName: "Pérez",
+                        email: "juan.perez@ejemplo.com",
+                        documentId: "12345678"
+                    },
+                    fingerprints: [
+                        {
+                            hand: "LEFT",
+                            finger: "THUMB",
+                            templateBase64: "AAABCDE...base64_data...XYZ==",
+                            format: "ANSI_378",
+                            templateSize: 1024,
+                            quality: 85,
+                            resolution: 500,
+                            templateHash: "a1b2c3d4e5f6..."
+                        }
+                    ],
+                    capturedAt: "2025-01-15T10:30:00Z",
+                    deviceId: "DP4500_MACHINE01",
+                    metadata: {
+                        location: "Office_A",
+                        operator: "admin"
+                    }
+                },
+                verification: {
+                    found: true,
+                    userInfo: {
+                        userId: "JUAN_PEREZ_123",
+                        firstName: "Juan",
+                        lastName: "Pérez",
+                        email: "juan.perez@ejemplo.com"
+                    },
+                    fingerprints: [
+                        {
+                            hand: "LEFT",
+                            finger: "THUMB",
+                            templateBase64: "AAABCDE...base64_data...XYZ==",
+                            format: "ANSI_378",
+                            templateSize: 1024,
+                            quality: 85,
+                            resolution: 500,
+                            templateHash: "a1b2c3d4e5f6..."
+                        }
+                    ],
+                    message: "Usuario encontrado con 2 huellas registradas"
+                },
+                fingerprint: {
+                    hand: "RIGHT",
+                    finger: "INDEX",
+                    templateBase64: "AAABCDE...base64_data...XYZ==",
+                    format: "ANSI_378",
+                    templateSize: 1024,
+                    quality: 90,
+                    imageBase64: null,
+                    resolution: 500,
+                    templateHash: "a1b2c3d4e5f6..."
+                },
+                match: {
+                    userId: "JUAN_PEREZ_123",
+                    isMatch: true,
+                    confidenceScore: 95,
+                    falseAcceptRate: 1074,
+                    matchedHand: "LEFT",
+                    matchedFinger: "THUMB",
+                    verifiedAt: "2025-01-15T10:35:00Z",
+                    message: "Huella verificada correctamente (Score: 1074)"
+                }
+            };
+
+            document.getElementById('dtoSelector').addEventListener('change', (e) => {
+                const type = e.target.value;
+                const exampleDiv = document.getElementById('dtoExample');
+                const content = document.getElementById('dtoExampleContent');
+
+                if (type && examples[type]) {
+                    content.textContent = JSON.stringify(examples[type], null, 2);
+                    exampleDiv.style.display = 'block';
+                } else {
+                    exampleDiv.style.display = 'none';
+                }
+            });
+        }
+
+        // ==========================================
+        // EVENT LISTENERS
+        // ==========================================
+        function attachEventListeners() {
+            // Registro
+            document.getElementById('btnCaptureRegistration').addEventListener('click', captureForRegistration);
+            document.getElementById('btnSendToApi').addEventListener('click', sendToExternalApi);
+
+            // Verificación
+            document.getElementById('btnFetchFromApi').addEventListener('click', fetchFromExternalApi);
+            document.getElementById('btnLoadTemplate').addEventListener('click', loadTemplateManually);
+            document.getElementById('btnVerifyFingerprint').addEventListener('click', verifyFingerprint);
+
+            // SSE Events para progreso
+            window.BiometricAdapter.on('ENROLLMENT_SAMPLE_SUCCESS', handleSampleProgress);
+            window.BiometricAdapter.on('FINGER_ENROLLMENT_COMPLETED', handleFingerCompleted);
+        }
+
+        // ==========================================
+        // FUNCIONES DE REGISTRO
+        // ==========================================
+        async function captureForRegistration() {
+            const userId = document.getElementById('regUserId').value.trim();
+            const firstName = document.getElementById('regFirstName').value.trim();
+            const lastName = document.getElementById('regLastName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+
+            if (!userId) {
+                showStatus('error', 'Por favor ingresa un ID de usuario', 'regResult', 'regResultContent');
+                return;
+            }
+
+            // Obtener dedos seleccionados
+            const selectedFingers = [];
+            document.querySelectorAll('#fingerSelection input:checked').forEach(cb => {
+                const [hand, finger] = cb.value.split('_');
+                selectedFingers.push({ hand, finger });
+            });
+
+            if (selectedFingers.length === 0) {
+                showStatus('error', 'Por favor selecciona al menos un dedo', 'regResult', 'regResultContent');
+                return;
+            }
+
+            try {
+                showProgress('regProgress', 0, `Preparando captura de ${selectedFingers.length} dedos...`);
+                document.getElementById('btnCaptureRegistration').disabled = true;
+
+                const result = await window.BiometricAdapter.captureForExternalRegistration({
+                    userId,
+                    firstName: firstName || undefined,
+                    lastName: lastName || undefined,
+                    email: email || undefined,
+                    fingers: selectedFingers
+                });
+
+                if (result.ok) {
+                    capturedDTO = result.data;
+                    showStatus('success', `✅ Captura exitosa!\n\n${selectedFingers.length} huellas capturadas correctamente.\n\nDTO generado y listo para enviar:`, 'regResult', 'regResultContent');
+                    document.getElementById('regResultContent').textContent += '\n\n' + JSON.stringify(capturedDTO, null, 2);
+                    document.getElementById('btnSendToApi').disabled = false;
+                    hideProgress('regProgress');
+                } else {
+                    showStatus('error', `Error: ${result.error}`, 'regResult', 'regResultContent');
+                    hideProgress('regProgress');
+                }
+            } catch (error) {
+                console.error('[ExternalAPI] Error en captura:', error);
+                showStatus('error', `Error: ${error.message}`, 'regResult', 'regResultContent');
+                hideProgress('regProgress');
+            } finally {
+                document.getElementById('btnCaptureRegistration').disabled = false;
+            }
+        }
+
+        async function sendToExternalApi() {
+            const apiUrl = document.getElementById('regApiUrl').value.trim();
+
+            if (!apiUrl) {
+                alert('Por favor ingresa la URL de tu API externa');
+                return;
+            }
+
+            if (!capturedDTO) {
+                alert('Primero debes capturar huellas');
+                return;
+            }
+
+            try {
+                showStatus('info', '📤 Enviando DTO a API externa...', 'regResult', 'regResultContent');
+
+                // DEMO: Simular envío (en producción, esto sería un fetch real)
+                console.log('[ExternalAPI] Simulando envío a:', apiUrl);
+                console.log('[ExternalAPI] DTO:', capturedDTO);
+
+                // Simulación de respuesta exitosa
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                const mockResponse = {
+                    success: true,
+                    message: "Registro biométrico procesado exitosamente",
+                    registrationId: "REG_" + Date.now(),
+                    registeredAt: new Date().toISOString(),
+                    processedFingerprints: capturedDTO.fingerprints.map(f => ({
+                        hand: f.hand,
+                        finger: f.finger,
+                        accepted: true,
+                        quality: f.quality,
+                        message: "Huella aceptada"
+                    }))
+                };
+
+                showStatus('success', `✅ DTO enviado exitosamente!\n\nRespuesta simulada de la API:\n\n${JSON.stringify(mockResponse, null, 2)}\n\n⚠️ NOTA: Esta es una simulación. En producción, implementa el fetch real a tu API.`, 'regResult', 'regResultContent');
+
+            } catch (error) {
+                console.error('[ExternalAPI] Error enviando a API:', error);
+                showStatus('error', `Error al enviar: ${error.message}`, 'regResult', 'regResultContent');
+            }
+        }
+
+        // ==========================================
+        // FUNCIONES DE VERIFICACIÓN
+        // ==========================================
+        async function fetchFromExternalApi() {
+            const userId = document.getElementById('verUserId').value.trim();
+            const apiUrl = document.getElementById('verApiUrl').value.trim();
+
+            if (!userId) {
+                alert('Por favor ingresa un ID de usuario');
+                return;
+            }
+
+            if (!apiUrl) {
+                alert('Por favor ingresa la URL de tu API externa');
+                return;
+            }
+
+            try {
+                showStatus('info', '📥 Obteniendo datos desde API externa...', 'verResult');
+
+                // DEMO: Simular fetch (en producción, esto sería un fetch real)
+                console.log('[ExternalAPI] Simulando fetch desde:', apiUrl.replace('{userId}', userId));
+
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                // Simulación: usar una huella del store local si existe
+                const storeResult = await window.BiometricAdapter.getStoredFingerprints();
+
+                if (storeResult.ok && storeResult.data.length > 0) {
+                    // Usar la primera huella del store como ejemplo
+                    const firstTemplate = storeResult.data[0];
+                    const parts = firstTemplate.tag.split('_');
+                    const hand = parts[parts.length - 2] || 'LEFT';
+                    const finger = parts[parts.length - 1] || 'THUMB';
+
+                    receivedFingerprintData = {
+                        hand,
+                        finger,
+                        templateBase64: firstTemplate.templateBase64,
+                        format: "ANSI_378",
+                        templateSize: firstTemplate.templateSize,
+                        quality: 85,
+                        resolution: 500
+                    };
+
+                    showStatus('success', `✅ Datos recibidos desde API (simulado)\n\nUsuario: ${userId}\nDedo: ${hand} ${finger}\n\n⚠️ NOTA: Usando plantilla del store local para demostración.\nEn producción, estos datos vendrían de tu API.`, 'verResult');
+                    document.getElementById('btnVerifyFingerprint').disabled = false;
+                } else {
+                    showStatus('warning', `⚠️ No hay plantillas en el store local para simular.\n\nPuedes:\n1. Registrar una huella primero\n2. O cargar una plantilla manualmente`, 'verResult');
+                    document.getElementById('verTemplateGroup').style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('[ExternalAPI] Error obteniendo desde API:', error);
+                showStatus('error', `Error: ${error.message}`, 'verResult');
+            }
+        }
+
+        function loadTemplateManually() {
+            const templateText = document.getElementById('verTemplateData').value.trim();
+
+            if (!templateText) {
+                alert('Por favor ingresa los datos de la plantilla en formato JSON');
+                return;
+            }
+
+            try {
+                receivedFingerprintData = JSON.parse(templateText);
+
+                if (!receivedFingerprintData.templateBase64) {
+                    throw new Error('El JSON debe contener templateBase64');
+                }
+
+                showStatus('success', `✅ Plantilla cargada manualmente\n\nDedo: ${receivedFingerprintData.hand} ${receivedFingerprintData.finger}`, 'verResult');
+                document.getElementById('btnVerifyFingerprint').disabled = false;
+
+            } catch (error) {
+                console.error('[ExternalAPI] Error parseando plantilla:', error);
+                alert('Error: El formato JSON no es válido');
+            }
+        }
+
+        async function verifyFingerprint() {
+            if (!receivedFingerprintData) {
+                alert('Primero debes obtener datos desde la API');
+                return;
+            }
+
+            try {
+                showProgress('verProgress', 0, 'Coloca tu dedo en el lector...');
+                document.getElementById('btnVerifyFingerprint').disabled = true;
+
+                const result = await window.BiometricAdapter.verifyAgainstExternalFingerprint(
+                    receivedFingerprintData,
+                    {
+                        timeoutMs: 15000,
+                        targetFarn: 21474,
+                        maxAttempts: 4
+                    }
+                );
+
+                hideProgress('verProgress');
+
+                if (result.ok) {
+                    const matchData = result.data;
+                    showMatchResult(matchData);
+                } else {
+                    showStatus('error', `Error: ${result.error}`, 'verResult');
+                }
+            } catch (error) {
+                console.error('[ExternalAPI] Error en verificación:', error);
+                showStatus('error', `Error: ${error.message}`, 'verResult');
+                hideProgress('verProgress');
+            } finally {
+                document.getElementById('btnVerifyFingerprint').disabled = false;
+            }
+        }
+
+        function showMatchResult(matchData) {
+            const resultDiv = document.getElementById('verResult');
+            resultDiv.style.display = 'block';
+
+            const isMatch = matchData.isMatch;
+            const confidence = matchData.confidenceScore || 0;
+
+            resultDiv.innerHTML = `
+                <div class="match-result ${isMatch ? 'match' : 'no-match'}">
+                    <h3>${isMatch ? '✅ VERIFICACIÓN EXITOSA' : '❌ NO COINCIDE'}</h3>
+                    <div class="confidence">${confidence}%</div>
+                    <div class="details">
+                        <p><strong>Usuario:</strong> ${matchData.userId || 'N/A'}</p>
+                        ${isMatch ? `<p><strong>Dedo Verificado:</strong> ${matchData.matchedHand} ${matchData.matchedFinger}</p>` : ''}
+                        <p><strong>FAR Score:</strong> ${matchData.falseAcceptRate}</p>
+                        <p><strong>Mensaje:</strong> ${matchData.message}</p>
+                        <p><strong>Timestamp:</strong> ${new Date(matchData.verifiedAt).toLocaleString()}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // FUNCIONES DE PROGRESO Y UI
+        // ==========================================
+        function showProgress(progressId, percent, text) {
+            const progressDiv = document.getElementById(progressId);
+            const progressBar = progressDiv.querySelector('.progress-fill');
+            const progressText = progressDiv.querySelector('div[id*="ProgressText"]');
+
+            progressDiv.classList.add('active');
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = Math.round(percent) + '%';
+
+            if (progressText) {
+                progressText.textContent = text;
+            }
+        }
+
+        function hideProgress(progressId) {
+            const progressDiv = document.getElementById(progressId);
+            progressDiv.classList.remove('active');
+        }
+
+        function handleSampleProgress(data) {
+            if (data.sampleNumber && data.totalSamples) {
+                const percent = (data.sampleNumber / data.totalSamples) * 100;
+                showProgress('regProgress', percent, `Muestra ${data.sampleNumber}/${data.totalSamples} capturada...`);
+            }
+        }
+
+        function handleFingerCompleted(data) {
+            console.log('[ExternalAPI] Dedo completado:', data);
+        }
+
+        function showStatus(type, message, resultId, contentId) {
+            const resultDiv = document.getElementById(resultId);
+            const contentDiv = contentId ? document.getElementById(contentId) : null;
+
+            resultDiv.style.display = 'block';
+
+            if (contentDiv) {
+                contentDiv.textContent = message;
+                contentDiv.parentElement.className = 'result-box';
+            } else {
+                resultDiv.innerHTML = `<div class="status-indicator status-${type}">${message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

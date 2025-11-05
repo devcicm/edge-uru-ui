@@ -46,18 +46,25 @@ namespace EdgeBridge.Services
                 Console.WriteLine($"[ExternalApi] Capturando: {hand} {finger}");
 
                 // Capturar huella del dedo específico
-                var result = await _reader.EnrollAsync(
-                    tag: $"{userId}_{hand}_{finger}",
-                    timeoutMs: 60000,
-                    targetFarn: 21474,
-                    maxRetriesPerSample: 3,
-                    maxSamples: 4);
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromMilliseconds(60000));
+                int targetFarn = 21474; // FAR estándar
 
-                if (result.Success && result.Template != null)
+                var result = await Task.Run(() => _reader.Enroll3(cts.Token, targetFarn, 3, 4));
+
+                if (result.ok && result.fmdReg != null)
                 {
-                    // Convertir template a Base64
-                    var templateBase64 = Convert.ToBase64String(result.Template);
-                    var templateHash = ComputeSHA256Hash(result.Template);
+                    // Serializar template a XML y convertir a Base64
+                    var templateXml = DPUruNet.Fmd.SerializeXml(result.fmdReg);
+                    var templateBytes = System.Text.Encoding.UTF8.GetBytes(templateXml);
+                    var templateBase64 = Convert.ToBase64String(templateBytes);
+                    var templateHash = ComputeSHA256Hash(templateBytes);
+
+                    // Obtener imagen si está disponible
+                    string? imageBase64 = null;
+                    if (_reader.LastFid != null)
+                    {
+                        imageBase64 = Dp4500Service.FidToBase64Png(_reader.LastFid);
+                    }
 
                     var fingerprintData = new FingerprintData
                     {
@@ -65,18 +72,18 @@ namespace EdgeBridge.Services
                         Finger = finger,
                         TemplateBase64 = templateBase64,
                         Format = "ANSI_378",  // DP4500 usa ANSI 378
-                        TemplateSize = result.Template.Length,
-                        Quality = 85,  // Calidad estimada (puedes ajustar según needs)
+                        TemplateSize = templateBytes.Length,
+                        Quality = 85,  // Calidad estimada
                         Resolution = 500,  // DP4500 es 500 DPI
                         TemplateHash = templateHash,
-                        ImageBase64 = result.ImageBase64  // Si está disponible
+                        ImageBase64 = imageBase64
                     };
 
                     capturedFingerprints.Add(fingerprintData);
                 }
                 else
                 {
-                    Console.WriteLine($"[ExternalApi] Error capturando {hand} {finger}: {result.ErrorMessage}");
+                    Console.WriteLine($"[ExternalApi] Error capturando {hand} {finger}: {result.msg}");
                 }
             }
 
@@ -121,36 +128,63 @@ namespace EdgeBridge.Services
             if (string.IsNullOrWhiteSpace(externalFingerprint.TemplateBase64))
                 throw new ArgumentException("TemplateBase64 es requerido");
 
-            // Convertir template de Base64 a bytes
-            var externalTemplate = Convert.FromBase64String(externalFingerprint.TemplateBase64);
+            // Convertir template de Base64 a bytes XML y deserializar a Fmd
+            var externalTemplateBytes = Convert.FromBase64String(externalFingerprint.TemplateBase64);
+            var externalTemplateXml = System.Text.Encoding.UTF8.GetString(externalTemplateBytes);
+            var externalFmd = DPUruNet.Fmd.DeserializeXml(externalTemplateXml);
+
+            if (externalFmd == null)
+            {
+                throw new Exception("No se pudo deserializar la plantilla externa");
+            }
 
             // Tag temporal para la verificación
             var tempTag = $"TEMP_VERIFY_{Guid.NewGuid():N}";
 
-            // Almacenar template temporalmente en el store del lector
-            _reader.AddTemplate(tempTag, externalTemplate);
+            // Almacenar template temporalmente en el store
+            FingerprintTempStore.AddFingerprint(tempTag, Hand.Unknown, Finger.Unknown, externalFmd, EnrollmentType.SingleFinger, false);
 
             try
             {
-                // Capturar huella actual y verificar contra la almacenada
-                var verifyResult = await _reader.VerifyAsync(
-                    tag: tempTag,
-                    timeoutMs: timeoutMs,
-                    targetFarn: targetFarn,
-                    maxAttempts: maxAttempts);
+                // Verificar con reintentos
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+
+                int bestScore = 999999;
+                bool matched = false;
+
+                for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    var verifyResult = await Task.Run(() => _reader.VerifyLiveAgainstReg(externalFmd, cts.Token, targetFarn));
+
+                    if (verifyResult.ok)
+                    {
+                        bestScore = Math.Min(bestScore, verifyResult.score);
+
+                        if (verifyResult.score < targetFarn)
+                        {
+                            matched = true;
+                            break;
+                        }
+                    }
+
+                    if (attempt < maxAttempts)
+                    {
+                        await Task.Delay(500);
+                    }
+                }
 
                 var matchResult = new BiometricMatchResult
                 {
-                    UserId = externalFingerprint.Hand + "_" + externalFingerprint.Finger,  // Identificador temporal
-                    IsMatch = verifyResult.Verified,
-                    ConfidenceScore = CalculateConfidenceScore(verifyResult.Score),
-                    FalseAcceptRate = verifyResult.Score,
-                    MatchedHand = verifyResult.Verified ? externalFingerprint.Hand : null,
-                    MatchedFinger = verifyResult.Verified ? externalFingerprint.Finger : null,
+                    UserId = externalFingerprint.Hand + "_" + externalFingerprint.Finger,
+                    IsMatch = matched,
+                    ConfidenceScore = CalculateConfidenceScore(bestScore),
+                    FalseAcceptRate = bestScore,
+                    MatchedHand = matched ? externalFingerprint.Hand : null,
+                    MatchedFinger = matched ? externalFingerprint.Finger : null,
                     VerifiedAt = DateTime.UtcNow,
-                    Message = verifyResult.Verified
-                        ? $"Huella verificada correctamente (Score: {verifyResult.Score})"
-                        : $"Huella NO coincide (Score: {verifyResult.Score})"
+                    Message = matched
+                        ? $"Huella verificada correctamente (Score: {bestScore})"
+                        : $"Huella NO coincide (Score: {bestScore})"
                 };
 
                 return matchResult;
@@ -158,7 +192,7 @@ namespace EdgeBridge.Services
             finally
             {
                 // Limpiar template temporal
-                _reader.RemoveTemplate(tempTag);
+                FingerprintTempStore.DeleteUser(tempTag);
             }
         }
 
@@ -183,23 +217,26 @@ namespace EdgeBridge.Services
                     if (!string.IsNullOrWhiteSpace(fingerprint.TemplateBase64))
                     {
                         var tempTag = $"TEMP_{fingerprint.Hand}_{fingerprint.Finger}_{Guid.NewGuid():N}";
-                        var template = Convert.FromBase64String(fingerprint.TemplateBase64);
-                        _reader.AddTemplate(tempTag, template);
-                        tempTags.Add(tempTag);
+                        var templateBytes = Convert.FromBase64String(fingerprint.TemplateBase64);
+                        var templateXml = System.Text.Encoding.UTF8.GetString(templateBytes);
+                        var fmd = DPUruNet.Fmd.DeserializeXml(templateXml);
+
+                        if (fmd != null)
+                        {
+                            FingerprintTempStore.AddFingerprint(tempTag, Hand.Unknown, Finger.Unknown, fmd, EnrollmentType.SingleFinger, false);
+                            tempTags.Add(tempTag);
+                        }
                     }
                 }
 
                 // Realizar identificación 1:N
-                var identifyResult = await _reader.IdentifyAsync(
-                    timeoutMs: timeoutMs,
-                    targetFarn: targetFarn,
-                    top: 1,  // Solo el mejor match
-                    maxAttempts: 4);
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+                var identifyResult = await Task.Run(() => _reader.IdentifyLive1N(cts.Token, targetFarn, 1));
 
-                if (identifyResult.Match && !string.IsNullOrEmpty(identifyResult.BestTag))
+                if (identifyResult.match && !string.IsNullOrEmpty(identifyResult.bestTag))
                 {
                     // Parsear el tag temporal para obtener hand/finger
-                    var parts = identifyResult.BestTag.Split('_');
+                    var parts = identifyResult.bestTag.Split('_');
                     var hand = parts.Length >= 2 ? parts[1] : "UNKNOWN";
                     var finger = parts.Length >= 3 ? parts[2] : "UNKNOWN";
 
@@ -207,12 +244,12 @@ namespace EdgeBridge.Services
                     {
                         UserId = $"{hand}_{finger}",
                         IsMatch = true,
-                        ConfidenceScore = CalculateConfidenceScore(identifyResult.BestScore),
-                        FalseAcceptRate = identifyResult.BestScore,
+                        ConfidenceScore = CalculateConfidenceScore(identifyResult.bestScore),
+                        FalseAcceptRate = identifyResult.bestScore,
                         MatchedHand = hand,
                         MatchedFinger = finger,
                         VerifiedAt = DateTime.UtcNow,
-                        Message = $"Match encontrado: {hand} {finger} (Score: {identifyResult.BestScore})"
+                        Message = $"Match encontrado: {hand} {finger} (Score: {identifyResult.bestScore})"
                     };
                 }
 
@@ -230,7 +267,7 @@ namespace EdgeBridge.Services
                 // Limpiar templates temporales
                 foreach (var tempTag in tempTags)
                 {
-                    _reader.RemoveTemplate(tempTag);
+                    FingerprintTempStore.DeleteUser(tempTag);
                 }
             }
         }

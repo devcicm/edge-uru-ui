@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using EdgeBridge.Services;
 
 namespace EdgeBridge
 {
@@ -14,6 +15,7 @@ namespace EdgeBridge
     public class EdgeUruBridge
     {
         private static Dp4500Service? _reader;
+        private static ExternalApiService? _externalApiService;
         private static CancellationTokenSource? _cts;
         private static Func<object, Task<object>>? _callback;
 
@@ -170,6 +172,9 @@ namespace EdgeBridge
                         }
 
                         _reader = new Dp4500Service();
+
+                        // Inicializar servicio de API externa
+                        _externalApiService = new ExternalApiService(_reader);
 
                         // Registrar eventos directos (solo eventos importantes)
 
@@ -916,6 +921,228 @@ namespace EdgeBridge
                     catch (Exception ex)
                     {
                         SendEvent("SYSTEM_ERROR", $"Error obteniendo estadísticas: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
+                // ==========================================
+                // EXTERNAL API INTEGRATION OPERATIONS
+                // ==========================================
+
+                case "captureForExternalRegistration":
+                {
+                    if (_reader == null || _externalApiService == null)
+                    {
+                        var error = "Reader not initialized. Call 'init' first.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    var userId = (string?)input?.userId ?? "";
+                    if (string.IsNullOrEmpty(userId))
+                    {
+                        return new { ok = false, error = "userId is required" };
+                    }
+
+                    var firstName = (string?)input?.firstName;
+                    var lastName = (string?)input?.lastName;
+                    var email = (string?)input?.email;
+                    var documentId = (string?)input?.documentId;
+                    var metadata = input?.metadata != null
+                        ? ((Newtonsoft.Json.Linq.JObject)input.metadata).ToObject<Dictionary<string, object>>()
+                        : null;
+
+                    // Parsear dedos específicos si se proporcionan
+                    List<(string hand, string finger)>? fingersToCapture = null;
+                    if (input?.fingers != null)
+                    {
+                        fingersToCapture = new List<(string hand, string finger)>();
+                        var fingersArray = (Newtonsoft.Json.Linq.JArray)input.fingers;
+                        foreach (var item in fingersArray)
+                        {
+                            var hand = (string?)item["hand"] ?? "";
+                            var finger = (string?)item["finger"] ?? "";
+                            if (!string.IsNullOrEmpty(hand) && !string.IsNullOrEmpty(finger))
+                            {
+                                fingersToCapture.Add((hand, finger));
+                            }
+                        }
+                    }
+
+                    SendEvent("EXTERNAL_REGISTRATION_STARTED", $"Iniciando captura para registro externo: {userId}", "INFO",
+                        new { userId, fingerCount = fingersToCapture?.Count ?? 10 });
+
+                    try
+                    {
+                        var result = await _externalApiService.CaptureForRegistration(
+                            userId, firstName, lastName, email, documentId, fingersToCapture, metadata);
+
+                        SendEvent("EXTERNAL_REGISTRATION_COMPLETED", "DTO de registro generado exitosamente", "SUCCESS",
+                            new { userId, fingerprintCount = result.Fingerprints.Count });
+
+                        return new { ok = true, data = result };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("EXTERNAL_REGISTRATION_FAILED", $"Error en captura: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
+                case "verifyAgainstExternalFingerprint":
+                {
+                    if (_reader == null || _externalApiService == null)
+                    {
+                        var error = "Reader not initialized. Call 'init' first.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    if (input?.fingerprintData == null)
+                    {
+                        return new { ok = false, error = "fingerprintData is required" };
+                    }
+
+                    var fingerprintDataJson = (Newtonsoft.Json.Linq.JObject)input.fingerprintData;
+                    var fingerprintData = fingerprintDataJson.ToObject<DTOs.FingerprintData>();
+
+                    if (fingerprintData == null || string.IsNullOrEmpty(fingerprintData.TemplateBase64))
+                    {
+                        return new { ok = false, error = "Invalid fingerprintData" };
+                    }
+
+                    var timeoutMs = (int?)input?.timeoutMs ?? 15000;
+                    var targetFarn = (int?)input?.targetFarn ?? 21474;
+                    var maxAttempts = (int?)input?.maxAttempts ?? 4;
+
+                    SendEvent("EXTERNAL_VERIFICATION_STARTED",
+                        $"Verificando contra huella externa: {fingerprintData.Hand} {fingerprintData.Finger}",
+                        "INFO", new { hand = fingerprintData.Hand, finger = fingerprintData.Finger });
+
+                    try
+                    {
+                        var result = await _externalApiService.VerifyAgainstExternalFingerprint(
+                            fingerprintData, timeoutMs, targetFarn, maxAttempts);
+
+                        if (result.IsMatch)
+                        {
+                            SendEvent("EXTERNAL_VERIFICATION_SUCCESS",
+                                $"Verificación exitosa - Confianza: {result.ConfidenceScore}%",
+                                "SUCCESS", new { confidenceScore = result.ConfidenceScore });
+                        }
+                        else
+                        {
+                            SendEvent("EXTERNAL_VERIFICATION_FAILED",
+                                "Huella no coincide",
+                                "WARNING", new { confidenceScore = result.ConfidenceScore });
+                        }
+
+                        return new { ok = true, data = result };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("EXTERNAL_VERIFICATION_ERROR", $"Error en verificación: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
+                case "verifyAgainstMultipleFingerprints":
+                {
+                    if (_reader == null || _externalApiService == null)
+                    {
+                        var error = "Reader not initialized. Call 'init' first.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    if (input?.fingerprints == null)
+                    {
+                        return new { ok = false, error = "fingerprints array is required" };
+                    }
+
+                    var fingerprintsArray = (Newtonsoft.Json.Linq.JArray)input.fingerprints;
+                    var fingerprints = fingerprintsArray.ToObject<List<DTOs.FingerprintData>>();
+
+                    if (fingerprints == null || fingerprints.Count == 0)
+                    {
+                        return new { ok = false, error = "At least one fingerprint is required" };
+                    }
+
+                    var timeoutMs = (int?)input?.timeoutMs ?? 15000;
+                    var targetFarn = (int?)input?.targetFarn ?? 21474;
+
+                    SendEvent("EXTERNAL_IDENTIFICATION_STARTED",
+                        $"Identificando contra {fingerprints.Count} huellas externas (1:N)",
+                        "INFO", new { fingerprintCount = fingerprints.Count });
+
+                    try
+                    {
+                        var result = await _externalApiService.VerifyAgainstMultipleFingerprints(
+                            fingerprints, timeoutMs, targetFarn);
+
+                        if (result.IsMatch)
+                        {
+                            SendEvent("EXTERNAL_IDENTIFICATION_MATCH",
+                                $"Match encontrado: {result.MatchedHand} {result.MatchedFinger} - Confianza: {result.ConfidenceScore}%",
+                                "SUCCESS",
+                                new {
+                                    matchedHand = result.MatchedHand,
+                                    matchedFinger = result.MatchedFinger,
+                                    confidenceScore = result.ConfidenceScore
+                                });
+                        }
+                        else
+                        {
+                            SendEvent("EXTERNAL_IDENTIFICATION_NO_MATCH",
+                                "No se encontró coincidencia",
+                                "WARNING");
+                        }
+
+                        return new { ok = true, data = result };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("EXTERNAL_IDENTIFICATION_ERROR", $"Error en identificación: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
+                case "convertTemplateToDTO":
+                {
+                    if (_externalApiService == null)
+                    {
+                        var error = "Reader not initialized. Call 'init' first.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    var tag = (string?)input?.tag ?? "";
+                    if (string.IsNullOrEmpty(tag))
+                    {
+                        return new { ok = false, error = "tag is required" };
+                    }
+
+                    try
+                    {
+                        var stored = FingerprintTempStore.GetFingerprintByTag(tag);
+                        if (stored == null)
+                        {
+                            return new { ok = false, error = $"Fingerprint with tag '{tag}' not found" };
+                        }
+
+                        // Convertir el Fmd almacenado a bytes
+                        var templateBytes = System.Text.Encoding.UTF8.GetBytes(
+                            DPUruNet.Fmd.SerializeXml(stored.Fmd));
+
+                        var dto = _externalApiService.ConvertStoredTemplateToDTO(tag, templateBytes);
+
+                        SendEvent("TEMPLATE_CONVERTED", $"Template '{tag}' convertido a DTO", "INFO");
+
+                        return new { ok = true, data = dto };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("TEMPLATE_CONVERSION_ERROR", $"Error convirtiendo template: {ex.Message}", "ERROR");
                         return new { ok = false, error = ex.Message };
                     }
                 }
