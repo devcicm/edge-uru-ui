@@ -306,6 +306,93 @@ class BiometricAdapter {
         }
     }
 
+    // ==========================================
+    // EXTERNAL API INTEGRATION METHODS
+    // ==========================================
+
+    /**
+     * Capturar huella(s) y generar DTO para envío a API externa
+     * @param {Object} params - Parámetros de registro
+     * @param {string} params.userId - ID del usuario
+     * @param {string} [params.firstName] - Nombre (opcional)
+     * @param {string} [params.lastName] - Apellido (opcional)
+     * @param {string} [params.email] - Email (opcional)
+     * @param {string} [params.documentId] - Documento de identidad (opcional)
+     * @param {Array<{hand: string, finger: string}>} [params.fingers] - Dedos específicos a capturar (opcional)
+     * @param {Object} [params.metadata] - Metadatos adicionales (opcional)
+     * @returns {Promise<Object>} BiometricRegistrationRequest DTO
+     */
+    async captureForExternalRegistration(params) {
+        console.log('[BiometricAdapter] 📝 Capturando para registro externo:', params);
+        try {
+            return await this.apiCall('/api/external/register', params);
+        } catch (error) {
+            console.error('[BiometricAdapter] Error en captura para registro externo:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Verificar huella capturada contra plantilla de API externa
+     * @param {Object} fingerprintData - Datos de huella desde API externa
+     * @param {string} fingerprintData.templateBase64 - Template en Base64
+     * @param {string} fingerprintData.hand - Mano (LEFT/RIGHT)
+     * @param {string} fingerprintData.finger - Dedo (THUMB/INDEX/etc)
+     * @param {Object} [options] - Opciones adicionales
+     * @param {number} [options.timeoutMs=15000] - Timeout en ms
+     * @param {number} [options.targetFarn=21474] - FAR objetivo
+     * @param {number} [options.maxAttempts=4] - Intentos máximos
+     * @returns {Promise<Object>} BiometricMatchResult
+     */
+    async verifyAgainstExternalFingerprint(fingerprintData, options = {}) {
+        console.log('[BiometricAdapter] ✅ Verificando contra huella externa:', fingerprintData.hand, fingerprintData.finger);
+        try {
+            return await this.apiCall('/api/external/verify', {
+                fingerprintData,
+                ...options
+            });
+        } catch (error) {
+            console.error('[BiometricAdapter] Error en verificación contra huella externa:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Verificar huella capturada contra múltiples plantillas (1:N)
+     * @param {Array<Object>} fingerprints - Array de FingerprintData desde API externa
+     * @param {Object} [options] - Opciones adicionales
+     * @param {number} [options.timeoutMs=15000] - Timeout en ms
+     * @param {number} [options.targetFarn=21474] - FAR objetivo
+     * @returns {Promise<Object>} BiometricMatchResult con dedo que coincidió
+     */
+    async verifyAgainstMultipleFingerprints(fingerprints, options = {}) {
+        console.log(`[BiometricAdapter] 🔍 Verificando contra ${fingerprints.length} huellas externas...`);
+        try {
+            return await this.apiCall('/api/external/verify-multiple', {
+                fingerprints,
+                ...options
+            });
+        } catch (error) {
+            console.error('[BiometricAdapter] Error en verificación múltiple:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Convertir template almacenada localmente a DTO para envío a API externa
+     * @param {string} tag - Tag de la plantilla local
+     * @returns {Promise<Object>} FingerprintData DTO
+     */
+    async convertTemplateToDTO(tag) {
+        console.log('[BiometricAdapter] 🔄 Convirtiendo template a DTO:', tag);
+        try {
+            return await this.apiCall('/api/external/convert-template', { tag });
+        } catch (error) {
+            console.error('[BiometricAdapter] Error convirtiendo template:', error);
+            throw error;
+        }
+    }
+
     /**
      * Obtener huellas almacenadas
      */

@@ -195,6 +195,159 @@ app.get("/api/store-stats", async (_, res) => {
   catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
+// ==========================================
+// EXTERNAL API INTEGRATION ENDPOINTS
+// ==========================================
+
+/**
+ * POST /api/external/register
+ * Captura huella(s) y genera DTO para envío a API externa
+ *
+ * Body:
+ * {
+ *   userId: string,
+ *   firstName?: string,
+ *   lastName?: string,
+ *   email?: string,
+ *   documentId?: string,
+ *   fingers?: Array<{hand: string, finger: string}>,  // Opcional: dedos específicos
+ *   metadata?: object
+ * }
+ *
+ * Response: BiometricRegistrationRequest DTO
+ */
+app.post("/api/external/register", async (req, res) => {
+  try {
+    const { userId, firstName, lastName, email, documentId, fingers, metadata } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ ok: false, error: "userId es requerido" });
+    }
+
+    const result = await call({
+      op: "captureForExternalRegistration",
+      userId,
+      firstName,
+      lastName,
+      email,
+      documentId,
+      fingers,  // Opcional: si no se proporciona, captura todos los dedos
+      metadata
+    });
+
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+/**
+ * POST /api/external/verify
+ * Verifica huella capturada contra plantilla recibida de API externa
+ *
+ * Body:
+ * {
+ *   fingerprintData: {
+ *     hand: string,
+ *     finger: string,
+ *     templateBase64: string,
+ *     format: string,
+ *     ... otros campos del DTO
+ *   },
+ *   timeoutMs?: number,
+ *   targetFarn?: number,
+ *   maxAttempts?: number
+ * }
+ *
+ * Response: BiometricMatchResult
+ */
+app.post("/api/external/verify", async (req, res) => {
+  try {
+    const { fingerprintData, timeoutMs, targetFarn, maxAttempts } = req.body;
+
+    if (!fingerprintData || !fingerprintData.templateBase64) {
+      return res.status(400).json({ ok: false, error: "fingerprintData.templateBase64 es requerido" });
+    }
+
+    const result = await call({
+      op: "verifyAgainstExternalFingerprint",
+      fingerprintData,
+      timeoutMs: timeoutMs ?? 15000,
+      targetFarn: targetFarn ?? 21474,
+      maxAttempts: maxAttempts ?? 4
+    });
+
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+/**
+ * POST /api/external/verify-multiple
+ * Verifica huella capturada contra múltiples plantillas (1:N)
+ *
+ * Body:
+ * {
+ *   fingerprints: Array<FingerprintData>,
+ *   timeoutMs?: number,
+ *   targetFarn?: number
+ * }
+ *
+ * Response: BiometricMatchResult
+ */
+app.post("/api/external/verify-multiple", async (req, res) => {
+  try {
+    const { fingerprints, timeoutMs, targetFarn } = req.body;
+
+    if (!fingerprints || !Array.isArray(fingerprints) || fingerprints.length === 0) {
+      return res.status(400).json({ ok: false, error: "Se requiere al menos una huella en 'fingerprints'" });
+    }
+
+    const result = await call({
+      op: "verifyAgainstMultipleFingerprints",
+      fingerprints,
+      timeoutMs: timeoutMs ?? 15000,
+      targetFarn: targetFarn ?? 21474
+    });
+
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+/**
+ * POST /api/external/convert-template
+ * Convierte template almacenada localmente a FingerprintData DTO
+ * Útil para obtener plantillas del store local y enviarlas a API externa
+ *
+ * Body:
+ * {
+ *   tag: string  // Tag de la plantilla local
+ * }
+ *
+ * Response: FingerprintData DTO
+ */
+app.post("/api/external/convert-template", async (req, res) => {
+  try {
+    const { tag } = req.body;
+
+    if (!tag) {
+      return res.status(400).json({ ok: false, error: "tag es requerido" });
+    }
+
+    const result = await call({
+      op: "convertTemplateToDTO",
+      tag
+    });
+
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
 // Static file serving - MUST be after API routes
 const sourcePublicDir = path.join(__dirname, "..", "public");
 console.log(`[STATIC ROUTES] Serving static files from: ${sourcePublicDir}`);
