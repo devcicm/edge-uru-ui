@@ -178,6 +178,14 @@ namespace EdgeBridge
 
                         // Registrar eventos directos (solo eventos importantes)
 
+                        // ===== NUEVO: Suscribir a OnStatus para recibir logs del modo touch =====
+                        _reader.OnStatus += (message) =>
+                        {
+                            // Enviar todos los mensajes de estado como eventos SSE
+                            SendEvent("SYSTEM_STATUS", message, "INFO");
+                            Console.WriteLine($"[Dp4500Service] {message}");
+                        };
+
                         // Evento: Muestra recolectada
                         _reader.OnSampleCountChanged += count =>
                         {

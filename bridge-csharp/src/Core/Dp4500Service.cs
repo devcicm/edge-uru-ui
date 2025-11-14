@@ -641,7 +641,12 @@ public sealed class Dp4500Service : IDisposable
                     // Rearmar captura automáticamente para continuar escuchando
                     if (_isContinuousMode) // Verificar de nuevo por si se detuvo
                     {
+                        OnStatus?.Invoke("[TouchMode] 🔄 Intentando rearmar captura...");
                         TryRearmContinuousCapture();
+                    }
+                    else
+                    {
+                        OnStatus?.Invoke("[TouchMode] 🛑 NO rearmando - modo ya no está activo");
                     }
                 }
                 catch (Exception ex)
@@ -663,6 +668,8 @@ public sealed class Dp4500Service : IDisposable
     /// </summary>
     private void TryRearmContinuousCapture()
     {
+        OnStatus?.Invoke($"[TouchMode] 🔧 TryRearmContinuousCapture() INICIADO - _isContinuousMode={_isContinuousMode}");
+
         if (!_isContinuousMode)
         {
             OnStatus?.Invoke("[TouchMode] 🛑 Rearm cancelado - modo ya no está activo");
@@ -671,6 +678,7 @@ public sealed class Dp4500Service : IDisposable
 
         try
         {
+            OnStatus?.Invoke("[TouchMode] 🔧 Reseteando _sampleReady y _lastCapture...");
             // En modo continuo, intentar rearmar sin timeout estricto
             _sampleReady.Reset();
             _lastCapture = null;
