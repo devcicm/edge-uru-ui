@@ -606,9 +606,9 @@ public sealed class Dp4500Service : IDisposable
                     if (!IsGoodCapture(result, out var why))
                     {
                         OnStatus?.Invoke($"[TouchMode] ⚠️ Captura rechazada: {why}");
-                        // Rearmar captura automáticamente incluso si falla
+                        // Rearmar captura automáticamente incluso si falla (con manejo robusto)
                         Thread.Sleep(200);
-                        RequestCaptureGentle(CancellationToken.None);
+                        TryRearmContinuousCapture();
                         return;
                     }
 
@@ -641,31 +641,103 @@ public sealed class Dp4500Service : IDisposable
                     // Rearmar captura automáticamente para continuar escuchando
                     if (_isContinuousMode) // Verificar de nuevo por si se detuvo
                     {
-                        RequestCaptureGentle(CancellationToken.None);
-                        OnStatus?.Invoke("[TouchMode] 🔄 Listo para próxima captura");
-                        OnCaptureReady?.Invoke();
+                        TryRearmContinuousCapture();
                     }
                 }
                 catch (Exception ex)
                 {
-                    OnStatus?.Invoke($"[TouchMode] ❌ Error en modo continuo: {ex.Message}");
-                    // En caso de error, intentar rearmar una vez más
-                    try
+                    OnStatus?.Invoke($"[TouchMode] ❌ Error procesando captura: {ex.Message}");
+                    // Intentar rearmar de todos modos si aún está en modo continuo
+                    if (_isContinuousMode)
                     {
                         Thread.Sleep(500);
-                        if (_isContinuousMode)
-                        {
-                            RequestCaptureGentle(CancellationToken.None);
-                        }
-                    }
-                    catch
-                    {
-                        OnStatus?.Invoke("[TouchMode] ❌ Error crítico - modo continuo detenido");
-                        _isContinuousMode = false;
-                        _captureMode = CaptureMode.OnDemand;
+                        TryRearmContinuousCapture();
                     }
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Intenta rearmar la captura en modo continuo de forma robusta (sin lanzar excepciones fatales)
+    /// </summary>
+    private void TryRearmContinuousCapture()
+    {
+        if (!_isContinuousMode)
+        {
+            OnStatus?.Invoke("[TouchMode] 🛑 Rearm cancelado - modo ya no está activo");
+            return;
+        }
+
+        try
+        {
+            // En modo continuo, intentar rearmar sin timeout estricto
+            _sampleReady.Reset();
+            _lastCapture = null;
+
+            // Intentar hasta 5 veces con esperas incrementales
+            for (int attempt = 1; attempt <= 5; attempt++)
+            {
+                // Verificar estado del lector
+                var statusResult = Reader.GetStatus();
+                if (statusResult != DPUruNet.Constants.ResultCode.DP_SUCCESS)
+                {
+                    OnStatus?.Invoke($"[TouchMode] ⚠️ GetStatus falló (intento {attempt}/5): {statusResult}");
+                    Thread.Sleep(attempt * 100); // Espera incremental: 100ms, 200ms, 300ms...
+                    continue;
+                }
+
+                var status = Reader.Status?.Status ?? DPUruNet.Constants.ReaderStatuses.DP_STATUS_FAILURE;
+
+                if (status == DPUruNet.Constants.ReaderStatuses.DP_STATUS_BUSY)
+                {
+                    OnStatus?.Invoke($"[TouchMode] ⏳ Lector ocupado (intento {attempt}/5), esperando...");
+                    Thread.Sleep(attempt * 150);
+                    continue;
+                }
+
+                if (status == DPUruNet.Constants.ReaderStatuses.DP_STATUS_NEED_CALIBRATION)
+                {
+                    OnStatus?.Invoke("[TouchMode] 🔧 Calibrando lector...");
+                    Reader.Calibrate();
+                    Thread.Sleep(500);
+                    continue;
+                }
+
+                if (status != DPUruNet.Constants.ReaderStatuses.DP_STATUS_READY)
+                {
+                    OnStatus?.Invoke($"[TouchMode] ⚠️ Status no READY (intento {attempt}/5): {status}");
+                    Thread.Sleep(attempt * 100);
+                    continue;
+                }
+
+                // Lector está READY, intentar CaptureAsync
+                var rc = Reader.CaptureAsync(
+                    DPUruNet.Constants.Formats.Fid.ANSI,
+                    DPUruNet.Constants.CaptureProcessing.DP_IMG_PROC_DEFAULT,
+                    _dpi);
+
+                if (rc == DPUruNet.Constants.ResultCode.DP_SUCCESS)
+                {
+                    OnStatus?.Invoke("[TouchMode] 🔄 Listo para próxima captura");
+                    OnCaptureReady?.Invoke();
+                    return; // ✅ Éxito
+                }
+
+                OnStatus?.Invoke($"[TouchMode] ⚠️ CaptureAsync falló (intento {attempt}/5): {rc}");
+                Thread.Sleep(attempt * 200);
+            }
+
+            // Si llegamos aquí, todos los intentos fallaron
+            OnStatus?.Invoke("[TouchMode] ❌ No se pudo rearmar captura después de 5 intentos - deteniendo modo continuo");
+            _isContinuousMode = false;
+            _captureMode = CaptureMode.OnDemand;
+        }
+        catch (Exception ex)
+        {
+            OnStatus?.Invoke($"[TouchMode] ❌ Error fatal rearmando captura: {ex.Message}");
+            _isContinuousMode = false;
+            _captureMode = CaptureMode.OnDemand;
         }
     }
 
