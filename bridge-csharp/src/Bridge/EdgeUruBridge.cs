@@ -1147,6 +1147,158 @@ namespace EdgeBridge
                     }
                 }
 
+                // ==========================================
+                // TOUCH MODE OPERATIONS (Continuous Capture)
+                // ==========================================
+
+                case "startTouchMode":
+                {
+                    if (_reader == null)
+                    {
+                        var error = "Reader not initialized. Call 'init' first.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    try
+                    {
+                        // Verificar si ya está activo
+                        if (_reader.IsContinuousModeActive())
+                        {
+                            return new { ok = false, error = "Touch mode is already active" };
+                        }
+
+                        // Suscribirse a eventos de modo continuo
+                        _reader.OnFingerTouched += (fid) =>
+                        {
+                            SendEvent("FINGER_TOUCHED", "👆 Dedo detectado en el lector", "INFO",
+                                new {
+                                    width = fid.Views[0].Width,
+                                    height = fid.Views[0].Height,
+                                    timestamp = DateTime.UtcNow.ToString("O")
+                                });
+
+                            // Enviar imagen si es posible
+                            try
+                            {
+                                var imageBase64 = Dp4500Service.FidToBase64Png(fid);
+                                SendEvent("IMAGE_CAPTURED", "Imagen de huella capturada", "SUCCESS",
+                                    new { imageBase64, imageSize = imageBase64.Length });
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[TouchMode] Error generando imagen: {ex.Message}");
+                            }
+                        };
+
+                        _reader.OnFingerprintReady += (fmd) =>
+                        {
+                            SendEvent("FINGERPRINT_READY", "✅ Huella lista para comparación", "SUCCESS",
+                                new {
+                                    fmdSize = fmd.Bytes?.Length ?? 0,
+                                    format = "ANSI",
+                                    timestamp = DateTime.UtcNow.ToString("O")
+                                });
+                        };
+
+                        _reader.OnCaptureReady += () =>
+                        {
+                            SendEvent("CAPTURE_READY", "🔄 Listo para próxima captura", "INFO",
+                                new { timestamp = DateTime.UtcNow.ToString("O") });
+                        };
+
+                        // Iniciar modo continuo
+                        _reader.StartContinuousCapture();
+
+                        SendEvent("TOUCH_MODE_STARTED", "🎧 Modo de eventos touch ACTIVADO - esperando dedos...", "SUCCESS",
+                            new {
+                                mode = "Continuous",
+                                eventsAvailable = new[] { "FINGER_TOUCHED", "FINGERPRINT_READY", "CAPTURE_READY" }
+                            });
+
+                        return new {
+                            ok = true,
+                            message = "Touch mode started successfully",
+                            mode = "Continuous",
+                            events = new[] { "FINGER_TOUCHED", "FINGERPRINT_READY", "CAPTURE_READY" }
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("SYSTEM_ERROR", $"Error starting touch mode: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
+                case "stopTouchMode":
+                {
+                    if (_reader == null)
+                    {
+                        var error = "Reader not initialized.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    try
+                    {
+                        // Verificar si está activo
+                        if (!_reader.IsContinuousModeActive())
+                        {
+                            return new { ok = false, error = "Touch mode is not active" };
+                        }
+
+                        // Detener modo continuo (esto limpia los eventos internamente)
+                        _reader.StopContinuousCapture();
+
+                        SendEvent("TOUCH_MODE_STOPPED", "⏹️ Modo de eventos touch DESACTIVADO", "INFO",
+                            new {
+                                mode = "OnDemand",
+                                timestamp = DateTime.UtcNow.ToString("O")
+                            });
+
+                        return new {
+                            ok = true,
+                            message = "Touch mode stopped successfully",
+                            mode = "OnDemand"
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("SYSTEM_ERROR", $"Error stopping touch mode: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
+                case "getTouchModeStatus":
+                {
+                    if (_reader == null)
+                    {
+                        var error = "Reader not initialized.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    try
+                    {
+                        var isActive = _reader.IsContinuousModeActive();
+                        var mode = _reader.GetCaptureMode();
+
+                        return new {
+                            ok = true,
+                            isActive,
+                            mode = mode.ToString(),
+                            modeDescription = mode == CaptureMode.Continuous
+                                ? "Escucha continua - eventos automáticos"
+                                : "Bajo demanda - requiere llamadas API"
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("SYSTEM_ERROR", $"Error getting touch mode status: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
                 default:
                     return new { ok = false, error = $"Unknown operation: {op}" };
             }

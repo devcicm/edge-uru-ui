@@ -429,6 +429,75 @@ class BiometricAdapter {
             throw error;
         }
     }
+
+    // ==========================================
+    // TOUCH MODE METHODS (Continuous Capture)
+    // ==========================================
+
+    /**
+     * Iniciar modo de eventos touch (escucha continua sin timers)
+     *
+     * En este modo, el lector queda esperando dedos indefinidamente.
+     * Los eventos SSE se disparan automáticamente:
+     * - FINGER_TOUCHED: cuando se detecta un dedo
+     * - FINGERPRINT_READY: cuando el FMD está listo para comparar
+     * - CAPTURE_READY: cuando está listo para la próxima captura
+     *
+     * Uso:
+     * ```javascript
+     * await adapter.startTouchMode();
+     * adapter.on('FINGERPRINT_READY', (data) => {
+     *     console.log('Huella lista!', data);
+     * });
+     * ```
+     */
+    async startTouchMode() {
+        console.log('[BiometricAdapter] 🎧 Iniciando modo de eventos touch (escucha continua)...');
+        try {
+            const result = await this.apiCall('/api/touch/start');
+            console.log('[BiometricAdapter] ✅ Modo touch ACTIVADO');
+            console.log('[BiometricAdapter] 📡 Eventos disponibles:', result.events);
+            console.log('[BiometricAdapter] 💡 Usa adapter.on("FINGER_TOUCHED", callback) para escuchar');
+            return result;
+        } catch (error) {
+            console.error('[BiometricAdapter] ❌ Error iniciando modo touch:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Detener modo de eventos touch
+     *
+     * Vuelve el lector al modo OnDemand tradicional (requiere llamadas API explícitas)
+     */
+    async stopTouchMode() {
+        console.log('[BiometricAdapter] ⏹️ Deteniendo modo de eventos touch...');
+        try {
+            const result = await this.apiCall('/api/touch/stop');
+            console.log('[BiometricAdapter] ✅ Modo touch DETENIDO - vuelto a modo OnDemand');
+            return result;
+        } catch (error) {
+            console.error('[BiometricAdapter] ❌ Error deteniendo modo touch:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Obtener estado actual del modo touch
+     *
+     * @returns {Promise<{ok: boolean, isActive: boolean, mode: string, modeDescription: string}>}
+     */
+    async getTouchModeStatus() {
+        console.log('[BiometricAdapter] 📊 Consultando estado del modo touch...');
+        try {
+            const result = await this.apiGet('/api/touch/status');
+            console.log('[BiometricAdapter] Estado:', result);
+            return result;
+        } catch (error) {
+            console.error('[BiometricAdapter] Error obteniendo estado touch mode:', error);
+            throw error;
+        }
+    }
 }
 
 // Crear instancia global del adapter

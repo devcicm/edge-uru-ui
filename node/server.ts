@@ -348,6 +348,52 @@ app.post("/api/external/convert-template", async (req, res) => {
   }
 });
 
+// ==========================================
+// TOUCH MODE ENDPOINTS (Continuous Capture)
+// ==========================================
+
+/**
+ * POST /api/touch/start
+ * Iniciar modo de eventos touch (escucha continua sin timers)
+ * Response: { ok: boolean, message: string, mode: "Continuous", events: string[] }
+ */
+app.post("/api/touch/start", async (req, res) => {
+  try {
+    const result = await call({ op: "startTouchMode" });
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+/**
+ * POST /api/touch/stop
+ * Detener modo de eventos touch
+ * Response: { ok: boolean, message: string, mode: "OnDemand" }
+ */
+app.post("/api/touch/stop", async (req, res) => {
+  try {
+    const result = await call({ op: "stopTouchMode" });
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+/**
+ * GET /api/touch/status
+ * Obtener estado actual del modo touch
+ * Response: { ok: boolean, isActive: boolean, mode: string, modeDescription: string }
+ */
+app.get("/api/touch/status", async (req, res) => {
+  try {
+    const result = await call({ op: "getTouchModeStatus" });
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
 // Static file serving - MUST be after API routes
 const sourcePublicDir = path.join(__dirname, "..", "public");
 console.log(`[STATIC ROUTES] Serving static files from: ${sourcePublicDir}`);
