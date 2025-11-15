@@ -607,8 +607,9 @@ public sealed class Dp4500Service : IDisposable
                     {
                         OnStatus?.Invoke($"[TouchMode] ⚠️ Captura rechazada: {why}");
                         // Rearmar captura automáticamente incluso si falla (con manejo robusto)
+                        // IMPORTANTE: Ejecutar en thread separado para no bloquear el callback del SDK
                         Thread.Sleep(200);
-                        TryRearmContinuousCapture();
+                        ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture());
                         return;
                     }
 
@@ -639,10 +640,11 @@ public sealed class Dp4500Service : IDisposable
                     Thread.Sleep(300);
 
                     // Rearmar captura automáticamente para continuar escuchando
+                    // IMPORTANTE: Ejecutar en thread separado para no bloquear el callback del SDK
                     if (_isContinuousMode) // Verificar de nuevo por si se detuvo
                     {
-                        OnStatus?.Invoke("[TouchMode] 🔄 Intentando rearmar captura...");
-                        TryRearmContinuousCapture();
+                        OnStatus?.Invoke("[TouchMode] 🔄 Programando rearme de captura...");
+                        ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture());
                     }
                     else
                     {
@@ -653,10 +655,11 @@ public sealed class Dp4500Service : IDisposable
                 {
                     OnStatus?.Invoke($"[TouchMode] ❌ Error procesando captura: {ex.Message}");
                     // Intentar rearmar de todos modos si aún está en modo continuo
+                    // IMPORTANTE: Ejecutar en thread separado para no bloquear el callback del SDK
                     if (_isContinuousMode)
                     {
                         Thread.Sleep(500);
-                        TryRearmContinuousCapture();
+                        ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture());
                     }
                 }
             }
