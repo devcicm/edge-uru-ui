@@ -660,28 +660,19 @@ public sealed class Dp4500Service : IDisposable
     /// <summary>
     /// Rearma la captura continua usando retries agresivos.
     /// Intenta CaptureAsync inmediatamente y reintenta si falla.
+    /// Continúa indefinidamente mientras _isContinuousMode sea true.
     /// </summary>
-    private void TryRearmContinuousCapture(int attemptNumber = 0)
+    private void TryRearmContinuousCapture(bool isFirstAttempt = true)
     {
-        const int MAX_ATTEMPTS = 300; // ~30 segundos con 100ms sleep por intento
-
         if (!_isContinuousMode)
         {
-            return;
-        }
-
-        if (attemptNumber >= MAX_ATTEMPTS)
-        {
-            OnStatus?.Invoke($"[TouchMode] ❌ Timeout después de {MAX_ATTEMPTS} intentos - deteniendo modo");
-            _isContinuousMode = false;
-            _captureMode = CaptureMode.OnDemand;
             return;
         }
 
         try
         {
             // Resetear para próxima captura (solo en primer intento)
-            if (attemptNumber == 0)
+            if (isFirstAttempt)
             {
                 _sampleReady.Reset();
                 _lastCapture = null;
@@ -699,7 +690,7 @@ public sealed class Dp4500Service : IDisposable
                     Reader.Calibrate();
                     // Reprogramar después de calibración (necesita tiempo)
                     Thread.Sleep(500);
-                    ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture(attemptNumber + 1));
+                    ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture(false));
                     return;
                 }
             }
@@ -720,7 +711,7 @@ public sealed class Dp4500Service : IDisposable
             {
                 // Lector ocupado - reprogramar retry con delay mínimo para evitar busy-wait
                 Thread.Sleep(50); // Sleep mínimo anti-busy-wait
-                ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture(attemptNumber + 1));
+                ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture(false));
                 return;
             }
             else
