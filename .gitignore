@@ -71,3 +71,10 @@ out/net472/*.pdb
 # MSBuild
 bridge-csharp/obj/
 *.csproj.user
+
+# Session files
+sesion.txt
+session.txt
+
+# Investigation scripts (development only)
+scripts-investigacion/

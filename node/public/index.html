@@ -3,1138 +3,2691 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Biométrico Modular - DigitalPersona</title>
-
+    <title>Panel Biométrico DP4500 - Simple y Directo</title>
     <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d48d0;
+            --success: #15803d;
+            --success-light: #dcfce7;
+            --error: #b91c1c;
+            --error-light: #fee2e2;
+            --warning: #d97706;
+            --warning-light: #fef3c7;
+            --info: #0369a1;
+            --info-light: #e0f2fe;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-900: #111827;
+        }
+
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            color: #212529;
-            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            padding: 20px;
+            color: var(--gray-900);
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 30px;
-            background: #ffffff;
-            border: 1px solid #dee2e6;
+        .header {
+            background: white;
+            padding: 20px 30px;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        }
-
-        h1 {
-            color: #212529;
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-            font-weight: 700;
-        }
-
-        .subtitle {
-            color: #6c757d;
-            font-size: 1.1rem;
-            font-weight: 500;
             margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        .legacy-link {
-            display: inline-block;
-            background: #6c757d;
-            color: #ffffff;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
+        .header h1 {
+            font-size: 24px;
+            color: var(--gray-900);
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: var(--gray-600);
             font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            transition: all 0.2s ease;
-        }
-
-        .legacy-link:hover {
-            background: #5a6268;
-            transform: translateY(-1px);
-        }
-
-        .control-panel {
-            background: #ffffff;
-            border: 1px solid #dee2e6;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        }
-
-        .control-panel h2 {
-            color: #212529;
-            font-size: 1.4rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 10px;
-        }
-
-        .button-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .create-button {
-            background: #212529;
-            color: #ffffff;
-            border: 1px solid #343a40;
-            padding: 15px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .create-button:hover {
-            background: #000000;
-            border-color: #000000;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .create-button.active {
-            background: #28a745;
-            border-color: #28a745;
-        }
-
-        .create-button.active:hover {
-            background: #218838;
-            border-color: #1e7e34;
-        }
-
-        .utility-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e9ecef;
-        }
-
-        .utility-button {
-            background: #6c757d;
-            color: #ffffff;
-            border: 1px solid #6c757d;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .utility-button:hover {
-            background: #5a6268;
-            border-color: #5a6268;
-            transform: translateY(-1px);
-        }
-
-        .utility-button.danger {
-            background: #dc3545;
-            border-color: #dc3545;
-        }
-
-        .utility-button.danger:hover {
-            background: #c82333;
-            border-color: #bd2130;
-        }
-
-        .component-container {
-            min-height: 500px;
-            margin-bottom: 30px;
-        }
-
-        .component-placeholder {
-            background: #f8f9fa;
-            border: 3px dashed #dee2e6;
-            border-radius: 12px;
-            padding: 60px 20px;
-            text-align: center;
-            color: #6c757d;
-            font-size: 1.1rem;
-            font-weight: 500;
         }
 
         .status-bar {
-            background: #ffffff;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 15px 20px;
+            background: white;
+            padding: 15px 30px;
+            border-radius: 12px;
             margin-bottom: 20px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 600;
-            font-size: 14px;
+            gap: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .status-indicator {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            background: #dc3545;
+            background: var(--error);
+            animation: pulse 2s infinite;
         }
 
-        .status-indicator.connected {
-            background: #28a745;
+        .status-indicator.active {
+            background: var(--success);
         }
 
-        /* Modal Styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
-        .modal-overlay.show {
-            display: flex;
+        .status-text {
+            flex: 1;
+            font-weight: 500;
         }
 
-        .modal-content {
-            background: #ffffff;
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .control-card {
+            background: white;
             border-radius: 12px;
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .control-header {
+            border-bottom: 2px solid var(--gray-200);
+            padding-bottom: 12px;
+        }
+
+        .control-header h2 {
+            font-size: 18px;
+            color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-header p {
+            font-size: 13px;
+            color: var(--gray-600);
+            margin-top: 4px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .input-group input,
+        .input-group select {
+            padding: 10px 12px;
+            border: 2px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .fingerprint-preview {
+            aspect-ratio: 1;
+            border: 2px dashed var(--gray-300);
+            border-radius: 12px;
+            background: var(--gray-50);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
             position: relative;
         }
 
-        .modal-header {
-            padding: 20px 25px 15px;
-            border-bottom: 1px solid #e9ecef;
+        .fingerprint-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .fingerprint-placeholder {
+            font-size: 64px;
+            opacity: 0.3;
+        }
+
+        .progress-container {
+            background: var(--gray-100);
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            padding: 12px;
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .progress-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .progress-counter {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .progress-bar-bg {
+            height: 24px;
+            background: var(--gray-200);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .progress-indicators {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .sample-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--gray-600);
+            border: 2px solid var(--gray-300);
+            transition: all 0.3s;
+        }
+
+        .sample-dot.captured {
+            background: linear-gradient(135deg, var(--success), #16a34a);
+            color: white;
+            border-color: var(--success);
+            transform: scale(1.1);
+        }
+
+        .sample-dot.active {
+            background: var(--warning-light);
+            color: var(--warning);
+            border-color: var(--warning);
+            animation: pulse-dot 1s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .status-message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            background: var(--info-light);
+            border: 1px solid #bae6fd;
+            color: var(--info);
+        }
+
+        .status-message.success {
+            background: var(--success-light);
+            border-color: #bbf7d0;
+            color: var(--success);
+        }
+
+        .status-message.error {
+            background: var(--error-light);
+            border-color: #fecaca;
+            color: var(--error);
+        }
+
+        .status-message.warning {
+            background: var(--warning-light);
+            border-color: #fde68a;
+            color: var(--warning);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--gray-300);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #16a34a);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(21, 128, 61, 0.3);
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 8px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--gray-50);
+            border-radius: 6px;
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+
+        .info-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .templates-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+        }
+
+        .template-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--gray-200);
+            font-size: 13px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .modal-title {
-            color: #212529;
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin: 0;
+        .template-item:last-child {
+            border-bottom: none;
         }
 
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: #6c757d;
-            cursor: pointer;
-            padding: 5px;
-            border-radius: 50%;
-            width: 35px;
-            height: 35px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-        }
-
-        .modal-close:hover {
-            background: #f8f9fa;
-            color: #212529;
-        }
-
-        .modal-body {
-            padding: 0;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container {
-                padding: 15px;
-            }
-
-            h1 {
-                font-size: 2rem;
-            }
-
-            .button-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .utility-buttons {
-                flex-direction: column;
-            }
-
-            .status-bar {
-                flex-direction: column;
-                gap: 10px;
-                text-align: center;
-            }
-
-            .modal-content {
-                width: 95%;
-                margin: 10px;
-            }
+        .template-format {
+            font-size: 11px;
+            padding: 2px 6px;
+            background: var(--primary);
+            color: white;
+            border-radius: 4px;
         }
     </style>
-
-    <!-- Estilos de componentes -->
-    <link rel="stylesheet" href="js/styles/components.css">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>🔒 Sistema Biométrico Modular</h1>
-            <div class="subtitle">Componentes DigitalPersona para Aplicaciones Web</div>
-            <a href="legacy.html" class="legacy-link">📄 Ver UI Legacy</a>
-        </header>
+        <!-- Header -->
+        <div class="header">
+            <h1>🔐 Panel Biométrico DP4500</h1>
+            <p>Conexión directa con hardware - Eventos en tiempo real</p>
+        </div>
 
-        <!-- Barra de Estado -->
+        <!-- Status Bar -->
         <div class="status-bar">
-            <div class="status-item">
-                <div class="status-indicator" id="connectionStatus"></div>
-                <span>Estado: <span id="connectionText">Desconectado</span></span>
-            </div>
-            <div class="status-item">
-                <span>Componentes: <span id="componentCount">0</span></span>
-            </div>
-            <div class="status-item">
-                <span>Modo: <span id="displayMode">Inline</span></span>
-            </div>
+            <div class="status-indicator" id="statusIndicator"></div>
+            <div class="status-text" id="statusText">⚠️ Lector apagado - Inicializa el lector primero</div>
         </div>
 
-        <!-- Panel de Control -->
-        <div class="control-panel">
-            <h2>🎛️ Panel de Control</h2>
+        <!-- Controls Grid -->
+        <div class="controls-grid">
 
-            <div class="button-grid">
-                <button class="create-button" id="createEnrollment">
-                    📝 <span>Crear Enrollment</span>
-                </button>
-                <button class="create-button" id="createCapture">
-                    📸 <span>Crear Capture</span>
-                </button>
-                <button class="create-button" id="createVerification">
-                    ✅ <span>Crear Verification</span>
-                </button>
-                <button class="create-button" id="createReaderControl">
-                    🔌 <span>Crear Reader Control</span>
-                </button>
-                <button class="create-button" id="createLogDevice">
-                    📋 <span>Crear Log Device</span>
-                </button>
-                <button class="create-button" id="createTechDevice">
-                    🔧 <span>Crear Tech Device</span>
-                </button>
-            </div>
+            <!-- 1. READER CONTROL -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>🔧 Control del Lector</h2>
+                    <p>Inicializar y gestionar dispositivo DP4500</p>
+                </div>
 
-            <div class="utility-buttons">
-                <button class="utility-button" id="toggleMode">
-                    🪟 Cambiar a Modal
-                </button>
-                <button class="utility-button" id="initReader">
-                    🔌 Inicializar Lector
-                </button>
-                <button class="utility-button danger" id="clearAll">
-                    🗑️ Limpiar Todo
-                </button>
-                <button class="utility-button" id="showDemo">
-                    🎮 Ver Demo Completo
-                </button>
-            </div>
-        </div>
+                <div class="status-message" id="readerStatus">Lector apagado</div>
 
-        <!-- Contenedor de Componentes -->
-        <div class="component-container" id="componentContainer">
-            <div class="component-placeholder">
-                <div style="font-size: 48px; margin-bottom: 20px;">🧩</div>
-                <div>Selecciona un componente para comenzar</div>
-                <div style="font-size: 14px; margin-top: 10px; color: #adb5bd;">
-                    Los componentes aparecerán aquí o en ventanas modales
+                <button class="btn btn-primary" id="btnInitReader">
+                    ⚡ Encender Lector
+                </button>
+
+                <button class="btn btn-secondary" id="btnDisposeReader" disabled>
+                    🔌 Apagar Lector
+                </button>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Modelo:</span>
+                        <span class="info-value">DP4500</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Estado:</span>
+                        <span class="info-value" id="readerState">Apagado</span>
+                    </div>
                 </div>
             </div>
+
+            <!-- 2. ENROLLMENT CONTROL -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>📝 Enrolamiento</h2>
+                    <p>Captura 4 muestras de huella dactilar</p>
+                </div>
+
+                <div class="input-group">
+                    <label for="enrollUserId">ID del Usuario:</label>
+                    <input type="text" id="enrollUserId" placeholder="Ej: Usuario001">
+                </div>
+
+                <div class="fingerprint-preview">
+                    <div class="fingerprint-placeholder" id="enrollPlaceholder">👤</div>
+                    <img id="enrollImage" alt="Huella" style="display: none;">
+                </div>
+
+                <div class="progress-container" id="enrollProgress">
+                    <div class="progress-header">
+                        <span class="progress-label">Progreso de Captura</span>
+                        <span class="progress-counter" id="enrollCounter">0/4</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar" id="enrollProgressBar">0%</div>
+                    </div>
+                    <div class="progress-indicators">
+                        <span class="sample-dot" id="enrollDot1">1</span>
+                        <span class="sample-dot" id="enrollDot2">2</span>
+                        <span class="sample-dot" id="enrollDot3">3</span>
+                        <span class="sample-dot" id="enrollDot4">4</span>
+                    </div>
+                </div>
+
+                <div class="status-message" id="enrollStatus">Ingresa un ID de usuario</div>
+
+                <button class="btn btn-primary" id="btnEnroll" disabled>
+                    Iniciar Enrolamiento
+                </button>
+            </div>
+
+            <!-- 3. VERIFICATION CONTROL -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>✅ Verificación 1:1</h2>
+                    <p>Verificar huella contra usuario específico</p>
+                </div>
+
+                <div class="input-group">
+                    <label for="verifyUserId">Seleccionar Usuario:</label>
+                    <select id="verifyUserId">
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                </div>
+
+                <div class="fingerprint-preview">
+                    <div class="fingerprint-placeholder" id="verifyPlaceholder">🔍</div>
+                    <img id="verifyImage" alt="Huella" style="display: none;">
+                </div>
+
+                <div class="progress-container" id="verifyProgress">
+                    <div class="progress-header">
+                        <span class="progress-label">Intentos de Verificación</span>
+                        <span class="progress-counter" id="verifyCounter">0/4</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar" id="verifyProgressBar">0%</div>
+                    </div>
+                    <div class="progress-indicators">
+                        <span class="sample-dot" id="verifyDot1">1</span>
+                        <span class="sample-dot" id="verifyDot2">2</span>
+                        <span class="sample-dot" id="verifyDot3">3</span>
+                        <span class="sample-dot" id="verifyDot4">4</span>
+                    </div>
+                </div>
+
+                <div class="status-message" id="verifyStatus">Selecciona un usuario</div>
+
+                <button class="btn btn-primary" id="btnVerify" disabled>
+                    Verificar Huella
+                </button>
+
+                <div class="info-grid" id="verifyInfo" style="display: none;">
+                    <div class="info-item">
+                        <span class="info-label">Usuario:</span>
+                        <span class="info-value" id="verifyUserResult">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Score:</span>
+                        <span class="info-value" id="verifyScore">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Resultado:</span>
+                        <span class="info-value" id="verifyResult">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. IDENTIFICATION CONTROL -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>🔍 Identificación 1:N</h2>
+                    <p>Buscar coincidencia en toda la galería</p>
+                </div>
+
+                <div class="fingerprint-preview">
+                    <div class="fingerprint-placeholder" id="identifyPlaceholder">🔎</div>
+                    <img id="identifyImage" alt="Huella" style="display: none;">
+                </div>
+
+                <div class="progress-container" id="identifyProgress">
+                    <div class="progress-header">
+                        <span class="progress-label">Intentos de Identificación</span>
+                        <span class="progress-counter" id="identifyCounter">0/4</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar" id="identifyProgressBar">0%</div>
+                    </div>
+                    <div class="progress-indicators">
+                        <span class="sample-dot" id="identifyDot1">1</span>
+                        <span class="sample-dot" id="identifyDot2">2</span>
+                        <span class="sample-dot" id="identifyDot3">3</span>
+                        <span class="sample-dot" id="identifyDot4">4</span>
+                    </div>
+                </div>
+
+                <div class="status-message" id="identifyStatus">
+                    <span id="galleryCount">0</span> usuarios en galería
+                </div>
+
+                <button class="btn btn-success" id="btnIdentify" disabled>
+                    Identificar 1:N
+                </button>
+
+                <div class="info-grid" id="identifyInfo" style="display: none;">
+                    <div class="info-item">
+                        <span class="info-label">Usuario Identificado:</span>
+                        <span class="info-value" id="identifyUserResult">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Score:</span>
+                        <span class="info-value" id="identifyScore">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. SIMPLE CAPTURE CONTROL -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>📸 Captura Simple</h2>
+                    <p>Captura individual sin enrolamiento</p>
+                </div>
+
+                <div class="fingerprint-preview">
+                    <div class="fingerprint-placeholder" id="capturePlaceholder">🖐️</div>
+                    <img id="captureImage" alt="Huella" style="display: none;">
+                </div>
+
+                <div class="status-message" id="captureStatus">Presiona capturar</div>
+
+                <button class="btn btn-primary" id="btnCapture" disabled>
+                    Capturar Huella
+                </button>
+
+                <div class="info-grid" id="captureInfo" style="display: none;">
+                    <div class="info-item">
+                        <span class="info-label">Capturada:</span>
+                        <span class="info-value" id="captureTime">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Template:</span>
+                        <span class="info-value">Generado</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. TEMPLATE MANAGER -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>📊 Gestión de Plantillas</h2>
+                    <p>Ver y administrar plantillas almacenadas</p>
+                </div>
+
+                <div class="info-item">
+                    <span class="info-label">Total Plantillas:</span>
+                    <span class="info-value" id="templateCount">0</span>
+                </div>
+
+                <div class="templates-list" id="templatesList">
+                    <div class="template-item" style="text-align: center; color: var(--gray-600);">
+                        No hay plantillas
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="btnRefreshTemplates">
+                    🔄 Refrescar Lista
+                </button>
+
+                <button class="btn btn-secondary" id="btnClearTemplates">
+                    🗑️ Limpiar Todas
+                </button>
+            </div>
+
+            <!-- 7. TECH DEVICE INFO -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>🔧 Información Técnica</h2>
+                    <p>Detalles completos del dispositivo y sistema</p>
+                </div>
+
+                <div class="status-message" id="techStatus">Presiona Actualizar para obtener información</div>
+
+                <button class="btn btn-primary" id="btnLoadTechInfo">
+                    🔄 Actualizar Información
+                </button>
+
+                <button class="btn btn-secondary" id="btnExportTechInfo" disabled>
+                    📥 Exportar JSON
+                </button>
+
+                <div id="techInfoPanel" style="display: none;">
+                    <!-- Sección: Dispositivo -->
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 16px; color: var(--gray-700); margin-bottom: 10px; border-bottom: 2px solid var(--gray-200); padding-bottom: 5px;">
+                            📱 Dispositivo
+                        </h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Modelo:</span>
+                                <span class="info-value" id="techModel">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Serie:</span>
+                                <span class="info-value" id="techSerial">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Firmware:</span>
+                                <span class="info-value" id="techFirmware">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Estado:</span>
+                                <span class="info-value" id="techStatus2">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Capacidades -->
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 16px; color: var(--gray-700); margin-bottom: 10px; border-bottom: 2px solid var(--gray-200); padding-bottom: 5px;">
+                            ⚙️ Capacidades
+                        </h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Resolución:</span>
+                                <span class="info-value" id="techResolution">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Área de captura:</span>
+                                <span class="info-value" id="techArea">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Profundidad:</span>
+                                <span class="info-value" id="techDepth">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Tecnología:</span>
+                                <span class="info-value" id="techTechnology">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Sistema -->
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 16px; color: var(--gray-700); margin-bottom: 10px; border-bottom: 2px solid var(--gray-200); padding-bottom: 5px;">
+                            💻 Sistema
+                        </h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Driver:</span>
+                                <span class="info-value" id="techDriver">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">SDK:</span>
+                                <span class="info-value" id="techSDK">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Plataforma:</span>
+                                <span class="info-value" id="techPlatform">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Última actualización:</span>
+                                <span class="info-value" id="techLastUpdate">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8. FINGER MANAGEMENT (Estilo SDK DigitalPersona) -->
+            <div class="control-card">
+                <div class="control-header">
+                    <h2>🖐️ Gestión de Dedos por Mano</h2>
+                    <p><strong>Haz clic en cualquier dedo para enrolar</strong></p>
+                </div>
+
+                <!-- Selector de Usuario con Dropdown -->
+                <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Usuario:</label>
+                        <input type="text"
+                               class="component-input"
+                               id="fingerUserId"
+                               placeholder="Ingrese ID de usuario para enrolar"
+                               maxlength="50"
+                               style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Cargar Usuario:</label>
+                        <select class="component-input" id="fingerUserSelector" style="width: 100%;">
+                            <option value="">-- Seleccionar --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Indicador de progreso de usuario -->
+                <div id="fingerUserProgress" style="display: none; margin-bottom: 15px; padding: 10px; background: #f0f9ff; border: 2px solid #0284c7; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600; color: #0c4a6e;">👤 <span id="fingerUserProgressName"></span></span>
+                        <span style="font-size: 14px; color: #0369a1;">
+                            <span id="fingerUserProgressCount">0</span>/10 dedos
+                        </span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #e0f2fe; border-radius: 4px; margin-top: 8px; overflow: hidden;">
+                        <div id="fingerUserProgressBar" style="height: 100%; background: linear-gradient(90deg, #0ea5e9, #0284c7); width: 0%; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+
+                <!-- Visualización Interactiva de Manos (Estilo SDK DigitalPersona) -->
+                <div id="handsVisualization" style="margin-bottom: 15px; overflow: hidden; width: 100%;">
+                    <!-- Se renderizará dinámicamente con manos clickeables -->
+                </div>
+
+                <!-- Selectores de Mano y Dedo (Sincronizados con clic - Solo visualización) -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Mano Seleccionada:</label>
+                        <select class="component-input" id="fingerHand" style="width: 100%;" disabled>
+                            <option value="LEFT">👈 Izquierda</option>
+                            <option value="RIGHT">👉 Derecha</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Dedo Seleccionado:</label>
+                        <select class="component-input" id="fingerType" style="width: 100%;" disabled>
+                            <option value="THUMB">👍 Pulgar</option>
+                            <option value="INDEX">☝️ Índice</option>
+                            <option value="MIDDLE">🖕 Medio</option>
+                            <option value="RING">💍 Anular</option>
+                            <option value="PINKY">🤙 Meñique</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="fingerprint-preview">
+                    <div class="fingerprint-placeholder" id="fingerPlaceholder">🖐️</div>
+                    <img id="fingerImage" alt="Huella" style="display: none;">
+                </div>
+
+                <div class="progress-container" id="fingerProgress">
+                    <div class="progress-header">
+                        <span class="progress-label">Muestras del dedo</span>
+                        <span class="progress-counter" id="fingerCounter">0/4</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar" id="fingerProgressBar">0%</div>
+                    </div>
+                    <div class="progress-indicators">
+                        <span class="sample-dot" id="fingerDot1">1</span>
+                        <span class="sample-dot" id="fingerDot2">2</span>
+                        <span class="sample-dot" id="fingerDot3">3</span>
+                        <span class="sample-dot" id="fingerDot4">4</span>
+                    </div>
+                </div>
+
+                <div class="status-message" id="fingerStatus">👆 Haz clic en un dedo de las manos para enrolar</div>
+
+                <button class="btn btn-primary" id="btnEnrollAllFingers" style="font-size: 16px; font-weight: bold;">
+                    🖐️ Enrolar TODOS los Dedos (10 Completos)
+                </button>
+
+                <button class="btn btn-primary" id="btnCompleteMissing" style="display: none;">
+                    ⚡ Completar Dedos Faltantes
+                </button>
+
+                <button class="btn btn-warning" id="btnRecaptureFinger" style="display: none;">
+                    🔄 Re-Capturar Dedo Seleccionado
+                </button>
+
+                <button class="btn btn-success" id="btnVerifyFinger">
+                    ✅ Verificar Dedo Seleccionado
+                </button>
+
+                <button class="btn btn-warning" id="btnIdentifyFinger">
+                    🔍 Identificar Dedo (Buscar)
+                </button>
+
+                <button class="btn btn-secondary" id="btnToggleView">
+                    👥 Ver Todos los Usuarios
+                </button>
+
+                <button class="btn btn-secondary" id="btnRefreshFingers">
+                    🔄 Refrescar Lista
+                </button>
+
+                <!-- Lista de dedos enrolados -->
+                <div style="margin-top: 20px; padding: 15px; background: var(--gray-50); border-radius: 8px;">
+                    <h4 style="margin-bottom: 10px;">Dedos Enrolados</h4>
+                    <div id="fingersListContent" style="max-height: 200px; overflow-y: auto;">
+                        <p style="text-align: center; color: var(--gray-600);">No hay dedos enrolados</p>
+                    </div>
+                </div>
+
+                <!-- Instrucciones (Estilo SDK DigitalPersona) -->
+                <div style="margin-top: 20px; padding: 15px; background: #f0f9ff; border: 2px solid #0284c7; border-radius: 8px;">
+                    <h4 style="margin-bottom: 12px; color: #0c4a6e; font-size: 14px;">📋 Instrucciones de Uso</h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">1</span>
+                            <span style="font-size: 12px; line-height: 20px;">Ingresa ID de usuario o selecciona uno existente del dropdown</span>
+                        </div>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">2</span>
+                            <span style="font-size: 12px; line-height: 20px;"><strong>HAZ CLIC</strong> en cualquier dedo amarillo ⭕ para enrolarlo</span>
+                        </div>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">3</span>
+                            <span style="font-size: 12px; line-height: 20px;">Orden recomendado: 🫲 Mano Izquierda (1-5) → 🫱 Mano Derecha (6-10)</span>
+                        </div>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">4</span>
+                            <span style="font-size: 12px; line-height: 20px;">Coloca el dedo 4 veces cuando se active la captura</span>
+                        </div>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">5</span>
+                            <span style="font-size: 12px; line-height: 20px;">Dedos: Verde ✅ = Enrolado | Rojo ❌ = Error | Amarillo ⭕ = Pendiente</span>
+                        </div>
+                        <div style="display: flex; align-items: start; gap: 8px;">
+                            <span style="background: #0284c7; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">6</span>
+                            <span style="font-size: 12px; line-height: 20px;"><strong>RE-CAPTURAR</strong>: Clic en dedo verde ✅ → Presiona botón "🔄 Re-Capturar"</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
-
-    <!-- Modal para Componentes -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title" id="modalTitle">Componente Biométrico</h3>
-                <button class="modal-close" id="modalClose">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                <!-- Componente se insertará aquí -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts del sistema con pipeline de carga -->
-    <script>
-        // Sistema de pipeline de carga segura
-        window.BiometricSystem = {
-            loaded: {
-                adapter: false,
-                baseComponent: false,
-                enrollment: false,
-                capture: false,
-                verification: false,
-                readercontrol: false,
-                logdevice: false,
-                techdevice: false,
-                factory: false
-            },
-            callbacks: [],
-
-            markLoaded: function(component) {
-                this.loaded[component] = true;
-                console.log(`✅ ${component} cargado`);
-                this.checkComplete();
-            },
-
-            checkComplete: function() {
-                const allLoaded = Object.values(this.loaded).every(loaded => loaded);
-                if (allLoaded) {
-                    console.log('🚀 Todos los componentes cargados, iniciando sistema...');
-                    this.callbacks.forEach(callback => {
-                        try {
-                            callback();
-                        } catch (error) {
-                            console.error('Error en callback de inicialización:', error);
-                        }
-                    });
-                    this.callbacks = [];
-                }
-            },
-
-            onReady: function(callback) {
-                const allLoaded = Object.values(this.loaded).every(loaded => loaded);
-                if (allLoaded) {
-                    callback();
-                } else {
-                    this.callbacks.push(callback);
-                }
-            }
-        };
-    </script>
 
     <!-- BiometricAdapter -->
-    <script src="js/core/BiometricAdapter.js" onload="BiometricSystem.markLoaded('adapter')" onerror="console.error('Error cargando BiometricAdapter')"></script>
-
-    <!-- BaseComponent -->
-    <script src="js/core/BaseComponent.js" onload="BiometricSystem.markLoaded('baseComponent')" onerror="console.error('Error cargando BaseComponent')"></script>
-
-    <!-- Componentes -->
-    <script src="js/components/EnrollmentControl.js" onload="BiometricSystem.markLoaded('enrollment')" onerror="console.error('Error cargando EnrollmentControl')"></script>
-    <script src="js/components/SimpleCaptureControl.js" onload="BiometricSystem.markLoaded('capture')" onerror="console.error('Error cargando SimpleCaptureControl')"></script>
-    <script src="js/components/VerificationControl.js" onload="BiometricSystem.markLoaded('verification')" onerror="console.error('Error cargando VerificationControl')"></script>
-    <script src="js/components/ReaderControl.js" onload="BiometricSystem.markLoaded('readercontrol')" onerror="console.error('Error cargando ReaderControl')"></script>
-    <script src="js/components/LogDeviceControl.js" onload="BiometricSystem.markLoaded('logdevice')" onerror="console.error('Error cargando LogDeviceControl')"></script>
-    <script src="js/components/TechDeviceControl.js" onload="BiometricSystem.markLoaded('techdevice')" onerror="console.error('Error cargando TechDeviceControl')"></script>
-
-    <!-- Factory (último) -->
-    <script src="js/factory/ComponentFactory.js" onload="BiometricSystem.markLoaded('factory')" onerror="console.error('Error cargando ComponentFactory')"></script>
+    <script src="/js/adapter/BiometricAdapter.js"></script>
 
     <script>
-        // Estado de la aplicación
-        let currentComponent = null;
-        let componentCount = 0;
-        let isModalMode = false;
-        let readerInitialized = false;
-
-        // Referencias DOM
-        const elements = {
-            // Botones
-            createEnrollment: document.getElementById('createEnrollment'),
-            createCapture: document.getElementById('createCapture'),
-            createVerification: document.getElementById('createVerification'),
-            createReaderControl: document.getElementById('createReaderControl'),
-            createLogDevice: document.getElementById('createLogDevice'),
-            createTechDevice: document.getElementById('createTechDevice'),
-            toggleMode: document.getElementById('toggleMode'),
-            initReader: document.getElementById('initReader'),
-            clearAll: document.getElementById('clearAll'),
-            showDemo: document.getElementById('showDemo'),
-
-            // Contenedores
-            componentContainer: document.getElementById('componentContainer'),
-            modalOverlay: document.getElementById('modalOverlay'),
-            modalTitle: document.getElementById('modalTitle'),
-            modalBody: document.getElementById('modalBody'),
-            modalClose: document.getElementById('modalClose'),
-
-            // Estado
-            connectionStatus: document.getElementById('connectionStatus'),
-            connectionText: document.getElementById('connectionText'),
-            componentCount: document.getElementById('componentCount'),
-            displayMode: document.getElementById('displayMode')
-        };
-
-        // Configuración de componentes
-        const componentConfigs = {
-            enrollment: {
-                title: '📝 Enrolamiento de Huellas',
-                type: 'enrollment',
-                config: { maxSamples: 4, autoCancel: false }
-            },
-            capture: {
-                title: '📸 Captura Simple',
-                type: 'simplecapture',
-                config: { autoCapture: false, captureInterval: 5000 }
-            },
-            verification: {
-                title: '✅ Verificación e Identificación',
-                type: 'verification',
-                config: { scoreThreshold: 60, autoRefreshUsers: true }
-            },
-            readercontrol: {
-                title: '🔌 Control del Lector',
-                type: 'readercontrol',
-                config: { autoInit: false, showTechnicalInfo: true }
-            },
-            logdevice: {
-                title: '📋 Monitor de Logs',
-                type: 'logdevice',
-                config: { maxEntries: 50, autoScroll: true }
-            },
-            techdevice: {
-                title: '🔧 Información Técnica',
-                type: 'techdevice',
-                config: { autoRefresh: false, showDrivers: true }
-            }
-        };
-
-        // Función de inicialización principal
-        function initializeSystem() {
-            console.log('🔍 Iniciando verificación de componentes...');
-
-            // Verificar que todos los componentes estén disponibles
-            const requiredComponents = {
-                'BiometricAdapter': window.BiometricAdapter,
-                'ComponentFactory': window.ComponentFactory,
-                'BaseComponent': window.BaseComponent,
-                'EnrollmentControl': window.EnrollmentControl,
-                'SimpleCaptureControl': window.SimpleCaptureControl,
-                'VerificationControl': window.VerificationControl,
-                'ReaderControl': window.ReaderControl,
-                'LogDeviceControl': window.LogDeviceControl,
-                'TechDeviceControl': window.TechDeviceControl
+        /**
+         * Panel Biométrico DP4500 - Simple y Directo
+         *
+         * Arquitectura:
+         * C# Backend → Node.js SSE → BiometricAdapter → index.html
+         *
+         * Sin capas intermedias, comunicación directa con hardware
+         */
+        (() => {
+            // ==========================================
+            // ESTADO DE LA APLICACIÓN
+            // ==========================================
+            const state = {
+                adapter: null,
+                readerInitialized: false,
+                isEnrolling: false,
+                enrollSamples: 0,
+                templates: [],
+                currentOperation: null,
+                techDeviceInfo: null,
+                fingerEnrolled: {},
+                failedFingers: {},
+                isEnrollingFinger: false,
+                viewMode: 'single', // 'single' or 'multiple'
+                availableUsers: [],
+                selectedHand: 'LEFT',
+                selectedFinger: 'THUMB'
             };
 
-            console.log('🔍 Estado de componentes:');
-            for (const [name, component] of Object.entries(requiredComponents)) {
-                console.log(`  ${name}: ${component ? '✅' : '❌'}`);
-            }
+            // ==========================================
+            // REFERENCIAS DOM
+            // ==========================================
+            const dom = {
+                // Status bar
+                statusIndicator: document.getElementById('statusIndicator'),
+                statusText: document.getElementById('statusText'),
 
-            const missing = [];
-            for (const [name, component] of Object.entries(requiredComponents)) {
-                if (!component) {
-                    missing.push(name);
+                // Reader Control
+                readerStatus: document.getElementById('readerStatus'),
+                readerState: document.getElementById('readerState'),
+                btnInitReader: document.getElementById('btnInitReader'),
+                btnDisposeReader: document.getElementById('btnDisposeReader'),
+
+                // Enrollment
+                enrollUserId: document.getElementById('enrollUserId'),
+                enrollImage: document.getElementById('enrollImage'),
+                enrollPlaceholder: document.getElementById('enrollPlaceholder'),
+                enrollProgress: document.getElementById('enrollProgress'),
+                enrollCounter: document.getElementById('enrollCounter'),
+                enrollProgressBar: document.getElementById('enrollProgressBar'),
+                enrollStatus: document.getElementById('enrollStatus'),
+                btnEnroll: document.getElementById('btnEnroll'),
+                enrollDots: [
+                    document.getElementById('enrollDot1'),
+                    document.getElementById('enrollDot2'),
+                    document.getElementById('enrollDot3'),
+                    document.getElementById('enrollDot4')
+                ],
+
+                // Verification
+                verifyUserId: document.getElementById('verifyUserId'),
+                verifyImage: document.getElementById('verifyImage'),
+                verifyPlaceholder: document.getElementById('verifyPlaceholder'),
+                verifyProgress: document.getElementById('verifyProgress'),
+                verifyCounter: document.getElementById('verifyCounter'),
+                verifyProgressBar: document.getElementById('verifyProgressBar'),
+                verifyStatus: document.getElementById('verifyStatus'),
+                btnVerify: document.getElementById('btnVerify'),
+                verifyInfo: document.getElementById('verifyInfo'),
+                verifyUserResult: document.getElementById('verifyUserResult'),
+                verifyScore: document.getElementById('verifyScore'),
+                verifyResult: document.getElementById('verifyResult'),
+                verifyDots: [
+                    document.getElementById('verifyDot1'),
+                    document.getElementById('verifyDot2'),
+                    document.getElementById('verifyDot3'),
+                    document.getElementById('verifyDot4')
+                ],
+
+                // Identification
+                identifyImage: document.getElementById('identifyImage'),
+                identifyPlaceholder: document.getElementById('identifyPlaceholder'),
+                identifyProgress: document.getElementById('identifyProgress'),
+                identifyCounter: document.getElementById('identifyCounter'),
+                identifyProgressBar: document.getElementById('identifyProgressBar'),
+                identifyStatus: document.getElementById('identifyStatus'),
+                galleryCount: document.getElementById('galleryCount'),
+                btnIdentify: document.getElementById('btnIdentify'),
+                identifyInfo: document.getElementById('identifyInfo'),
+                identifyUserResult: document.getElementById('identifyUserResult'),
+                identifyScore: document.getElementById('identifyScore'),
+                identifyDots: [
+                    document.getElementById('identifyDot1'),
+                    document.getElementById('identifyDot2'),
+                    document.getElementById('identifyDot3'),
+                    document.getElementById('identifyDot4')
+                ],
+
+                // Simple Capture
+                captureImage: document.getElementById('captureImage'),
+                capturePlaceholder: document.getElementById('capturePlaceholder'),
+                captureStatus: document.getElementById('captureStatus'),
+                btnCapture: document.getElementById('btnCapture'),
+                captureInfo: document.getElementById('captureInfo'),
+                captureTime: document.getElementById('captureTime'),
+
+                // Templates
+                templateCount: document.getElementById('templateCount'),
+                templatesList: document.getElementById('templatesList'),
+                btnRefreshTemplates: document.getElementById('btnRefreshTemplates'),
+                btnClearTemplates: document.getElementById('btnClearTemplates'),
+
+                // Tech Device Info
+                techStatus: document.getElementById('techStatus'),
+                btnLoadTechInfo: document.getElementById('btnLoadTechInfo'),
+                btnExportTechInfo: document.getElementById('btnExportTechInfo'),
+                techInfoPanel: document.getElementById('techInfoPanel'),
+                // Dispositivo
+                techModel: document.getElementById('techModel'),
+                techSerial: document.getElementById('techSerial'),
+                techFirmware: document.getElementById('techFirmware'),
+                techStatus2: document.getElementById('techStatus2'),
+                // Capacidades
+                techResolution: document.getElementById('techResolution'),
+                techArea: document.getElementById('techArea'),
+                techDepth: document.getElementById('techDepth'),
+                techTechnology: document.getElementById('techTechnology'),
+                // Sistema
+                techDriver: document.getElementById('techDriver'),
+                techSDK: document.getElementById('techSDK'),
+                techPlatform: document.getElementById('techPlatform'),
+                techLastUpdate: document.getElementById('techLastUpdate'),
+
+                // Finger Management (Estilo SDK DigitalPersona)
+                fingerUserId: document.getElementById('fingerUserId'),
+                fingerUserSelector: document.getElementById('fingerUserSelector'),
+                fingerUserProgress: document.getElementById('fingerUserProgress'),
+                fingerUserProgressName: document.getElementById('fingerUserProgressName'),
+                fingerUserProgressCount: document.getElementById('fingerUserProgressCount'),
+                fingerUserProgressBar: document.getElementById('fingerUserProgressBar'),
+                handsVisualization: document.getElementById('handsVisualization'),
+                fingerHand: document.getElementById('fingerHand'),
+                fingerType: document.getElementById('fingerType'),
+                fingerPlaceholder: document.getElementById('fingerPlaceholder'),
+                fingerImage: document.getElementById('fingerImage'),
+                fingerProgress: document.getElementById('fingerProgress'),
+                fingerCounter: document.getElementById('fingerCounter'),
+                fingerProgressBar: document.getElementById('fingerProgressBar'),
+                fingerStatus: document.getElementById('fingerStatus'),
+                btnEnrollAllFingers: document.getElementById('btnEnrollAllFingers'),
+                btnCompleteMissing: document.getElementById('btnCompleteMissing'),
+                btnRecaptureFinger: document.getElementById('btnRecaptureFinger'),
+                btnVerifyFinger: document.getElementById('btnVerifyFinger'),
+                btnIdentifyFinger: document.getElementById('btnIdentifyFinger'),
+                btnToggleView: document.getElementById('btnToggleView'),
+                btnRefreshFingers: document.getElementById('btnRefreshFingers'),
+                fingersListContent: document.getElementById('fingersListContent'),
+                fingerDots: [
+                    document.getElementById('fingerDot1'),
+                    document.getElementById('fingerDot2'),
+                    document.getElementById('fingerDot3'),
+                    document.getElementById('fingerDot4')
+                ]
+            };
+
+            // ==========================================
+            // FUNCIONES DE UI HELPER
+            // ==========================================
+
+            function updateGlobalStatus(message, isReady = false) {
+                dom.statusText.textContent = message;
+                if (isReady) {
+                    dom.statusIndicator.classList.add('active');
+                } else {
+                    dom.statusIndicator.classList.remove('active');
                 }
             }
 
-            if (missing.length > 0) {
-                console.error('❌ Componentes faltantes:', missing);
-                showNotification(`Error: Componentes no disponibles: ${missing.join(', ')}`, 'error');
-                return;
+            function showImage(imgElement, placeholder, base64) {
+                if (base64) {
+                    const src = base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`;
+                    imgElement.src = src;
+                    imgElement.style.display = 'block';
+                    placeholder.style.display = 'none';
+                } else {
+                    imgElement.style.display = 'none';
+                    placeholder.style.display = 'block';
+                }
             }
 
-            console.log('✅ Todos los componentes disponibles');
+            function updateStatus(element, message, type = 'info') {
+                element.textContent = message;
+                element.className = `status-message ${type}`;
+            }
 
-            // Configurar la UI
-            setupEventListeners();
-            setupAdapterEvents(); // Asegurar que los eventos del adapter estén configurados
-            updateConnectionStatus();
-            updateComponentCount();
+            // ==========================================
+            // READER CONTROL
+            // ==========================================
 
-            // Debug: Verificar BiometricAdapter
-            console.log('🚀 Sistema Biométrico Modular iniciado');
-            console.log('📋 Métodos BiometricAdapter:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.BiometricAdapter)));
-            console.log('📋 Métodos ComponentFactory:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.ComponentFactory)));
-            console.log('🔗 Estado conexión:', window.BiometricAdapter.isConnected);
-
-            // Intentar conectar automáticamente después de 1 segundo
-            setTimeout(async () => {
+            async function initializeReader() {
                 try {
-                    if (!window.BiometricAdapter.isConnected) {
-                        console.log('🔌 Intentando conectar automáticamente...');
-                        await window.BiometricAdapter.connect();
-                        updateConnectionStatus();
+                    updateStatus(dom.readerStatus, '🔌 Inicializando lector...', 'info');
+                    dom.btnInitReader.disabled = true;
+
+                    await state.adapter.initializeReader();
+                    console.log('[DP4500] ✅ Lector inicializado');
+
+                } catch (error) {
+                    console.error('[DP4500] ❌ Error:', error);
+                    updateStatus(dom.readerStatus, `❌ Error: ${error.message}`, 'error');
+                    dom.btnInitReader.disabled = false;
+                }
+            }
+
+            async function disposeReader() {
+                try {
+                    updateStatus(dom.readerStatus, '⚠️ Apagando lector...', 'warning');
+                    await state.adapter.disposeReader();
+                    console.log('[DP4500] Lector apagado');
+                } catch (error) {
+                    console.error('[DP4500] Error:', error);
+                }
+            }
+
+            // ==========================================
+            // ENROLLMENT CONTROL
+            // ==========================================
+
+            function updateEnrollProgress(current, total) {
+                const percentage = Math.round((current / total) * 100);
+                dom.enrollCounter.textContent = `${current}/${total}`;
+                dom.enrollProgressBar.style.width = `${percentage}%`;
+                dom.enrollProgressBar.textContent = `${percentage}%`;
+
+                // Actualizar dots
+                dom.enrollDots.forEach((dot, index) => {
+                    dot.classList.remove('captured', 'active');
+                    const sampleNum = index + 1;
+                    if (sampleNum <= current) {
+                        dot.classList.add('captured');
+                    } else if (sampleNum === current + 1 && current < total) {
+                        dot.classList.add('active');
+                    }
+                });
+            }
+
+            function updateVerifyProgress(current, total) {
+                const percentage = Math.round((current / total) * 100);
+                dom.verifyCounter.textContent = `${current}/${total}`;
+                dom.verifyProgressBar.style.width = `${percentage}%`;
+                dom.verifyProgressBar.textContent = `${percentage}%`;
+
+                // Actualizar dots
+                dom.verifyDots.forEach((dot, index) => {
+                    dot.classList.remove('captured', 'active');
+                    const attemptNum = index + 1;
+                    if (attemptNum <= current) {
+                        dot.classList.add('captured');
+                    } else if (attemptNum === current + 1 && current < total) {
+                        dot.classList.add('active');
+                    }
+                });
+            }
+
+            function updateIdentifyProgress(current, total) {
+                const percentage = Math.round((current / total) * 100);
+                dom.identifyCounter.textContent = `${current}/${total}`;
+                dom.identifyProgressBar.style.width = `${percentage}%`;
+                dom.identifyProgressBar.textContent = `${percentage}%`;
+
+                // Actualizar dots
+                dom.identifyDots.forEach((dot, index) => {
+                    dot.classList.remove('captured', 'active');
+                    const attemptNum = index + 1;
+                    if (attemptNum <= current) {
+                        dot.classList.add('captured');
+                    } else if (attemptNum === current + 1 && current < total) {
+                        dot.classList.add('active');
+                    }
+                });
+            }
+
+            async function startEnrollment() {
+                const userId = dom.enrollUserId.value.trim();
+                if (!userId) {
+                    updateStatus(dom.enrollStatus, '⚠️ Ingresa un ID de usuario', 'warning');
+                    return;
+                }
+
+                if (!state.readerInitialized) {
+                    updateStatus(dom.enrollStatus, '⚠️ Enciende el lector primero', 'error');
+                    return;
+                }
+
+                try {
+                    state.isEnrolling = true;
+                    state.enrollSamples = 0;
+                    dom.btnEnroll.disabled = true;
+                    dom.enrollProgress.classList.add('active');
+                    updateEnrollProgress(0, 4);
+                    updateStatus(dom.enrollStatus, '🚀 Iniciando enrolamiento...', 'info');
+
+                    await state.adapter.enrollFingerprint(userId);
+                    console.log('[Enroll] Solicitud enviada');
+
+                } catch (error) {
+                    console.error('[Enroll] Error:', error);
+                    updateStatus(dom.enrollStatus, `❌ ${error.message}`, 'error');
+                    state.isEnrolling = false;
+                    dom.btnEnroll.disabled = false;
+                }
+            }
+
+            // ==========================================
+            // VERIFICATION CONTROL
+            // ==========================================
+
+            async function loadUsers() {
+                try {
+                    const result = await state.adapter.getStoredFingerprints();
+                    if (result.ok) {
+                        // Filtrar solo DP_REGISTRATION
+                        const users = result.items.filter(item => item.format === 'DP_REGISTRATION');
+
+                        dom.verifyUserId.innerHTML = '<option value="">-- Seleccionar --</option>';
+                        users.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.tag;
+                            option.textContent = user.tag;
+                            dom.verifyUserId.appendChild(option);
+                        });
+
+                        dom.galleryCount.textContent = users.length;
+                        state.templates = users;
                     }
                 } catch (error) {
-                    console.log('⚠️ No se pudo conectar automáticamente:', error.message);
+                    console.error('[Users] Error:', error);
                 }
-            }, 1000);
-        }
+            }
 
-        // Inicialización con pipeline seguro
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('📄 DOM cargado, esperando componentes...');
-
-            // Usar el pipeline de carga segura
-            BiometricSystem.onReady(() => {
-                initializeSystem();
-            });
-
-            // Fallback: Si después de 5 segundos no están todos los componentes, intentar inicializar igual
-            setTimeout(() => {
-                const allLoaded = Object.values(BiometricSystem.loaded).every(loaded => loaded);
-                if (!allLoaded) {
-                    console.warn('⚠️ Timeout esperando componentes, intentando inicializar...');
-                    console.warn('🔍 Estado de carga:', BiometricSystem.loaded);
-                    initializeSystem();
+            async function verifyUser() {
+                const userId = dom.verifyUserId.value;
+                if (!userId) {
+                    updateStatus(dom.verifyStatus, '⚠️ Selecciona un usuario', 'warning');
+                    return;
                 }
-            }, 5000);
-        });
 
-        // Configurar eventos del adapter después de que esté listo
-        function setupAdapterEvents() {
-            if (window.BiometricAdapter && typeof window.BiometricAdapter.on === 'function') {
-                window.BiometricAdapter.on('hello', () => {
-                    readerInitialized = true;
-                    updateConnectionStatus();
-                });
-                console.log('✅ Eventos del BiometricAdapter configurados');
-            } else {
-                console.warn('⚠️ BiometricAdapter no está listo para eventos');
-            }
-        }
-
-        // Configurar eventos
-        function setupEventListeners() {
-            // Botones de crear componentes
-            elements.createEnrollment.onclick = () => createComponent('enrollment');
-            elements.createCapture.onclick = () => createComponent('capture');
-            elements.createVerification.onclick = () => createComponent('verification');
-            elements.createReaderControl.onclick = () => createComponent('readercontrol');
-            elements.createLogDevice.onclick = () => createComponent('logdevice');
-            elements.createTechDevice.onclick = () => createComponent('techdevice');
-
-            // Botones de utilidad
-            elements.toggleMode.onclick = toggleDisplayMode;
-            elements.initReader.onclick = initializeReader;
-            elements.clearAll.onclick = clearAllComponents;
-            elements.showDemo.onclick = () => window.open('demo-modular.html', '_blank');
-
-            // Modal
-            elements.modalClose.onclick = closeModal;
-            elements.modalOverlay.onclick = (e) => {
-                if (e.target === elements.modalOverlay) closeModal();
-            };
-
-            // Eventos del adapter
-            setupAdapterEvents();
-
-            // Tecla ESC para cerrar modal
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && isModalMode) {
-                    closeModal();
+                if (!state.readerInitialized) {
+                    updateStatus(dom.verifyStatus, '⚠️ Enciende el lector primero', 'error');
+                    return;
                 }
-            });
-        }
 
-        // Crear componente
-        function createComponent(componentKey) {
-            // Validar ComponentFactory
-            if (!window.ComponentFactory) {
-                showNotification('ComponentFactory no disponible', 'error');
-                console.error('❌ ComponentFactory no está disponible');
-                return;
+                try {
+                    dom.btnVerify.disabled = true;
+                    state.currentOperation = 'verify';
+
+                    // Mostrar progreso y resetear
+                    dom.verifyProgress.classList.add('active');
+                    updateVerifyProgress(0, 4);
+                    updateStatus(dom.verifyStatus, `🔍 Verificando ${userId}...`, 'info');
+                    showImage(dom.verifyImage, dom.verifyPlaceholder, null);
+
+                    const result = await state.adapter.verifyFingerprint(userId, 4);
+                    console.log('[Verify] Result:', result);
+
+                    if (result.ok) {
+                        dom.verifyInfo.style.display = 'grid';
+                        dom.verifyUserResult.textContent = userId;
+                        dom.verifyScore.textContent = result.score || 'N/A';
+
+                        if (result.verified) {
+                            dom.verifyResult.textContent = '✅ VERIFICADO';
+                            updateStatus(dom.verifyStatus, `✅ Usuario verificado en intento ${result.attempt || '?'}`, 'success');
+                        } else {
+                            dom.verifyResult.textContent = '❌ NO COINCIDE';
+                            updateStatus(dom.verifyStatus, `❌ Huella no coincide después de ${result.attempt || 4} intentos`, 'error');
+                        }
+                    } else {
+                        updateStatus(dom.verifyStatus, `❌ ${result.error}`, 'error');
+                    }
+
+                    // Ocultar progreso después de 3 segundos
+                    setTimeout(() => {
+                        dom.verifyProgress.classList.remove('active');
+                    }, 3000);
+
+                } catch (error) {
+                    console.error('[Verify] Error:', error);
+                    updateStatus(dom.verifyStatus, `❌ ${error.message}`, 'error');
+                    dom.verifyProgress.classList.remove('active');
+                } finally {
+                    dom.btnVerify.disabled = false;
+                    state.currentOperation = null;
+                }
             }
 
-            if (typeof window.ComponentFactory.create !== 'function') {
-                showNotification('ComponentFactory.create no es una función', 'error');
-                console.error('❌ ComponentFactory.create no es una función');
-                console.error('ComponentFactory methods:', Object.getOwnPropertyNames(window.ComponentFactory));
-                return;
+            // ==========================================
+            // IDENTIFICATION CONTROL
+            // ==========================================
+
+            async function identifyUser() {
+                if (!state.readerInitialized) {
+                    updateStatus(dom.identifyStatus, '⚠️ Enciende el lector primero', 'error');
+                    return;
+                }
+
+                if (state.templates.length === 0) {
+                    updateStatus(dom.identifyStatus, '⚠️ No hay usuarios enrolados', 'warning');
+                    return;
+                }
+
+                try {
+                    dom.btnIdentify.disabled = true;
+                    state.currentOperation = 'identify';
+
+                    // Mostrar progreso y resetear
+                    dom.identifyProgress.classList.add('active');
+                    updateIdentifyProgress(0, 4);
+                    updateStatus(dom.identifyStatus, `🔍 Buscando en ${state.templates.length} usuarios...`, 'info');
+                    showImage(dom.identifyImage, dom.identifyPlaceholder, null);
+
+                    const result = await state.adapter.identifyFingerprint(4);
+                    console.log('[Identify] Result:', result);
+
+                    if (result.ok) {
+                        if (result.match) {
+                            dom.identifyInfo.style.display = 'grid';
+                            dom.identifyUserResult.textContent = result.bestTag || 'Usuario';
+                            dom.identifyScore.textContent = result.bestScore || 'N/A';
+                            updateStatus(dom.identifyStatus, `✅ Identificado: ${result.bestTag} en intento ${result.attempt || '?'}`, 'success');
+                        } else {
+                            dom.identifyInfo.style.display = 'none';
+                            updateStatus(dom.identifyStatus, `❌ No se encontraron coincidencias después de ${result.attempt || 4} intentos`, 'error');
+                        }
+                    } else {
+                        updateStatus(dom.identifyStatus, `❌ ${result.error}`, 'error');
+                    }
+
+                    // Ocultar progreso después de 3 segundos
+                    setTimeout(() => {
+                        dom.identifyProgress.classList.remove('active');
+                    }, 3000);
+
+                } catch (error) {
+                    console.error('[Identify] Error:', error);
+                    updateStatus(dom.identifyStatus, `❌ ${error.message}`, 'error');
+                    dom.identifyProgress.classList.remove('active');
+                } finally {
+                    dom.btnIdentify.disabled = false;
+                    state.currentOperation = null;
+                }
             }
 
-            const config = componentConfigs[componentKey];
-            if (!config) {
-                console.error('Configuración de componente no encontrada:', componentKey);
-                showNotification(`Configuración de componente '${componentKey}' no encontrada`, 'error');
-                return;
+            // ==========================================
+            // SIMPLE CAPTURE CONTROL
+            // ==========================================
+
+            async function captureFingerprint() {
+                if (!state.readerInitialized) {
+                    updateStatus(dom.captureStatus, '⚠️ Enciende el lector primero', 'error');
+                    return;
+                }
+
+                try {
+                    dom.btnCapture.disabled = true;
+                    updateStatus(dom.captureStatus, '📸 Coloca el dedo...', 'info');
+                    showImage(dom.captureImage, dom.capturePlaceholder, null);
+
+                    const result = await state.adapter.captureFingerprint();
+                    console.log('[Capture] Result:', result);
+
+                    if (result.ok) {
+                        dom.captureInfo.style.display = 'grid';
+                        dom.captureTime.textContent = new Date().toLocaleTimeString();
+                        updateStatus(dom.captureStatus, '✅ Captura exitosa', 'success');
+                    } else {
+                        updateStatus(dom.captureStatus, `❌ ${result.error}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('[Capture] Error:', error);
+                    updateStatus(dom.captureStatus, `❌ ${error.message}`, 'error');
+                } finally {
+                    dom.btnCapture.disabled = false;
+                }
             }
 
-            try {
-                // Limpiar componente anterior si existe
-                clearCurrentComponent();
+            // ==========================================
+            // TEMPLATE MANAGER
+            // ==========================================
 
-                // Determinar contenedor
-                const containerId = generateComponentId(config.type);
-                const targetContainer = isModalMode ? elements.modalBody : elements.componentContainer;
+            async function refreshTemplates() {
+                try {
+                    const result = await state.adapter.getStoredFingerprints();
+                    if (result.ok) {
+                        state.templates = result.items;
+                        dom.templateCount.textContent = result.items.length;
 
-                // Crear contenedor para el componente
-                const componentDiv = document.createElement('div');
-                componentDiv.id = containerId;
-                componentDiv.className = 'component-wrapper';
+                        if (result.items.length === 0) {
+                            dom.templatesList.innerHTML = `
+                                <div class="template-item" style="text-align: center; color: var(--gray-600);">
+                                    No hay plantillas
+                                </div>
+                            `;
+                        } else {
+                            dom.templatesList.innerHTML = result.items.map(item => `
+                                <div class="template-item">
+                                    <span>${item.tag}</span>
+                                    <span class="template-format">${item.format}</span>
+                                </div>
+                            `).join('');
+                        }
 
-                // Limpiar contenedor objetivo
-                targetContainer.innerHTML = '';
-                targetContainer.appendChild(componentDiv);
+                        // Actualizar lista de verificación
+                        loadUsers();
+                    }
+                } catch (error) {
+                    console.error('[Templates] Error:', error);
+                }
+            }
 
-                // Crear componente con configuración modal si es necesario
-                const componentConfig = {
-                    ...config.config,
-                    isModal: isModalMode,
-                    modalContainer: isModalMode ? elements.modalBody : null
-                };
+            async function clearTemplates() {
+                if (!confirm('¿Seguro que deseas eliminar TODAS las plantillas?')) {
+                    return;
+                }
 
-                console.log(`🔧 Creando componente ${config.type} con config:`, componentConfig);
+                try {
+                    await state.adapter.clearStoredFingerprints();
+                    await refreshTemplates();
+                    updateGlobalStatus('🗑️ Plantillas eliminadas', true);
+                } catch (error) {
+                    console.error('[Templates] Error:', error);
+                }
+            }
 
-                const component = window.ComponentFactory.create(config.type, containerId, componentConfig);
+            // ==========================================
+            // TECH DEVICE INFO
+            // ==========================================
 
-                if (component) {
-                    currentComponent = {
-                        instance: component,
-                        config: config,
-                        containerId: containerId,
-                        isModal: isModalMode
+            async function loadTechInfo() {
+                try {
+                    dom.btnLoadTechInfo.disabled = true;
+                    updateStatus(dom.techStatus, '🔄 Obteniendo información del dispositivo...', 'info');
+
+                    const result = await state.adapter.getReaderInfo();
+                    console.log('[TechInfo] Result:', result);
+
+                    if (result.ok) {
+                        const info = result.data || result.info || {};
+
+                        // Mostrar panel
+                        dom.techInfoPanel.style.display = 'block';
+                        dom.btnExportTechInfo.disabled = false;
+
+                        // Sección: Dispositivo
+                        dom.techModel.textContent = info.model || 'DigitalPersona U.are.U 4500';
+                        dom.techSerial.textContent = info.serialNumber || info.serial || 'N/A';
+                        dom.techFirmware.textContent = info.firmware || info.firmwareVersion || 'N/A';
+                        dom.techStatus2.textContent = state.readerInitialized ? '✅ Encendido' : '⚠️ Apagado';
+
+                        // Sección: Capacidades
+                        dom.techResolution.textContent = info.resolution || '512 DPI';
+                        dom.techArea.textContent = info.captureArea || info.area || '16 x 18 mm';
+                        dom.techDepth.textContent = info.bitDepth || info.depth || '8 bits';
+                        dom.techTechnology.textContent = info.technology || 'Óptico';
+
+                        // Sección: Sistema
+                        dom.techDriver.textContent = info.driver || info.driverVersion || 'DigitalPersona Driver v2.x';
+                        dom.techSDK.textContent = info.sdk || info.sdkVersion || 'U.are.U SDK 2.x';
+                        dom.techPlatform.textContent = navigator.platform || 'Windows';
+                        dom.techLastUpdate.textContent = new Date().toLocaleString('es-ES');
+
+                        // Guardar info para exportar
+                        state.techDeviceInfo = info;
+
+                        updateStatus(dom.techStatus, '✅ Información técnica actualizada', 'success');
+                    } else {
+                        updateStatus(dom.techStatus, `❌ ${result.error || 'Error obteniendo información'}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('[TechInfo] Error:', error);
+                    updateStatus(dom.techStatus, `❌ ${error.message}`, 'error');
+                } finally {
+                    dom.btnLoadTechInfo.disabled = false;
+                }
+            }
+
+            function exportTechInfo() {
+                if (!state.techDeviceInfo) {
+                    updateStatus(dom.techStatus, '⚠️ No hay información para exportar', 'warning');
+                    return;
+                }
+
+                try {
+                    const exportData = {
+                        timestamp: new Date().toISOString(),
+                        deviceInfo: state.techDeviceInfo,
+                        systemInfo: {
+                            userAgent: navigator.userAgent,
+                            platform: navigator.platform,
+                            language: navigator.language,
+                            readerStatus: state.readerInitialized ? 'Encendido' : 'Apagado'
+                        }
                     };
 
-                    // Actualizar UI
-                    updateActiveButton(componentKey);
-                    componentCount++;
-                    updateComponentCount();
+                    const dataStr = JSON.stringify(exportData, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
 
-                    // Manejar modal
-                    if (isModalMode) {
-                        elements.modalTitle.textContent = config.title;
-                        showModal();
-                    }
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `device-info-${new Date().toISOString().split('T')[0]}.json`;
+                    link.click();
 
-                    // Eventos del componente
-                    setupComponentEvents(component, componentKey);
-
-                    console.log(`✅ Componente ${config.type} creado en modo ${isModalMode ? 'modal' : 'inline'}`);
-                    showNotification(`Componente ${config.title} creado exitosamente`, 'success');
-                } else {
-                    throw new Error('window.ComponentFactory.create retornó null o undefined');
-                }
-
-            } catch (error) {
-                console.error('Error creando componente:', error);
-                showNotification(`Error creando componente: ${error.message}`, 'error');
-            }
-        }
-
-        // Configurar eventos específicos del componente
-        function setupComponentEvents(component, componentKey) {
-            // Eventos comunes
-            component.on('ready', () => {
-                console.log(`Componente ${componentKey} listo`);
-            });
-
-            component.on('error', (error) => {
-                console.error(`Error en componente ${componentKey}:`, error);
-            });
-
-            // Eventos específicos por tipo
-            if (componentKey === 'enrollment') {
-                component.on('enrolled', (data) => {
-                    console.log('Usuario enrolado:', data.userId);
-                    showNotification(`Usuario ${data.userId} enrolado exitosamente`, 'success');
-                });
-            }
-
-            if (componentKey === 'capture') {
-                component.on('captured', (data) => {
-                    console.log('Huella capturada:', data);
-                    showNotification('Huella capturada exitosamente', 'success');
-                });
-            }
-
-            if (componentKey === 'verification') {
-                component.on('verified', (result) => {
-                    const message = result.verified
-                        ? `Verificación exitosa: ${result.user}`
-                        : `Verificación fallida: ${result.user}`;
-                    showNotification(message, result.verified ? 'success' : 'error');
-                });
-
-                component.on('identified', (result) => {
-                    const message = result.identified
-                        ? `Identificado: ${result.user}`
-                        : 'No se pudo identificar la huella';
-                    showNotification(message, result.identified ? 'success' : 'warning');
-                });
-            }
-        }
-
-        // Mostrar notificación
-        function showNotification(message, type = 'info') {
-            // Crear elemento de notificación
-            const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : type === 'warning' ? '#ffc107' : '#6c757d'};
-                color: ${type === 'warning' ? '#212529' : '#ffffff'};
-                padding: 15px 20px;
-                border-radius: 8px;
-                font-weight: 600;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-                z-index: 1001;
-                transform: translateX(100%);
-                transition: transform 0.3s ease;
-            `;
-            notification.textContent = message;
-
-            document.body.appendChild(notification);
-
-            // Animar entrada
-            setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
-            }, 100);
-
-            // Auto-remover después de 4 segundos
-            setTimeout(() => {
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    if (notification.parentElement) {
-                        notification.parentElement.removeChild(notification);
-                    }
-                }, 300);
-            }, 4000);
-        }
-
-        // Alternar modo de visualización
-        function toggleDisplayMode() {
-            isModalMode = !isModalMode;
-            elements.toggleMode.textContent = isModalMode ? '📱 Cambiar a Inline' : '🪟 Cambiar a Modal';
-            elements.displayMode.textContent = isModalMode ? 'Modal' : 'Inline';
-
-            // Si hay un componente activo, recrearlo en el nuevo modo
-            if (currentComponent) {
-                const componentKey = Object.keys(componentConfigs).find(
-                    key => componentConfigs[key].type === currentComponent.config.type
-                );
-                if (componentKey) {
-                    createComponent(componentKey);
-                }
-            }
-
-            console.log(`Modo cambiado a: ${isModalMode ? 'Modal' : 'Inline'}`);
-        }
-
-        // Mostrar/ocultar modal
-        function showModal() {
-            elements.modalOverlay.classList.add('show');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeModal() {
-            elements.modalOverlay.classList.remove('show');
-            document.body.style.overflow = '';
-
-            if (isModalMode && currentComponent) {
-                clearCurrentComponent();
-            }
-        }
-
-        // Limpiar componente actual
-        function clearCurrentComponent() {
-            if (currentComponent) {
-                try {
-                    window.ComponentFactory.destroy(currentComponent.config.type, currentComponent.containerId);
+                    URL.revokeObjectURL(url);
+                    updateStatus(dom.techStatus, '✅ Información exportada correctamente', 'success');
                 } catch (error) {
-                    console.warn('Error destruyendo componente:', error);
+                    console.error('[TechInfo] Error exportando:', error);
+                    updateStatus(dom.techStatus, '❌ Error al exportar información', 'error');
+                }
+            }
+
+            // ==========================================
+            // FINGER MANAGEMENT
+            // ==========================================
+
+            const FINGERS = {
+                THUMB: { name: 'THUMB', label: 'Pulgar', emoji: '👍' },
+                INDEX: { name: 'INDEX', label: 'Índice', emoji: '☝️' },
+                MIDDLE: { name: 'MIDDLE', label: 'Medio', emoji: '🖕' },
+                RING: { name: 'RING', label: 'Anular', emoji: '💍' },
+                PINKY: { name: 'PINKY', label: 'Meñique', emoji: '🤙' }
+            };
+
+            function generateFingerTag(userId, hand, finger) {
+                return `${userId}_${hand}_${finger}`;
+            }
+
+            function parseFingerTag(tag) {
+                const parts = tag.split('_');
+                if (parts.length >= 3) {
+                    return {
+                        userId: parts.slice(0, -2).join('_'),
+                        hand: parts[parts.length - 2],
+                        finger: parts[parts.length - 1]
+                    };
+                }
+                return null;
+            }
+
+            function updateFingerProgress(current, total) {
+                const percentage = Math.round((current / total) * 100);
+                dom.fingerCounter.textContent = `${current}/${total}`;
+                dom.fingerProgressBar.style.width = `${percentage}%`;
+                dom.fingerProgressBar.textContent = `${percentage}%`;
+
+                dom.fingerDots.forEach((dot, index) => {
+                    if (index < current) {
+                        dot.classList.add('active');
+                    } else {
+                        dot.classList.remove('active');
+                    }
+                });
+            }
+
+            // ==========================================
+            // FINGER MANAGEMENT - VISUALIZACIÓN DE MANOS (Estilo SDK DigitalPersona)
+            // ==========================================
+
+            /**
+             * Renderizar manos visuales clickeables (Estilo SDK DigitalPersona)
+             * SIEMPRE muestra las manos, incluso sin ID de usuario
+             */
+            function renderFingerHands() {
+                const userId = dom.fingerUserId.value.trim();
+
+                // Obtener dedos enrolados del usuario (o vacío si no existe o no hay ID)
+                const userFingers = userId && state.fingerEnrolled[userId]
+                    ? state.fingerEnrolled[userId]
+                    : { LEFT: {}, RIGHT: {} };
+
+                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; width: 100%; box-sizing: border-box;">';
+
+                // Instrucción clara cuando no hay usuario
+                if (!userId) {
+                    html += `<div style="grid-column: 1 / -1; text-align: center; padding: 12px; background: #fef3c7; border-radius: 8px; border: 2px solid #ca8a04; margin-bottom: 8px; font-size: 13px;">
+                        <p style="margin: 0; font-weight: 600; color: #92400e;">👆 Ingresa un ID de usuario arriba, luego haz clic en cualquier dedo para enrolar</p>
+                    </div>`;
                 }
 
-                currentComponent = null;
-                clearActiveButtons();
+                // Mano Izquierda
+                html += renderHand('LEFT', userFingers.LEFT);
 
-                // Restaurar placeholder si está en modo inline
-                if (!isModalMode) {
-                    elements.componentContainer.innerHTML = `
-                        <div class="component-placeholder">
-                            <div style="font-size: 48px; margin-bottom: 20px;">🧩</div>
-                            <div>Selecciona un componente para comenzar</div>
-                            <div style="font-size: 14px; margin-top: 10px; color: #adb5bd;">
-                                Los componentes aparecerán aquí o en ventanas modales
+                // Mano Derecha
+                html += renderHand('RIGHT', userFingers.RIGHT);
+
+                html += '</div>';
+
+                dom.handsVisualization.innerHTML = html;
+
+                // Agregar event listeners a cada dedo después de renderizar
+                attachFingerClickListeners();
+            }
+
+            /**
+             * Renderizar una mano individual con dedos clickeables
+             */
+            function renderHand(hand, fingers) {
+                const handLabel = hand === 'LEFT' ? '👈 Mano Izquierda' : '👉 Mano Derecha';
+                const handEmoji = hand === 'LEFT' ? '🫲' : '🫱';
+                const orderOffset = hand === 'LEFT' ? 0 : 5; // Izquierda: 1-5, Derecha: 6-10
+
+                let html = `<div style="text-align: center; padding: 12px; background: var(--gray-50); border-radius: 12px; border: 2px solid var(--gray-200); box-sizing: border-box; width: 100%;">`;
+                html += `<h4 style="margin-bottom: 12px; color: var(--gray-700); font-size: 14px;">${handEmoji} ${handLabel}</h4>`;
+                html += `<div style="display: flex; justify-content: center; gap: 6px; flex-wrap: wrap;">`;
+
+                // Renderizar los 5 dedos con orden de captura
+                let fingerIndex = 0;
+                Object.keys(FINGERS).forEach(fingerKey => {
+                    fingerIndex++;
+                    const captureOrder = orderOffset + fingerIndex; // Orden de captura: 1-10
+                    const finger = FINGERS[fingerKey];
+                    const isEnrolled = fingers[fingerKey];
+                    const bgColor = isEnrolled ? '#dcfce7' : '#fef3c7';
+                    const borderColor = isEnrolled ? '#16a34a' : '#ca8a04';
+                    const statusIcon = isEnrolled ? '✅' : '⭕';
+
+                    html += `<div
+                        class="finger-button-simple"
+                        data-hand="${hand}"
+                        data-finger="${fingerKey}"
+                        style="
+                            position: relative;
+                            width: 45px;
+                            height: 65px;
+                            background: ${bgColor};
+                            border: 2px solid ${borderColor};
+                            border-radius: 8px;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                            user-select: none;
+                            box-sizing: border-box;
+                        "
+                        title="Orden #${captureOrder} - Clic para enrolar: ${finger.label} - ${hand === 'LEFT' ? 'Izquierda' : 'Derecha'}\n${isEnrolled ? '✅ Ya enrolado' : '⭕ No enrolado'}">
+                        <!-- Número de orden -->
+                        <span style="position: absolute; top: 2px; left: 3px; font-size: 9px; font-weight: bold; color: #6b7280; background: #fff; border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; border: 1px solid #e5e7eb;">${captureOrder}</span>
+                        <span style="font-size: 26px;">${finger.emoji}</span>
+                        <span style="font-size: 11px; margin-top: 2px;">${statusIcon}</span>
+                        <span style="font-size: 7px; color: var(--gray-600); margin-top: 1px;">${finger.label.slice(0, 3)}</span>
+                    </div>`;
+                });
+
+                html += `</div></div>`;
+                return html;
+            }
+
+            /**
+             * Adjuntar event listeners a todos los dedos clickeables
+             */
+            function attachFingerClickListeners() {
+                const fingerButtons = dom.handsVisualization.querySelectorAll('.finger-button-simple');
+
+                fingerButtons.forEach(button => {
+                    // Efecto hover
+                    button.addEventListener('mouseenter', (e) => {
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                    });
+
+                    button.addEventListener('mouseleave', (e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                    });
+
+                    // Click para enrolar automáticamente
+                    button.addEventListener('click', (e) => {
+                        const hand = e.currentTarget.dataset.hand;
+                        const finger = e.currentTarget.dataset.finger;
+                        onFingerClick(hand, finger);
+                    });
+                });
+            }
+
+            /**
+             * Actualizar selector de usuarios con lista de usuarios existentes
+             */
+            function updateUserSelector() {
+                const userIds = Object.keys(state.fingerEnrolled).sort();
+                state.availableUsers = userIds;
+
+                // Limpiar y repoblar selector
+                dom.fingerUserSelector.innerHTML = '<option value="">-- Seleccionar --</option>';
+
+                userIds.forEach(userId => {
+                    const userHands = state.fingerEnrolled[userId];
+                    let enrolledCount = 0;
+
+                    ['LEFT', 'RIGHT'].forEach(hand => {
+                        Object.keys(FINGERS).forEach(finger => {
+                            if (userHands[hand]?.[finger]) {
+                                enrolledCount++;
+                            }
+                        });
+                    });
+
+                    const option = document.createElement('option');
+                    option.value = userId;
+                    option.textContent = `${userId} (${enrolledCount}/10)`;
+                    dom.fingerUserSelector.appendChild(option);
+                });
+            }
+
+            /**
+             * Actualizar progreso del usuario actual
+             */
+            function updateUserProgress() {
+                const userId = dom.fingerUserId.value.trim();
+
+                if (!userId || !state.fingerEnrolled[userId]) {
+                    dom.fingerUserProgress.style.display = 'none';
+                    return;
+                }
+
+                const userHands = state.fingerEnrolled[userId];
+                let enrolledCount = 0;
+
+                ['LEFT', 'RIGHT'].forEach(hand => {
+                    Object.keys(FINGERS).forEach(finger => {
+                        if (userHands[hand]?.[finger]) {
+                            enrolledCount++;
+                        }
+                    });
+                });
+
+                // Mostrar progreso
+                dom.fingerUserProgress.style.display = 'block';
+                dom.fingerUserProgressName.textContent = userId;
+                dom.fingerUserProgressCount.textContent = enrolledCount;
+                dom.fingerUserProgressBar.style.width = `${(enrolledCount / 10) * 100}%`;
+
+                // Actualizar botón "Completar Faltantes"
+                updateCompleteMissingButton();
+            }
+
+            /**
+             * Actualizar visibilidad del botón "Completar Dedos Faltantes"
+             */
+            function updateCompleteMissingButton() {
+                const userId = dom.fingerUserId.value.trim();
+
+                if (!userId || !state.fingerEnrolled[userId]) {
+                    dom.btnCompleteMissing.style.display = 'none';
+                    return;
+                }
+
+                const userHands = state.fingerEnrolled[userId];
+                let enrolledCount = 0;
+
+                ['LEFT', 'RIGHT'].forEach(hand => {
+                    Object.keys(FINGERS).forEach(finger => {
+                        if (userHands[hand]?.[finger]) {
+                            enrolledCount++;
+                        }
+                    });
+                });
+
+                // Mostrar botón solo si hay entre 1 y 9 dedos enrolados
+                if (enrolledCount > 0 && enrolledCount < 10) {
+                    const missingCount = 10 - enrolledCount;
+                    dom.btnCompleteMissing.textContent = `⚡ Completar ${missingCount} Dedo${missingCount > 1 ? 's' : ''} Faltante${missingCount > 1 ? 's' : ''}`;
+                    dom.btnCompleteMissing.style.display = 'inline-block';
+                } else {
+                    dom.btnCompleteMissing.style.display = 'none';
+                }
+            }
+
+            /**
+             * Actualizar visibilidad del botón "Re-Capturar Dedo"
+             */
+            function updateRecaptureButton() {
+                const userId = dom.fingerUserId.value.trim();
+                const hand = state.selectedHand;
+                const finger = state.selectedFinger;
+
+                // Mostrar botón solo si el dedo ya está enrolado
+                const shouldShow = userId &&
+                                  state.fingerEnrolled[userId] &&
+                                  state.fingerEnrolled[userId][hand]?.[finger];
+
+                if (shouldShow) {
+                    const fingerInfo = FINGERS[finger];
+                    dom.btnRecaptureFinger.textContent = `🔄 Re-Capturar ${fingerInfo.emoji} ${fingerInfo.label}`;
+                    dom.btnRecaptureFinger.style.display = 'inline-block';
+                } else {
+                    dom.btnRecaptureFinger.style.display = 'none';
+                }
+            }
+
+            /**
+             * Toggle entre vista single y múltiple usuarios
+             */
+            function toggleView() {
+                if (state.viewMode === 'single') {
+                    state.viewMode = 'multiple';
+                    dom.btnToggleView.textContent = '👤 Vista Individual';
+                    renderMultipleUsers();
+                } else {
+                    state.viewMode = 'single';
+                    dom.btnToggleView.textContent = '👥 Ver Todos los Usuarios';
+                    renderFingerHands();
+                }
+            }
+
+            /**
+             * Renderizar vista múltiple (galería de usuarios)
+             */
+            function renderMultipleUsers() {
+                const userIds = Object.keys(state.fingerEnrolled).sort();
+
+                if (userIds.length === 0) {
+                    dom.handsVisualization.innerHTML = `
+                        <div style="text-align: center; padding: 30px; background: #fef3c7; border-radius: 8px; border: 2px solid #ca8a04;">
+                            <p style="margin: 0; font-weight: 600; color: #92400e;">
+                                👆 No hay usuarios enrolados todavía
+                            </p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin: 15px 0;">';
+
+                userIds.forEach(userId => {
+                    const userHands = state.fingerEnrolled[userId];
+                    let enrolledCount = 0;
+
+                    ['LEFT', 'RIGHT'].forEach(hand => {
+                        Object.keys(FINGERS).forEach(finger => {
+                            if (userHands[hand]?.[finger]) {
+                                enrolledCount++;
+                            }
+                        });
+                    });
+
+                    const percentage = (enrolledCount / 10) * 100;
+                    const isComplete = enrolledCount === 10;
+                    const borderColor = isComplete ? '#16a34a' : '#0284c7';
+
+                    html += `
+                        <div style="padding: 15px; background: white; border-radius: 12px; border: 3px solid ${borderColor}; box-sizing: border-box;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="margin: 0; color: #0c4a6e;">👤 ${userId}</h4>
+                                <button class="btn btn-secondary user-load-btn" data-user-id="${userId}" style="padding: 5px 10px; font-size: 12px;">
+                                    📂 Cargar
+                                </button>
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                                    <span>${enrolledCount}/10 dedos</span>
+                                    <span>${Math.round(percentage)}%</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #e0f2fe; border-radius: 4px; overflow: hidden;">
+                                    <div style="height: 100%; background: linear-gradient(90deg, #0ea5e9, #0284c7); width: ${percentage}%; transition: width 0.3s ease;"></div>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                                ${renderHandCompact('LEFT', userHands.LEFT)}
+                                ${renderHandCompact('RIGHT', userHands.RIGHT)}
                             </div>
                         </div>
                     `;
+                });
+
+                html += '</div>';
+
+                dom.handsVisualization.innerHTML = html;
+
+                // Agregar event listeners a botones "Cargar"
+                document.querySelectorAll('.user-load-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const userId = e.currentTarget.dataset.userId;
+                        loadUser(userId);
+                    });
+                });
+            }
+
+            /**
+             * Renderizar mano compacta para vista múltiple
+             */
+            function renderHandCompact(hand, fingers) {
+                const handEmoji = hand === 'LEFT' ? '🫲' : '🫱';
+                let html = `<div style="text-align: center; padding: 8px; background: #f9fafb; border-radius: 8px;">`;
+                html += `<div style="font-size: 12px; font-weight: 600; margin-bottom: 5px;">${handEmoji}</div>`;
+                html += `<div style="display: flex; gap: 3px; justify-content: center; flex-wrap: wrap;">`;
+
+                Object.keys(FINGERS).forEach(fingerKey => {
+                    const finger = FINGERS[fingerKey];
+                    const isEnrolled = fingers[fingerKey];
+                    const color = isEnrolled ? '#16a34a' : '#d1d5db';
+
+                    html += `<div style="width: 10px; height: 10px; background: ${color}; border-radius: 50%;" title="${finger.label}: ${isEnrolled ? 'Enrolado' : 'Pendiente'}"></div>`;
+                });
+
+                html += `</div></div>`;
+                return html;
+            }
+
+            /**
+             * Cargar usuario en vista individual
+             */
+            function loadUser(userId) {
+                state.viewMode = 'single';
+                dom.btnToggleView.textContent = '👥 Ver Todos los Usuarios';
+                dom.fingerUserId.value = userId;
+                dom.fingerUserSelector.value = userId;
+                updateUserProgress();
+                renderFingerHands();
+            }
+
+            /**
+             * Manejar clic en un dedo (Estilo SDK DigitalPersona)
+             * Actualiza selectores y auto-inicia el enrolamiento
+             */
+            async function onFingerClick(hand, finger) {
+                const userId = dom.fingerUserId.value.trim();
+
+                if (!userId) {
+                    updateStatus(dom.fingerStatus, '⚠️ Debes ingresar un ID de usuario primero', 'error');
+                    dom.fingerUserId.focus();
+                    return;
+                }
+
+                if (state.isEnrollingFinger) {
+                    updateStatus(dom.fingerStatus, '⚠️ Operación en progreso, espera a que termine', 'warning');
+                    return;
+                }
+
+                // Actualizar selectores y estado
+                dom.fingerHand.value = hand;
+                dom.fingerType.value = finger;
+                state.selectedHand = hand;
+                state.selectedFinger = finger;
+
+                const fingerInfo = FINGERS[finger];
+                const handInfo = hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+
+                // Verificar si el dedo ya está enrolado
+                const isAlreadyEnrolled = state.fingerEnrolled[userId]?.[hand]?.[finger];
+
+                // Actualizar visibilidad del botón de re-captura
+                updateRecaptureButton();
+
+                if (isAlreadyEnrolled) {
+                    // Dedo ya enrolado: mostrar mensaje + botón, NO enrolar
+                    updateStatus(dom.fingerStatus,
+                        `✅ ${fingerInfo.emoji} ${fingerInfo.label} Mano ${handInfo} ya está enrolado. Usa el botón "🔄 Re-Capturar" para sobrescribirlo.`,
+                        'info');
+                } else {
+                    // Dedo no enrolado: enrolar automáticamente
+                    updateStatus(dom.fingerStatus, `${fingerInfo.emoji} Enrolando: ${fingerInfo.label} - Mano ${handInfo}`, 'info');
+                    await enrollFinger();
                 }
             }
-        }
 
-        // Limpiar todos los componentes
-        function clearAllComponents() {
-            if (confirm('¿Estás seguro de que deseas limpiar todos los componentes?')) {
+            // ==========================================
+            // FINGER MANAGEMENT - OPERACIONES
+            // ==========================================
+
+            async function enrollFinger() {
+                const userId = dom.fingerUserId.value.trim();
+                if (!userId) {
+                    updateStatus(dom.fingerStatus, '⚠️ Ingresa un ID de usuario', 'warning');
+                    return;
+                }
+
+                const hand = dom.fingerHand.value;
+                const finger = dom.fingerType.value;
+                const tag = generateFingerTag(userId, hand, finger);
+
                 try {
-                    clearCurrentComponent();
-                    closeModal();
+                    state.isEnrollingFinger = true;
+                    state.currentOperation = 'enroll-finger';
 
-                    if (window.ComponentFactory && typeof window.ComponentFactory.destroyAll === 'function') {
-                        window.ComponentFactory.destroyAll();
+                    const fingerInfo = FINGERS[finger];
+                    const handLabel = hand === 'LEFT' ? 'izquierda' : 'derecha';
+
+                    updateStatus(dom.fingerStatus, `📝 Enrolando ${fingerInfo.label} de mano ${handLabel}...`, 'info');
+                    dom.fingerProgress.classList.add('active');
+                    updateFingerProgress(0, 4);
+
+                    console.log(`[FingerManagement] Enrolando: ${tag}`);
+                    const result = await state.adapter.enrollFingerprint(tag);
+
+                    if (result.ok) {
+                        updateStatus(dom.fingerStatus, `✅ ${fingerInfo.label} enrolado correctamente`, 'success');
+                        setTimeout(() => {
+                            dom.fingerProgress.classList.remove('active');
+                            refreshFingersList();
+                        }, 2000);
                     } else {
-                        console.warn('ComponentFactory.destroyAll no disponible');
+                        updateStatus(dom.fingerStatus, `❌ ${result.error || 'Error en enrolamiento'}`, 'error');
                     }
 
-                    componentCount = 0;
-                    updateComponentCount();
-                    console.log('Todos los componentes limpiados');
-                    showNotification('Todos los componentes limpiados', 'info');
                 } catch (error) {
-                    console.error('Error limpiando componentes:', error);
-                    showNotification(`Error limpiando componentes: ${error.message}`, 'error');
+                    console.error('[FingerManagement] Error:', error);
+                    updateStatus(dom.fingerStatus, `❌ ${error.message}`, 'error');
+                } finally {
+                    state.isEnrollingFinger = false;
                 }
             }
-        }
 
-        // Inicializar lector
-        async function initializeReader() {
-            console.log('[UI] 🔧 Función initializeReader llamada');
-            console.log('[UI] 📊 Estado actual - readerInitialized:', readerInitialized);
+            /**
+             * Enrolar TODOS los dedos de un usuario (10 dedos completos)
+             * El backend captura los 10 dedos y retorna estructura JSON organizada
+             */
+            async function enrollAllFingers() {
+                const userId = dom.fingerUserId.value.trim();
 
-            if (readerInitialized) {
-                console.log('[UI] ⚠️ Lector ya inicializado, abortando');
-                showNotification('El lector ya está inicializado', 'info');
-                return;
-            }
-
-            // Verificar que BiometricAdapter esté disponible
-            console.log('[UI] 🔍 Verificando disponibilidad de BiometricAdapter...');
-            if (!window.BiometricAdapter) {
-                console.error('[UI] ❌ BiometricAdapter no disponible');
-                showNotification('BiometricAdapter no está disponible', 'error');
-                return;
-            }
-            console.log('[UI] ✅ BiometricAdapter disponible');
-
-            // Verificar que las funciones estén disponibles
-            console.log('[UI] 🔍 Verificando función initializeReader...');
-            if (typeof window.BiometricAdapter.initializeReader !== 'function') {
-                console.error('[UI] ❌ Función initializeReader no disponible');
-                console.error('[UI] 📋 Métodos disponibles:', Object.getOwnPropertyNames(window.BiometricAdapter));
-                showNotification('Función initializeReader no disponible', 'error');
-                return;
-            }
-            console.log('[UI] ✅ Función initializeReader disponible');
-
-            try {
-                console.log('[UI] 🚀 Iniciando proceso de inicialización...');
-                elements.initReader.disabled = true;
-                elements.initReader.textContent = '🔄 Inicializando...';
-
-                // Intentar conectar primero si no está conectado
-                console.log('[UI] 🔍 Verificando conexión...', window.BiometricAdapter.isConnected);
-                if (window.BiometricAdapter && !window.BiometricAdapter.isConnected) {
-                    console.log('[UI] 🔌 Conectando al backend...');
-                    await window.BiometricAdapter.connect();
-                    console.log('[UI] ✅ Conexión establecida');
-                } else {
-                    console.log('[UI] ✅ Ya estaba conectado');
+                if (!userId) {
+                    updateStatus(dom.fingerStatus, '⚠️ Debes ingresar un ID de usuario primero', 'error');
+                    dom.fingerUserId.focus();
+                    return;
                 }
 
-                // Inicializar lector
-                console.log('[UI] 🎯 Llamando window.BiometricAdapter.initializeReader()...');
-                const result = await window.BiometricAdapter.initializeReader();
-                console.log('[UI] 📥 Resultado de inicialización:', result);
-
-                if (result && result.ok) {
-                    console.log('[UI] 🎉 Inicialización exitosa');
-                    readerInitialized = true;
-                    updateConnectionStatus();
-                    showNotification('Lector inicializado exitosamente', 'success');
-                } else {
-                    console.error('[UI] ❌ Inicialización falló - resultado inválido:', result);
-                    throw new Error(result?.error || 'Error desconocido en inicialización');
+                if (state.isEnrollingFinger) {
+                    updateStatus(dom.fingerStatus, '⚠️ Operación en progreso, espera a que termine', 'warning');
+                    return;
                 }
-            } catch (error) {
-                console.error('[UI] ❌ Error en proceso de inicialización:', error);
-                console.error('[UI] 📋 Stack trace:', error.stack);
-                console.error('[UI] 🔍 Detalles del error:', {
-                    name: error.name,
-                    message: error.message,
-                    cause: error.cause
+
+                try {
+                    state.isEnrollingFinger = true;
+                    dom.btnEnrollAllFingers.disabled = true;
+                    updateStatus(dom.fingerStatus, `📝 Iniciando enrolamiento completo de 10 dedos para: ${userId}`, 'info');
+
+                    // ⚡ UNA SOLA LLAMADA AL BACKEND - El backend maneja toda la captura
+                    const result = await state.adapter.enrollAllFingers(userId);
+
+                    if (result.ok) {
+                        updateStatus(dom.fingerStatus, `🎉 ¡ENROLAMIENTO COMPLETO! 10 dedos enrolados para ${userId}`, 'success');
+
+                        // Log de la estructura completa
+                        console.log('[FingerManagement] Estructura JSON completa:', JSON.stringify(result.data, null, 2));
+
+                        // Recargar lista y visualización
+                        refreshFingersList();
+
+                        return result.data;
+                    } else {
+                        throw new Error(result.error || 'Error en enrolamiento completo');
+                    }
+
+                } catch (error) {
+                    console.error('[FingerManagement] Error en enrolamiento completo:', error);
+                    updateStatus(dom.fingerStatus, `❌ Error: ${error.message}`, 'error');
+                    throw error;
+                } finally {
+                    state.isEnrollingFinger = false;
+                    dom.btnEnrollAllFingers.disabled = false;
+                }
+            }
+
+            /**
+             * Completar dedos faltantes de un usuario
+             */
+            async function completeMissingFingers() {
+                const userId = dom.fingerUserId.value.trim();
+
+                if (!userId) {
+                    updateStatus(dom.fingerStatus, '⚠️ Debes ingresar un ID de usuario primero', 'error');
+                    dom.fingerUserId.focus();
+                    return;
+                }
+
+                if (!state.fingerEnrolled[userId]) {
+                    updateStatus(dom.fingerStatus, `⚠️ El usuario "${userId}" no tiene dedos enrolados. Usa "Enrolar TODOS los Dedos" primero.`, 'error');
+                    return;
+                }
+
+                if (state.isEnrollingFinger) {
+                    updateStatus(dom.fingerStatus, '⚠️ Operación en progreso, espera a que termine', 'warning');
+                    return;
+                }
+
+                try {
+                    state.isEnrollingFinger = true;
+                    dom.btnCompleteMissing.disabled = true;
+
+                    const userHands = state.fingerEnrolled[userId];
+                    const missingFingers = [];
+
+                    // Calcular dedos faltantes
+                    ['LEFT', 'RIGHT'].forEach(hand => {
+                        Object.keys(FINGERS).forEach(finger => {
+                            if (!userHands[hand]?.[finger]) {
+                                missingFingers.push({ hand, finger });
+                            }
+                        });
+                    });
+
+                    if (missingFingers.length === 0) {
+                        updateStatus(dom.fingerStatus, `✅ El usuario "${userId}" ya tiene todos los dedos enrolados (10/10)`, 'success');
+                        return;
+                    }
+
+                    updateStatus(dom.fingerStatus, `⚡ Completando ${missingFingers.length} dedos faltantes para: ${userId}`, 'info');
+
+                    // Enrolar cada dedo faltante
+                    for (let i = 0; i < missingFingers.length; i++) {
+                        const { hand, finger } = missingFingers[i];
+                        const tag = generateFingerTag(userId, hand, finger);
+                        const fingerInfo = FINGERS[finger];
+                        const handLabel = hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+
+                        console.log(`[FingerManagement] Enrolando faltante ${i + 1}/${missingFingers.length}: ${tag}`);
+                        updateStatus(dom.fingerStatus,
+                            `⚡ Enrolando dedo ${i + 1}/${missingFingers.length}: ${fingerInfo.emoji} ${fingerInfo.label} - Mano ${handLabel}`,
+                            'info');
+
+                        dom.fingerProgress.classList.add('active');
+
+                        const result = await state.adapter.enrollFingerprint(tag);
+
+                        if (result.ok) {
+                            console.log(`[FingerManagement] ✅ Dedo ${i + 1}/${missingFingers.length} enrolado`);
+
+                            // Actualizar estado en tiempo real
+                            if (!state.fingerEnrolled[userId]) {
+                                state.fingerEnrolled[userId] = { LEFT: {}, RIGHT: {} };
+                            }
+                            state.fingerEnrolled[userId][hand][finger] = true;
+
+                            // Actualizar visualización
+                            renderFingerHands();
+                            updateUserProgress();
+
+                        } else {
+                            console.error(`[FingerManagement] ❌ Error en dedo ${i + 1}/${missingFingers.length}`);
+                            // Continuar con los siguientes dedos aunque falle uno
+                        }
+                    }
+
+                    updateStatus(dom.fingerStatus, `🎉 Completado! ${missingFingers.length} dedos faltantes enrolados para ${userId}`, 'success');
+                    refreshFingersList();
+
+                } catch (error) {
+                    console.error('[FingerManagement] Error completando dedos faltantes:', error);
+                    updateStatus(dom.fingerStatus, `❌ Error: ${error.message}`, 'error');
+                } finally {
+                    state.isEnrollingFinger = false;
+                    dom.btnCompleteMissing.disabled = false;
+                    dom.fingerProgress.classList.remove('active');
+                }
+            }
+
+            /**
+             * Re-capturar un dedo ya enrolado (con validaciones)
+             */
+            async function recaptureFinger() {
+                const userId = dom.fingerUserId.value.trim();
+                const hand = state.selectedHand;
+                const finger = state.selectedFinger;
+
+                // Validación 1: Usuario debe existir
+                if (!userId) {
+                    updateStatus(dom.fingerStatus, '⚠️ Debes ingresar un ID de usuario primero', 'error');
+                    return;
+                }
+
+                // Validación 2: Usuario debe estar en la lista de enrolledFingers
+                if (!state.fingerEnrolled[userId]) {
+                    updateStatus(dom.fingerStatus, `⚠️ El usuario "${userId}" no tiene dedos enrolados. No hay nada que re-capturar.`, 'error');
+                    return;
+                }
+
+                // Validación 3: El dedo seleccionado debe estar enrolado
+                const isEnrolled = state.fingerEnrolled[userId]?.[hand]?.[finger];
+                if (!isEnrolled) {
+                    const fingerInfo = FINGERS[finger];
+                    const handLabel = hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+                    updateStatus(dom.fingerStatus,
+                        `⚠️ El dedo ${fingerInfo.emoji} ${fingerInfo.label} Mano ${handLabel} NO está enrolado. Primero debes enrolarlo.`,
+                        'error');
+                    return;
+                }
+
+                if (state.isEnrollingFinger) {
+                    updateStatus(dom.fingerStatus, '⚠️ Operación en progreso, espera a que termine', 'warning');
+                    return;
+                }
+
+                try {
+                    state.isEnrollingFinger = true;
+                    dom.btnRecaptureFinger.disabled = true;
+
+                    const tag = generateFingerTag(userId, hand, finger);
+                    const fingerInfo = FINGERS[finger];
+                    const handLabel = hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+
+                    updateStatus(dom.fingerStatus,
+                        `🔄 RE-CAPTURANDO: ${fingerInfo.emoji} ${fingerInfo.label} Mano ${handLabel} (Sobrescribiendo huella anterior)`,
+                        'warning');
+
+                    dom.fingerProgress.classList.add('active');
+                    updateFingerProgress(0, 4);
+
+                    console.log(`[FingerManagement] RE-CAPTURANDO: ${tag}`);
+                    const result = await state.adapter.enrollFingerprint(tag);
+                    console.log(`[FingerManagement] Resultado recaptura:`, result);
+
+                    if (result.ok) {
+                        updateStatus(dom.fingerStatus,
+                            `✅ RE-CAPTURA EXITOSA: ${fingerInfo.emoji} ${fingerInfo.label} Mano ${handLabel} ha sido sobrescrito correctamente`,
+                            'success');
+
+                        // Recargar lista
+                        setTimeout(() => {
+                            refreshFingersList();
+                            dom.fingerProgress.classList.remove('active');
+                        }, 2000);
+                    } else {
+                        updateStatus(dom.fingerStatus, `❌ Error en re-captura: ${result.error || 'Error desconocido'}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('[FingerManagement] Error en recaptura:', error);
+                    updateStatus(dom.fingerStatus, `❌ Error: ${error.message}`, 'error');
+                } finally {
+                    state.isEnrollingFinger = false;
+                    dom.btnRecaptureFinger.disabled = false;
+                }
+            }
+
+            async function verifyFinger() {
+                const userId = dom.fingerUserId.value.trim();
+                if (!userId) {
+                    updateStatus(dom.fingerStatus, '⚠️ Ingresa un ID de usuario', 'warning');
+                    return;
+                }
+
+                const hand = dom.fingerHand.value;
+                const finger = dom.fingerType.value;
+                const tag = generateFingerTag(userId, hand, finger);
+
+                try {
+                    dom.btnVerifyFinger.disabled = true;
+                    const fingerInfo = FINGERS[finger];
+                    updateStatus(dom.fingerStatus, `🔍 Verificando ${fingerInfo.label}...`, 'info');
+
+                    const result = await state.adapter.verifyFingerprint(tag, 4);
+                    console.log(`[FingerManagement] Verificación:`, result);
+
+                    if (result.ok) {
+                        if (result.verified) {
+                            updateStatus(dom.fingerStatus,
+                                `✅ VERIFICADO: ${fingerInfo.label} de ${userId} (Score: ${result.score})`,
+                                'success');
+                        } else {
+                            updateStatus(dom.fingerStatus,
+                                `❌ NO COINCIDE: ${fingerInfo.label} (Score: ${result.score})`,
+                                'error');
+                        }
+                    } else {
+                        updateStatus(dom.fingerStatus, `❌ ${result.error || 'Error en verificación'}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('[FingerManagement] Error:', error);
+                    updateStatus(dom.fingerStatus, `❌ ${error.message}`, 'error');
+                } finally {
+                    dom.btnVerifyFinger.disabled = false;
+                }
+            }
+
+            async function identifyFinger() {
+                try {
+                    dom.btnIdentifyFinger.disabled = true;
+                    updateStatus(dom.fingerStatus, '🔎 Identificando usuario y dedo... Coloca el dedo en el lector', 'info');
+
+                    const result = await state.adapter.identifyFingerprint(4);
+                    console.log(`[FingerManagement] Identificación resultado:`, result);
+
+                    if (result.ok && result.match) {
+                        const parsed = parseFingerTag(result.bestTag);
+                        console.log(`[FingerManagement] Tag parseado:`, parsed);
+
+                        if (parsed) {
+                            const handEmoji = parsed.hand === 'LEFT' ? '🫲' : '🫱';
+                            const handLabel = parsed.hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+                            const fingerInfo = FINGERS[parsed.finger];
+                            const fingerEmoji = fingerInfo ? fingerInfo.emoji : '👆';
+                            const fingerLabel = fingerInfo ? fingerInfo.label : parsed.finger;
+
+                            updateStatus(dom.fingerStatus,
+                                `✅ IDENTIFICADO: ${parsed.userId} | ${fingerEmoji} ${fingerLabel} ${handEmoji} Mano ${handLabel} (Score: ${result.bestScore})`,
+                                'success');
+
+                            // Actualizar selectores para mostrar qué se identificó
+                            dom.fingerHand.value = parsed.hand;
+                            dom.fingerType.value = parsed.finger;
+                            dom.fingerUserId.value = parsed.userId;
+
+                            // Actualizar visualización de manos
+                            renderFingerHands();
+                        } else {
+                            console.warn('[FingerManagement] No se pudo parsear tag:', result.bestTag);
+                            updateStatus(dom.fingerStatus,
+                                `✅ IDENTIFICADO: ${result.bestTag} (Score: ${result.bestScore})`,
+                                'success');
+                        }
+                    } else {
+                        updateStatus(dom.fingerStatus, '⚠️ No se encontró coincidencia - Ningún dedo enrolado coincide', 'warning');
+                    }
+
+                } catch (error) {
+                    console.error('[FingerManagement] Error en identificación:', error);
+                    updateStatus(dom.fingerStatus, `❌ Error: ${error.message}`, 'error');
+                } finally {
+                    dom.btnIdentifyFinger.disabled = false;
+                }
+            }
+
+            async function refreshFingersList() {
+                try {
+                    const result = await state.adapter.getStoredFingerprints();
+
+                    if (result.ok && result.data) {
+                        const enrolledFingers = {};
+
+                        // Agrupar por usuario, mano y dedo
+                        result.data.forEach(item => {
+                            const parsed = parseFingerTag(item.tag);
+                            if (parsed) {
+                                if (!enrolledFingers[parsed.userId]) {
+                                    enrolledFingers[parsed.userId] = { LEFT: {}, RIGHT: {} };
+                                }
+                                enrolledFingers[parsed.userId][parsed.hand][parsed.finger] = true;
+                            }
+                        });
+
+                        state.fingerEnrolled = enrolledFingers;
+                        updateFingersList(enrolledFingers);
+                        renderFingerHands(); // Actualizar visualización de manos
+                        updateUserSelector(); // Actualizar dropdown de usuarios
+                        updateUserProgress(); // Actualizar barra de progreso
+                    }
+
+                } catch (error) {
+                    console.error('[FingerManagement] Error cargando dedos:', error);
+                }
+            }
+
+            function updateFingersList(enrolledFingers) {
+                const users = Object.keys(enrolledFingers);
+
+                if (users.length === 0) {
+                    dom.fingersListContent.innerHTML = '<p style="text-align: center; color: #6b7280;">No hay dedos enrolados</p>';
+                    return;
+                }
+
+                let html = '';
+                users.forEach(userId => {
+                    const hands = enrolledFingers[userId];
+                    html += `<div style="margin-bottom: 15px; padding: 10px; background: white; border-radius: 8px; border: 1px solid #e5e7eb;">`;
+                    html += `<strong style="color: #374151;">👤 ${userId}</strong>`;
+
+                    ['LEFT', 'RIGHT'].forEach(hand => {
+                        const fingers = Object.keys(hands[hand]);
+                        if (fingers.length > 0) {
+                            const handLabel = hand === 'LEFT' ? '👈 Izquierda' : '👉 Derecha';
+                            html += `<div style="margin-top: 8px; margin-left: 10px;">`;
+                            html += `<span style="font-weight: 500; color: #6b7280;">${handLabel}:</span> `;
+                            fingers.forEach(finger => {
+                                const fingerInfo = FINGERS[finger];
+                                html += `<span style="margin-right: 8px;" title="${fingerInfo.label}">${fingerInfo.emoji}</span>`;
+                            });
+                            html += `</div>`;
+                        }
+                    });
+
+                    html += `</div>`;
                 });
-                showNotification(`Error: ${error.message}`, 'error');
-            } finally {
-                console.log('[UI] 🔄 Restaurando estado del botón...');
-                elements.initReader.disabled = false;
-                elements.initReader.textContent = '🔌 Inicializar Lector';
+
+                dom.fingersListContent.innerHTML = html;
             }
-        }
 
-        // Actualizar botón activo
-        function updateActiveButton(activeKey) {
-            clearActiveButtons();
+            // ==========================================
+            // EVENT HANDLER (SSE)
+            // ==========================================
 
-            const buttonMap = {
-                enrollment: elements.createEnrollment,
-                capture: elements.createCapture,
-                verification: elements.createVerification
-            };
+            function handleSSEEvent(data) {
+                const eventType = data.eventType || data.evt;
+                console.log(`[SSE] ${eventType}`, data);
 
-            if (buttonMap[activeKey]) {
-                buttonMap[activeKey].classList.add('active');
+                switch (eventType) {
+                    case 'READER_READY':
+                        state.readerInitialized = true;
+                        dom.readerState.textContent = 'Encendido';
+                        updateStatus(dom.readerStatus, '✅ Lector DP4500 listo', 'success');
+                        updateGlobalStatus('✅ Lector DP4500 encendido - Sistema listo', true);
+
+                        // Habilitar controles
+                        dom.btnInitReader.disabled = true;
+                        dom.btnDisposeReader.disabled = false;
+                        dom.btnEnroll.disabled = false;
+                        dom.btnVerify.disabled = false;
+                        dom.btnIdentify.disabled = false;
+                        dom.btnCapture.disabled = false;
+
+                        // Cargar usuarios
+                        loadUsers();
+                        refreshTemplates();
+                        break;
+
+                    case 'READER_DISPOSED':
+                        state.readerInitialized = false;
+                        dom.readerState.textContent = 'Apagado';
+                        updateStatus(dom.readerStatus, '⚠️ Lector apagado', 'warning');
+                        updateGlobalStatus('⚠️ Lector apagado - Inicializa el lector para continuar', false);
+
+                        // Deshabilitar controles
+                        dom.btnInitReader.disabled = false;
+                        dom.btnDisposeReader.disabled = true;
+                        dom.btnEnroll.disabled = true;
+                        dom.btnVerify.disabled = true;
+                        dom.btnIdentify.disabled = true;
+                        dom.btnCapture.disabled = true;
+                        break;
+
+                    case 'IMAGE_CAPTURED':
+                        const imageBase64 = data.data?.imageBase64 || data.imageBase64;
+                        if (imageBase64) {
+                            if (state.isEnrolling) {
+                                showImage(dom.enrollImage, dom.enrollPlaceholder, imageBase64);
+                            }
+                            if (state.currentOperation === 'verify') {
+                                showImage(dom.verifyImage, dom.verifyPlaceholder, imageBase64);
+                            }
+                            if (state.currentOperation === 'identify') {
+                                showImage(dom.identifyImage, dom.identifyPlaceholder, imageBase64);
+                            }
+                            if (state.currentOperation === 'capture') {
+                                showImage(dom.captureImage, dom.capturePlaceholder, imageBase64);
+                            }
+                            if (state.isEnrollingFinger) {
+                                showImage(dom.fingerImage, dom.fingerPlaceholder, imageBase64);
+                            }
+                        }
+                        break;
+
+                    case 'SAMPLE_COLLECTED':
+                        if (state.isEnrolling) {
+                            const sampleNum = data.data?.sampleNumber || data.sampleNumber || state.enrollSamples + 1;
+                            state.enrollSamples = sampleNum;
+                            updateEnrollProgress(sampleNum, 4);
+                            updateStatus(dom.enrollStatus, `✅ Muestra ${sampleNum}/4 capturada`, 'success');
+                        }
+                        if (state.isEnrollingFinger) {
+                            const sampleNum = data.data?.sampleNumber || data.sampleNumber || 1;
+                            updateFingerProgress(sampleNum, 4);
+                            updateStatus(dom.fingerStatus, `✅ Muestra ${sampleNum}/4 capturada`, 'success');
+                        }
+                        break;
+
+                    case 'ENROLLMENT_COMPLETED':
+                        // Enrolamiento simple (sin dedos)
+                        if (state.isEnrolling) {
+                            state.isEnrolling = false;
+                            updateEnrollProgress(4, 4);
+                            updateStatus(dom.enrollStatus, '🎉 Enrolamiento completado', 'success');
+                            dom.btnEnroll.disabled = false;
+                            setTimeout(() => {
+                                dom.enrollUserId.value = '';
+                                dom.enrollProgress.classList.remove('active');
+                                showImage(dom.enrollImage, dom.enrollPlaceholder, null);
+                                refreshTemplates();
+                            }, 3000);
+                        }
+
+                        // Enrolamiento de dedos (Estilo SDK DigitalPersona)
+                        if (state.isEnrollingFinger) {
+                            state.isEnrollingFinger = false;
+                            updateFingerProgress(4, 4);
+
+                            const userId = dom.fingerUserId.value.trim();
+                            const hand = dom.fingerHand.value;
+                            const finger = dom.fingerType.value;
+
+                            // Actualizar estructura de dedos enrolados
+                            if (!state.fingerEnrolled[userId]) {
+                                state.fingerEnrolled[userId] = { LEFT: {}, RIGHT: {} };
+                            }
+                            state.fingerEnrolled[userId][hand][finger] = true;
+
+                            const fingerInfo = FINGERS[finger];
+                            const handInfo = hand === 'LEFT' ? 'Izquierda' : 'Derecha';
+
+                            updateStatus(dom.fingerStatus, `🎉 ${fingerInfo.emoji} ${fingerInfo.label} ${handInfo} enrolado`, 'success');
+
+                            // Actualizar visualización de manos y lista
+                            renderFingerHands();
+                            refreshFingersList();
+
+                            setTimeout(() => {
+                                dom.fingerProgress.classList.remove('active');
+                                showImage(dom.fingerImage, dom.fingerPlaceholder, null);
+                            }, 2000);
+                        }
+                        break;
+
+                    case 'ENROLLMENT_FAILED':
+                        state.isEnrolling = false;
+                        updateStatus(dom.enrollStatus, `❌ ${data.message || 'Error'}`, 'error');
+                        dom.btnEnroll.disabled = false;
+                        break;
+
+                    case 'VERIFICATION_ATTEMPT':
+                        if (state.currentOperation === 'verify') {
+                            const attemptNum = data.data?.attemptNumber || data.attemptNumber || 1;
+                            updateVerifyProgress(attemptNum, 4);
+                            updateStatus(dom.verifyStatus, `Intento ${attemptNum}/4 completado`, 'info');
+                        }
+                        break;
+
+                    case 'VERIFICATION_RETRY':
+                        if (state.currentOperation === 'verify') {
+                            const attemptNum = data.data?.attemptNumber || data.attemptNumber || 1;
+                            updateStatus(dom.verifyStatus, `⚠️ Intento ${attemptNum}/4 sin coincidencia, reintentando...`, 'warning');
+                        }
+                        break;
+
+                    case 'IDENTIFICATION_ATTEMPT':
+                        if (state.currentOperation === 'identify') {
+                            const attemptNum = data.data?.attemptNumber || data.attemptNumber || 1;
+                            updateIdentifyProgress(attemptNum, 4);
+                            updateStatus(dom.identifyStatus, `Intento ${attemptNum}/4 completado`, 'info');
+                        }
+                        break;
+
+                    case 'IDENTIFICATION_RETRY':
+                        if (state.currentOperation === 'identify') {
+                            const attemptNum = data.data?.attemptNumber || data.attemptNumber || 1;
+                            updateStatus(dom.identifyStatus, `⚠️ Intento ${attemptNum}/4 sin coincidencia, reintentando...`, 'warning');
+                        }
+                        break;
+
+                    case 'CAPTURE_STARTED':
+                        if (state.isEnrolling) {
+                            updateStatus(dom.enrollStatus, '👆 Coloca el dedo en el lector', 'info');
+                        } else if (state.currentOperation === 'verify') {
+                            const attemptInfo = data.data?.attemptNumber ? ` (intento ${data.data.attemptNumber}/4)` : '';
+                            updateStatus(dom.verifyStatus, `👆 Coloca el dedo en el lector${attemptInfo}`, 'info');
+                        } else if (state.currentOperation === 'identify') {
+                            const attemptInfo = data.data?.attemptNumber ? ` (intento ${data.data.attemptNumber}/4)` : '';
+                            updateStatus(dom.identifyStatus, `👆 Coloca el dedo en el lector${attemptInfo}`, 'info');
+                        }
+                        break;
+
+                    case 'FINGER_ENROLLMENT_COMPLETED':
+                        // Actualización en tiempo real durante enrollAllFingers
+                        console.log('[DP4500] FINGER_ENROLLMENT_COMPLETED:', data);
+
+                        // Extraer tag del evento
+                        const tag = data.data?.tag || data.tag;
+                        if (!tag) break;
+
+                        // Parsear tag para obtener userId, hand, finger
+                        const parsed = parseFingerTag(tag);
+                        if (!parsed) {
+                            console.warn('[DP4500] No se pudo parsear tag:', tag);
+                            break;
+                        }
+
+                        console.log('[DP4500] Actualizando visualización en tiempo real:', parsed);
+
+                        // Actualizar fingerEnrolled inmediatamente
+                        if (!state.fingerEnrolled[parsed.userId]) {
+                            state.fingerEnrolled[parsed.userId] = { LEFT: {}, RIGHT: {} };
+                        }
+                        state.fingerEnrolled[parsed.userId][parsed.hand][parsed.finger] = true;
+
+                        // Actualizar visualización EN TIEMPO REAL ✅
+                        renderFingerHands();
+                        refreshFingersList();
+                        break;
+                }
             }
-        }
 
-        function clearActiveButtons() {
-            [elements.createEnrollment, elements.createCapture, elements.createVerification]
-                .forEach(btn => btn.classList.remove('active'));
-        }
+            // ==========================================
+            // SETUP AND INITIALIZATION
+            // ==========================================
 
-        // Actualizar estado de conexión
-        function updateConnectionStatus() {
-            const isConnected = window.BiometricAdapter && window.BiometricAdapter.isConnected && readerInitialized;
+            function setup() {
+                console.log('[DP4500] 🚀 Inicializando Panel Biométrico...');
 
-            elements.connectionStatus.classList.toggle('connected', isConnected);
-            elements.connectionText.textContent = isConnected ? 'Conectado' : 'Desconectado';
-        }
+                // Obtener adapter
+                state.adapter = window.BiometricAdapter;
+                if (!state.adapter) {
+                    console.error('[DP4500] BiometricAdapter no encontrado');
+                    updateGlobalStatus('❌ Error: BiometricAdapter no disponible', false);
+                    return;
+                }
 
-        // Actualizar contador de componentes
-        function updateComponentCount() {
-            if (window.ComponentFactory && typeof window.ComponentFactory.getActiveComponents === 'function') {
-                elements.componentCount.textContent = window.ComponentFactory.getActiveComponents().length;
-            } else {
-                elements.componentCount.textContent = '0';
+                // Event listeners SSE
+                state.adapter.on('*', handleSSEEvent);
+
+                // Event listeners UI - Reader
+                dom.btnInitReader.addEventListener('click', initializeReader);
+                dom.btnDisposeReader.addEventListener('click', disposeReader);
+
+                // Event listeners UI - Enrollment
+                dom.enrollUserId.addEventListener('input', () => {
+                    dom.btnEnroll.disabled = !dom.enrollUserId.value.trim() || !state.readerInitialized;
+                });
+                dom.btnEnroll.addEventListener('click', startEnrollment);
+
+                // Event listeners UI - Verification
+                dom.verifyUserId.addEventListener('change', () => {
+                    state.currentOperation = 'verify';
+                    dom.btnVerify.disabled = !dom.verifyUserId.value || !state.readerInitialized;
+                });
+                dom.btnVerify.addEventListener('click', verifyUser);
+
+                // Event listeners UI - Identification
+                dom.btnIdentify.addEventListener('click', () => {
+                    state.currentOperation = 'identify';
+                    identifyUser();
+                });
+
+                // Event listeners UI - Capture
+                dom.btnCapture.addEventListener('click', () => {
+                    state.currentOperation = 'capture';
+                    captureFingerprint();
+                });
+
+                // Event listeners UI - Templates
+                dom.btnRefreshTemplates.addEventListener('click', refreshTemplates);
+                dom.btnClearTemplates.addEventListener('click', clearTemplates);
+
+                // Event listeners UI - Tech Device Info
+                dom.btnLoadTechInfo.addEventListener('click', loadTechInfo);
+                dom.btnExportTechInfo.addEventListener('click', exportTechInfo);
+
+                // Event listeners UI - Finger Management (Estilo SDK DigitalPersona)
+                dom.fingerUserId.addEventListener('input', () => {
+                    renderFingerHands();
+                    updateUserProgress();
+                });
+                dom.fingerUserSelector.addEventListener('change', (e) => {
+                    const selectedUserId = e.target.value;
+                    if (selectedUserId) {
+                        loadUser(selectedUserId);
+                    }
+                });
+                dom.btnEnrollAllFingers.addEventListener('click', enrollAllFingers);
+                dom.btnCompleteMissing.addEventListener('click', completeMissingFingers);
+                dom.btnRecaptureFinger.addEventListener('click', recaptureFinger);
+                dom.btnVerifyFinger.addEventListener('click', verifyFinger);
+                dom.btnIdentifyFinger.addEventListener('click', identifyFinger);
+                dom.btnToggleView.addEventListener('click', toggleView);
+                dom.btnRefreshFingers.addEventListener('click', refreshFingersList);
+
+                // Renderizar visualización inicial de manos
+                renderFingerHands();
+
+                console.log('[DP4500] ✅ Panel listo');
             }
-        }
 
-        // Generar ID único para componente
-        function generateComponentId(type) {
-            return `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        }
-
-        // Actualizar contador cada 5 segundos
-        setInterval(updateComponentCount, 5000);
-
-        // Función de diagnóstico mejorada
-        window.debugBiometric = function() {
-            console.log('=== DEBUG BIOMÉTRICO COMPLETO ===');
-
-            // Estado de carga del pipeline
-            console.log('🔄 Estado Pipeline:', BiometricSystem.loaded);
-
-            // BiometricAdapter
-            console.log('📡 BiometricAdapter disponible:', !!window.BiometricAdapter);
+            // Inicializar cuando BiometricAdapter esté listo
             if (window.BiometricAdapter) {
-                console.log('  - Conectado:', window.BiometricAdapter.isConnected);
-                console.log('  - Métodos:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.BiometricAdapter)));
-                console.log('  - initializeReader disponible:', typeof window.BiometricAdapter.initializeReader === 'function');
+                setup();
+            } else {
+                document.addEventListener('DOMContentLoaded', setup);
             }
 
-            // ComponentFactory
-            console.log('🏭 ComponentFactory disponible:', !!window.ComponentFactory);
-            if (window.ComponentFactory) {
-                console.log('  - create disponible:', typeof window.ComponentFactory.create === 'function');
-                console.log('  - Métodos:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.ComponentFactory)));
-                console.log('  - Componentes activos:', window.ComponentFactory.getActiveComponents().length);
-            }
-
-            // Componentes individuales
-            const components = ['BaseComponent', 'EnrollmentControl', 'SimpleCaptureControl', 'VerificationControl'];
-            components.forEach(comp => {
-                console.log(`🧩 ${comp} disponible:`, !!window[comp]);
-            });
-
-            // Estado de la aplicación
-            console.log('🎛️ Estado aplicación:');
-            console.log('  - Lector inicializado:', readerInitialized);
-            console.log('  - Modo modal:', isModalMode);
-            console.log('  - Componente actual:', currentComponent ? currentComponent.config.type : 'ninguno');
-
-            // Probar conexión si está disponible
-            if (window.BiometricAdapter && typeof window.BiometricAdapter.connect === 'function') {
-                console.log('🔌 Probando conexión...');
-                window.BiometricAdapter.connect().then(() => {
-                    console.log('✅ Conexión exitosa');
-                    updateConnectionStatus();
-                }).catch(err => {
-                    console.log('❌ Error de conexión:', err.message);
-                });
-            }
-
-            console.log('================================');
-        };
-
-        // Función de recuperación de errores
-        window.recoverBiometric = function() {
-            console.log('🔄 Intentando recuperar sistema...');
-
-            // Recargar scripts si están faltando
-            const scripts = [
-                { name: 'BiometricAdapter', src: 'js/core/BiometricAdapter.js' },
-                { name: 'BaseComponent', src: 'js/core/BaseComponent.js' },
-                { name: 'EnrollmentControl', src: 'js/components/EnrollmentControl.js' },
-                { name: 'SimpleCaptureControl', src: 'js/components/SimpleCaptureControl.js' },
-                { name: 'VerificationControl', src: 'js/components/VerificationControl.js' },
-                { name: 'ComponentFactory', src: 'js/factory/ComponentFactory.js' }
-            ];
-
-            scripts.forEach(script => {
-                if (!window[script.name]) {
-                    console.log(`⚠️ Recargando ${script.name}...`);
-                    const scriptElement = document.createElement('script');
-                    scriptElement.src = script.src;
-                    scriptElement.onload = () => console.log(`✅ ${script.name} recargado`);
-                    scriptElement.onerror = () => console.error(`❌ Error recargando ${script.name}`);
-                    document.head.appendChild(scriptElement);
-                }
-            });
-
-            // Reintentar inicialización después de 2 segundos
-            setTimeout(() => {
-                console.log('🔄 Reintentando inicialización...');
-                initializeSystem();
-            }, 2000);
-        };
-
-        // Log del sistema
-        console.log('🎛️ Panel de Control del Sistema Biométrico cargado');
-        console.log('📋 Componentes disponibles:', Object.keys(componentConfigs));
-        console.log('🔧 Para diagnóstico ejecuta: debugBiometric()');
-        console.log('🆘 Para recuperar errores ejecuta: recoverBiometric()');
-
-        // Agregar botón de diagnóstico visual
-        setTimeout(() => {
-            if (!window.BiometricAdapter || !window.ComponentFactory) {
-                showNotification('⚠️ Algunos componentes no cargaron. Usa debugBiometric() para diagnóstico', 'warning');
-            }
-        }, 3000);
+        })();
     </script>
 </body>
 </html>

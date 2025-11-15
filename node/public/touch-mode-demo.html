@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Touch Mode Demo - EdgeUruBridge</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .demo-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .mode-indicator {
+            padding: 15px 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-weight: bold;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .mode-indicator.continuous {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .mode-indicator.ondemand {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeeba;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .events-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .event-log {
+            height: 400px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .event-item {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+
+        .event-item.info {
+            background: #e7f3ff;
+            border-left-color: #0066cc;
+        }
+
+        .event-item.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .event-item.warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+
+        .event-item.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .event-timestamp {
+            color: #6c757d;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .fingerprint-preview {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+
+        .fingerprint-preview img {
+            max-width: 100%;
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>🎧 Touch Mode Demo - Escucha Continua de Huellas</h1>
+        <p>Esta demo muestra el modo de eventos touch: el lector espera dedos continuamente sin timers.</p>
+
+        <!-- Indicador de modo -->
+        <div id="modeIndicator" class="mode-indicator ondemand">
+            📊 Modo: OnDemand (requiere llamadas API explícitas)
+        </div>
+
+        <!-- Botones de control -->
+        <div class="control-buttons">
+            <button id="btnInit" class="btn btn-success">🔌 Inicializar Lector</button>
+            <button id="btnStartTouch" class="btn btn-primary" disabled>🎧 Iniciar Modo Touch</button>
+            <button id="btnStopTouch" class="btn btn-danger" disabled>⏹️ Detener Modo Touch</button>
+            <button id="btnStatus" class="btn btn-secondary">📊 Ver Estado</button>
+            <button id="btnClearLog" class="btn btn-secondary">🗑️ Limpiar Log</button>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="statTouches">0</div>
+                <div class="stat-label">Toques Detectados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statReady">0</div>
+                <div class="stat-label">Huellas Listas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statCaptures">0</div>
+                <div class="stat-label">Capturas Completas</div>
+            </div>
+        </div>
+
+        <!-- Panel de eventos -->
+        <div class="events-panel">
+            <h3>📡 Eventos en Tiempo Real</h3>
+            <div id="eventLog" class="event-log"></div>
+        </div>
+
+        <!-- Vista previa de huella -->
+        <div class="fingerprint-preview">
+            <h3>👆 Última Huella Capturada</h3>
+            <div id="fingerprintPreview">
+                <p style="color: #6c757d;">Esperando captura...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- BiometricAdapter -->
+    <script src="/js/adapter/BiometricAdapter.js"></script>
+
+    <script>
+        const adapter = window.BiometricAdapter;
+
+        // Referencias a elementos
+        const btnInit = document.getElementById('btnInit');
+        const btnStartTouch = document.getElementById('btnStartTouch');
+        const btnStopTouch = document.getElementById('btnStopTouch');
+        const btnStatus = document.getElementById('btnStatus');
+        const btnClearLog = document.getElementById('btnClearLog');
+        const modeIndicator = document.getElementById('modeIndicator');
+        const eventLog = document.getElementById('eventLog');
+        const fingerprintPreview = document.getElementById('fingerprintPreview');
+
+        // Contadores
+        let touchCount = 0;
+        let readyCount = 0;
+        let captureCount = 0;
+
+        // Helper para agregar eventos al log
+        function addEventToLog(type, message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const eventItem = document.createElement('div');
+            eventItem.className = `event-item ${type}`;
+
+            let content = `<span class="event-timestamp">${timestamp}</span>${message}`;
+            if (data) {
+                content += `<br><code>${JSON.stringify(data, null, 2)}</code>`;
+            }
+
+            eventItem.innerHTML = content;
+            eventLog.appendChild(eventItem);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        // Helper para actualizar estadísticas
+        function updateStats() {
+            document.getElementById('statTouches').textContent = touchCount;
+            document.getElementById('statReady').textContent = readyCount;
+            document.getElementById('statCaptures').textContent = captureCount;
+        }
+
+        // Actualizar indicador de modo
+        function updateModeIndicator(isActive, mode) {
+            if (isActive) {
+                modeIndicator.className = 'mode-indicator continuous';
+                modeIndicator.textContent = '🎧 Modo: Continuous (escucha continua activa)';
+                btnStartTouch.disabled = true;
+                btnStopTouch.disabled = false;
+            } else {
+                modeIndicator.className = 'mode-indicator ondemand';
+                modeIndicator.textContent = '📊 Modo: OnDemand (requiere llamadas API)';
+                btnStartTouch.disabled = false;
+                btnStopTouch.disabled = true;
+            }
+        }
+
+        // Inicializar lector
+        btnInit.addEventListener('click', async () => {
+            try {
+                btnInit.disabled = true;
+                addEventToLog('info', '🔌 Inicializando lector...');
+                await adapter.initializeReader();
+                addEventToLog('success', '✅ Lector inicializado correctamente');
+                btnStartTouch.disabled = false;
+            } catch (error) {
+                addEventToLog('error', `❌ Error: ${error.message}`);
+                btnInit.disabled = false;
+            }
+        });
+
+        // Iniciar modo touch
+        btnStartTouch.addEventListener('click', async () => {
+            try {
+                addEventToLog('info', '🎧 Iniciando modo touch...');
+                const result = await adapter.startTouchMode();
+                addEventToLog('success', '✅ Modo touch activado', result);
+                updateModeIndicator(true, 'Continuous');
+            } catch (error) {
+                addEventToLog('error', `❌ Error: ${error.message}`);
+            }
+        });
+
+        // Detener modo touch
+        btnStopTouch.addEventListener('click', async () => {
+            try {
+                addEventToLog('info', '⏹️ Deteniendo modo touch...');
+                const result = await adapter.stopTouchMode();
+                addEventToLog('success', '✅ Modo touch detenido', result);
+                updateModeIndicator(false, 'OnDemand');
+            } catch (error) {
+                addEventToLog('error', `❌ Error: ${error.message}`);
+            }
+        });
+
+        // Ver estado
+        btnStatus.addEventListener('click', async () => {
+            try {
+                const status = await adapter.getTouchModeStatus();
+                addEventToLog('info', '📊 Estado actual', status);
+                updateModeIndicator(status.isActive, status.mode);
+            } catch (error) {
+                addEventToLog('error', `❌ Error: ${error.message}`);
+            }
+        });
+
+        // Limpiar log
+        btnClearLog.addEventListener('click', () => {
+            eventLog.innerHTML = '';
+            addEventToLog('info', '🗑️ Log limpiado');
+        });
+
+        // ==========================================
+        // ESCUCHAR EVENTOS SSE DEL MODO TOUCH
+        // ==========================================
+
+        // Evento: Dedo tocado
+        adapter.on('FINGER_TOUCHED', (data) => {
+            touchCount++;
+            updateStats();
+            addEventToLog('info', '👆 DEDO DETECTADO en el lector', {
+                width: data.width,
+                height: data.height,
+                timestamp: data.timestamp
+            });
+        });
+
+        // Evento: Huella lista para comparación
+        adapter.on('FINGERPRINT_READY', (data) => {
+            readyCount++;
+            updateStats();
+            addEventToLog('success', '✅ HUELLA LISTA para comparación', {
+                fmdSize: data.fmdSize,
+                format: data.format,
+                timestamp: data.timestamp
+            });
+        });
+
+        // Evento: Captura lista (listo para próximo dedo)
+        adapter.on('CAPTURE_READY', (data) => {
+            captureCount++;
+            updateStats();
+            addEventToLog('info', '🔄 LISTO para próxima captura', data);
+        });
+
+        // Evento: Imagen capturada
+        adapter.on('IMAGE_CAPTURED', (data) => {
+            if (data.imageBase64) {
+                fingerprintPreview.innerHTML = `
+                    <img src="data:image/png;base64,${data.imageBase64}" alt="Huella capturada">
+                    <p style="color: #6c757d; margin-top: 10px;">Tamaño: ${data.imageSize} bytes</p>
+                `;
+                addEventToLog('success', '🖼️ IMAGEN capturada', {
+                    size: data.imageSize
+                });
+            }
+        });
+
+        // Evento: Modo touch iniciado
+        adapter.on('TOUCH_MODE_STARTED', (data) => {
+            addEventToLog('success', '🎧 MODO TOUCH INICIADO', data);
+        });
+
+        // Evento: Modo touch detenido
+        adapter.on('TOUCH_MODE_STOPPED', (data) => {
+            addEventToLog('info', '⏹️ MODO TOUCH DETENIDO', data);
+        });
+
+        // Log inicial
+        addEventToLog('info', '👋 Touch Mode Demo cargado - Haz clic en "Inicializar Lector" para comenzar');
+    </script>
+</body>
+</html>

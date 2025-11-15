@@ -3,17 +3,30 @@
     <TargetFramework>net472</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>bridge-csharp</AssemblyName>
-    <LangVersion>8.0</LangVersion>
+    <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
     <OutputPath>..\out\</OutputPath>
+    <!-- Deshabilitar inclusión automática de archivos .cs para control manual -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
+
+  <!-- Referencias a paquetes NuGet y DLLs externas -->
   <ItemGroup>
     <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="4.10.0" PrivateAssets="all" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <Reference Include="DPUruNet">
       <HintPath>..\bin-deps\DPUruNet.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+
+  <!-- Archivos del proyecto (estructura simple) -->
+  <ItemGroup Label="Source Files">
+    <Compile Include="src\Core\**\*.cs" />
+    <Compile Include="src\Bridge\**\*.cs" />
+    <Compile Include="src\Services\**\*.cs" />
+    <Compile Include="src\DTOs\**\*.cs" />
   </ItemGroup>
 </Project>

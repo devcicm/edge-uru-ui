@@ -1,0 +1,800 @@
+﻿ Omitir e ir al contenido
+Historial del chat
+
+Tú dijiste:
+necesito implementar manejo control del evento de lectura de huella al toque del aparato digitalpersona 4500 urunet. 
+
+necesito capturar el evento touch del reader para no estar timearndo tiempo de captura
+ChatGPT Plus
+
+Pensó durante 3m 49s
+Perfecto, vamos a quitar los timers de en medio y dejar que el lector dispare la captura cuando el usuario toca el sensor.
+
+Voy a asumir que estás usando el SDK U.are.U / DPUruNet (lo que llamas urunet), no el OneTouch clásico (DPFP.*). En DPUruNet no existe un evento OnFingerTouch como tal; lo que tienes es:
+
+El evento Reader.On_Captured (callback asíncrono).
+
+Métodos como CaptureAsync y GetStatus() para armar el flujo. 
+Stack Overflow
++1
+
+La forma correcta de dejar de “timear” es:
+
+Abrir el lector.
+
+Suscribirte a On_Captured.
+
+Llamar una sola vez a CaptureAsync (o a un helper tipo StartCaptureAsync).
+
+Cada vez que la persona ponga el dedo, el SDK hará la espera interna y disparará el callback On_Captured.
+
+Dentro del callback, procesas el resultado y vuelves a llamar a CaptureAsync para armar la siguiente captura.
+
+Debajo te dejo un archivo completo que puedes adaptar dentro de tu FingerPrinterReaderBase (o usar tal cual para probar). Aquí sintetizo un “evento touch” lógico: el momento en que llega una captura válida.
+
+Control de captura por “touch” sin timers (DPUruNet)
+using System;
+using System.Threading;
+using DPUruNet;
+
+namespace FingerprintTouchSample
+{
+    /// <summary>
+    /// Envuelve el Reader de DPUruNet y expone eventos de "touch" y captura
+    /// sin usar timers ni timeouts explícitos.
+    /// </summary>
+    public sealed class FingerTouchCaptureController : IDisposable
+    {
+        private Reader _reader;
+        private bool _reset;
+        private bool _isCapturing;
+
+        public event EventHandler FingerTouched; // “Touch lógico”: llegó una captura válida.
+        public event EventHandler<FingerprintCapturedEventArgs> FingerCaptured;
+
+        public FingerTouchCaptureController(Reader reader)
+        {
+            _reader = reader ?? throw new ArgumentNullException(nameof(reader));
+        }
+
+        /// <summary>
+        /// Abre el lector y deja armada la captura asíncrona.
+        /// No se usa timeout ni timer externo.
+        /// </summary>
+        public void Start()
+        {
+            if (_isCapturing)
+                return;
+
+            // Abrir lector en modo EXCLUSIVE o COOPERATIVE según tu diseño.
+            var openResult = _reader.Open(Constants.CapturePriority.DP_PRIORITY_EXCLUSIVE);
+            if (openResult != Constants.ResultCode.DP_SUCCESS)
+                throw new InvalidOperationException($"No se pudo abrir el lector: {openResult}");
+
+            // Suscribir el callback del SDK.
+            _reader.On_Captured += OnCaptured;
+
+            // Primera captura asíncrona: a partir de aquí el SDK se queda "esperando dedo".
+            _isCapturing = CaptureFingerAsync();
+        }
+
+        /// <summary>
+        /// Arma la captura asíncrona (una vez). El SDK espera internamente hasta que haya dedo.
+        /// </summary>
+        private bool CaptureFingerAsync()
+        {
+            try
+            {
+                GetStatusReadyOrCalibrate();
+
+                var captureResult = _reader.CaptureAsync(
+                    Constants.Formats.Fid.ANSI,
+                    Constants.CaptureProcessing.DP_IMG_PROC_DEFAULT,
+                    _reader.Capabilities.Resolutions[0]);
+
+                if (captureResult != Constants.ResultCode.DP_SUCCESS)
+                    throw new InvalidOperationException($"CaptureAsync falló: {captureResult}");
+
+                return true;
+            }
+            catch (Exception)
+            {
+                _reset = true;
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Verifica el estado del lector. Si está ocupado, espera; si requiere
+        /// calibración, calibra; si no está READY, lanza excepción.
+        /// </summary>
+        private void GetStatusReadyOrCalibrate()
+        {
+            var result = _reader.GetStatus();
+            if (result != Constants.ResultCode.DP_SUCCESS)
+                throw new InvalidOperationException($"GetStatus falló: {result}");
+
+            if (_reader.Status.Status == Constants.ReaderStatuses.DP_STATUS_BUSY)
+            {
+                // El SDK recomienda una espera corta si está ocupado.
+                Thread.Sleep(50);
+            }
+            else if (_reader.Status.Status == Constants.ReaderStatuses.DP_STATUS_NEED_CALIBRATION)
+            {
+                _reader.Calibrate();
+            }
+            else if (_reader.Status.Status != Constants.ReaderStatuses.DP_STATUS_READY)
+            {
+                throw new InvalidOperationException($"Reader Status no READY: {_reader.Status.Status}");
+            }
+        }
+
+        /// <summary>
+        /// Callback que dispara el SDK cuando se ha capturado una huella.
+        /// Aquí es donde tratamos la llegada como “touch”.
+        /// </summary>
+        private void OnCaptured(CaptureResult captureResult)
+        {
+            try
+            {
+                // Validar calidad / código de resultado.
+                if (!CheckCaptureResult(captureResult))
+                    return;
+
+                // En DPUruNet no hay OnFingerTouch físico, así que consideramos este punto
+                // como el “touch” lógico: el lector entregó una captura válida.
+                FingerTouched?.Invoke(this, EventArgs.Empty);
+
+                // Extraer FMD para que puedas hacer 1:N, 1:1, etc.
+                var fmdResult = FeatureExtraction.CreateFmdFromFid(
+                    captureResult.Data,
+                    Constants.Formats.Fmd.ANSI);
+
+                if (fmdResult.ResultCode != Constants.ResultCode.DP_SUCCESS)
+                    throw new InvalidOperationException(
+                        $"CreateFmdFromFid falló: {fmdResult.ResultCode}");
+
+                var args = new FingerprintCapturedEventArgs(captureResult, fmdResult.Data);
+
+                // Lanzamos evento de captura completa.
+                FingerCaptured?.Invoke(this, args);
+            }
+            catch (Exception ex)
+            {
+                // Aquí mete tu log centralizado
+                Console.WriteLine($"[FingerTouchCaptureController] Error en OnCaptured: {ex}");
+            }
+            finally
+            {
+                // Rearmar la siguiente captura, mientras no se haya pedido reset/stop.
+                if (!_reset)
+                {
+                    try
+                    {
+                        CaptureFingerAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[FingerTouchCaptureController] Error rearmando captura: {ex}");
+                        _reset = true;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Valida que la captura sea correcta.
+        /// </summary>
+        private static bool CheckCaptureResult(CaptureResult captureResult)
+        {
+            if (captureResult.Data == null ||
+                captureResult.ResultCode != Constants.ResultCode.DP_SUCCESS)
+            {
+                if (captureResult.ResultCode != Constants.ResultCode.DP_SUCCESS)
+                    throw new InvalidOperationException(
+                        $"CaptureResult error: {captureResult.ResultCode}");
+
+                if (captureResult.Quality != Constants.CaptureQuality.DP_QUALITY_CANCELED)
+                    throw new InvalidOperationException(
+                        $"Quality inválida: {captureResult.Quality}");
+
+                return false;
+            }
+
+            return true;
+        }
+
+        public void Stop()
+        {
+            _reset = true;
+
+            if (_reader != null)
+            {
+                try
+                {
+                    _reader.CancelCapture();
+                }
+                catch { /* ignora errores de cancelación */ }
+
+                _reader.On_Captured -= OnCaptured;
+
+                try
+                {
+                    _reader.Dispose();
+                }
+                catch { }
+            }
+
+            _isCapturing = false;
+        }
+
+        public void Dispose()
+        {
+            Stop();
+        }
+    }
+
+    /// <summary>
+    /// Datos que acompañan al evento de captura.
+    /// </summary>
+    public sealed class FingerprintCapturedEventArgs : EventArgs
+    {
+        public CaptureResult CaptureResult { get; }
+        public Fmd Fmd { get; }
+
+        public FingerprintCapturedEventArgs(CaptureResult captureResult, Fmd fmd)
+        {
+            CaptureResult = captureResult ?? throw new ArgumentNullException(nameof(captureResult));
+            Fmd = fmd ?? throw new ArgumentNullException(nameof(fmd));
+        }
+    }
+}
+Cómo lo integras con tu FingerPrinterReaderBase
+En tu FingerPrinterReaderBase puedes:
+
+Crear el Reader como ya lo haces (ReaderCollection.GetReaders()).
+
+Internamente tener un campo FingerTouchCaptureController _controller;.
+
+Al inicializar:
+
+var readers = ReaderCollection.GetReaders();
+_reader = readers[0]; // o el que tú selecciones
+
+_controller = new FingerTouchCaptureController(_reader);
+_controller.FingerTouched   += (s, e) => OnFingerTouchInternal();
+_controller.FingerCaptured  += (s, e) => OnFingerprintCapturedInternal(e);
+_controller.Start();
+Donde OnFingerTouchInternal() / OnFingerprintCapturedInternal(...) disparan tus propios eventos de dominio, logs, envío por WebSocket, verificación 1:N, etc.
+
+De esta forma:
+
+No usas timers ni timeouts manuales.
+
+El SDK espera internamente el toque.
+
+Cada vez que el usuario toca el lector y se obtiene una captura válida:
+
+Se lanza FingerTouched.
+
+Se lanza FingerCaptured con el Fmd ya listo para verificar contra tu diccionario 1:N.
+
+Nota rápida sobre un “touch” más temprano
+Si alguna vez decides usar el SDK DigitalPersona OneTouch .NET (DPFPDevNET.dll, DPFPShrNET.dll), ahí sí tienes eventos explícitos OnFingerTouch y OnFingerGone en DPFP.Capture.Capture. 
+Jeremy Lindsay
+
+Pero con DPUruNet la forma práctica es la que te dejé arriba: usar el callback On_Captured + captura asíncrona, sin timer.
+
+Si quieres, en el siguiente paso podemos acoplar esto directamente a tu FingerPrinterReaderBase actual (con tus eventos, diccionario 1:N, WebSocket, etc.) y te dejo el archivo tal cual para pegarlo.
+
+Tú dijiste:
+estas seguro lo que dices por que recuerdo que en la clase reader hay una propiedad llamada state y era del lector de huellas y que segun era la encargada del evento lectura
+ChatGPT Plus
+
+Pensó durante 3m 20s
+Sí, estoy bastante seguro, y te explico dónde encaja ese “state” que recuerdas.
+
+1. Qué tiene realmente la clase Reader de DPUruNet
+En el SDK U.are.U moderno (el que usa DPUruNet y ReaderCollection.GetReaders()), la clase Reader expone:
+
+Métodos como:
+
+Open(...)
+
+GetStatus()
+
+Capture(...)
+
+CaptureAsync(...)
+
+StartStreaming(), GetStreamImage(), StopStreaming()
+
+Y propiedades como:
+
+Description
+
+Capabilities
+
+Status (de tipo ReaderStatus)
+Diprotec
+
+Status es un objeto ReaderStatus que, a su vez, tiene un campo Status de tipo Constants.ReaderStatuses, donde ves valores como:
+
+DP_STATUS_READY
+
+DP_STATUS_BUSY
+
+DP_STATUS_NEED_CALIBRATION
+
+etc.
+
+Es decir, en esta API lo que hay es algo como:
+
+Reader currentReader;
+
+// Se actualiza el snapshot del estado
+currentReader.GetStatus();
+
+// Aquí es donde “ves” el estado (lo que probablemente recuerdas)
+var state = currentReader.Status.Status; // tipo Constants.ReaderStatuses
+
+if (state == Constants.ReaderStatuses.DP_STATUS_READY)
+{
+    // listo para capturar
+}
+Pero eso no es un evento, es solo un snapshot del estado interno del lector. Tú lo consultas explícitamente; el SDK no dispara nada automáticamente por cambiar ese estado.
+
+2. De dónde sale el recuerdo de un State “encargado del evento de lectura”
+Hay dos sitios donde sí aparece algo muy parecido a lo que comentas:
+
+OneTouch / DPFP (otro SDK distinto)
+El stack antiguo de DigitalPersona, con espacios de nombres DPFP.* (DPFP.Capture, DPFP.Gui.Verification, etc.), tiene:
+
+Un Capture con eventos:
+
+OnFingerTouch
+
+OnFingerGone
+
+OnComplete
+
+OnReaderConnect
+
+OnReaderDisconnect
+
+OnSampleQuality
+Diprotec
+
+Controles como VerificationControl con una propiedad Active que “controls the fingerprint capture state” (controla el estado de captura).
+Scribd
+
+Ahí sí se siente como: “pongo el control en Active = true y ya se engancha al lector y levanta eventos (OnFingerTouch) sin timers”.
+
+Capa OPOS/ActiveX
+En el API OPOS que viene documentado en el mismo SDK, hay una propiedad State (inicializada a OPOS_S_IDLE, luego OPOS_S_CLOSED, etc.), pero es el estado del objeto OPOS, no un evento de toque ni de captura.
+
+Mi apuesta: lo que tú recuerdas como Reader.State era uno de estos dos mundos:
+
+DPFP + eventos OnFingerTouch/OnComplete, o
+
+VerificationControl.Active / DeviceEnabled en OneTouch/OPOS.
+
+En DPUruNet puro, la propiedad es Status (no State) y no dispara eventos.
+
+3. Cómo lograr el “evento touch” sin timer en DPUruNet
+Aunque DPUruNet no tiene algo llamado OnFingerTouch, el flujo correcto no requiere timers; el propio SDK “espera” el dedo por ti:
+
+Abres el lector:
+
+var result = currentReader.Open(Constants.CapturePriority.DP_PRIORITY_EXCLUSIVE);
+if (result != Constants.ResultCode.DP_SUCCESS)
+    throw new Exception(result.ToString());
+Arrancas una captura asíncrona con callback:
+
+bool StartCaptureAsync(Reader.CaptureCallback onCaptured)
+{
+    // Opcional: revisar estado hardware
+    currentReader.GetStatus();
+    if (currentReader.Status.Status != Constants.ReaderStatuses.DP_STATUS_READY)
+    {
+        // calibrar, esperar si está BUSY, etc.
+        return false;
+    }
+
+    var rc = currentReader.CaptureAsync(
+        Constants.Formats.Fid.ANSI,
+        Constants.CaptureProcessing.DP_IMG_PROC_DEFAULT,
+        currentReader.Capabilities.Resolutions[0]
+    );
+
+    if (rc != Constants.ResultCode.DP_SUCCESS)
+        throw new Exception(rc.ToString());
+
+    return true;
+}
+En el callback OnCaptured tratas el “evento de toque + captura completa”:
+
+void OnCaptured(CaptureResult captureResult)
+{
+    // Aquí ya sabemos que el usuario puso el dedo y se capturó algo
+    if (captureResult.Data == null ||
+        captureResult.ResultCode != Constants.ResultCode.DP_SUCCESS)
+    {
+        // manejar errores/calidad
+        return;
+    }
+
+    // -> Aquí es donde tú puedes disparar tu propio evento "FingerTouched"
+    // o "FingerprintCaptured" hacia tu FingerPrinterReaderBase
+}
+Ese patrón es el que se usa en ejemplos reales con DPUruNet (servicios, consolas, etc.)
+
+Fíjate que:
+
+No hay Timer de por medio.
+
+CaptureAsync deja el lector “armado” internamente y el driver se encarga de esperar hasta que haya dedo o timeout.
+
+Tú solo recibes el callback cuando ya hay un CaptureResult.
+
+Si quieres un comportamiento “siempre escuchando”, normalmente en el propio callback, una vez procesado, vuelves a llamar a StartCaptureAsync(OnCaptured) para re-armar el lector.
+
+4. Cómo lo traduciría a tu FingerPrinterReaderBase
+A nivel de diseño, en tu clase base puedes exponer algo así:
+
+public event EventHandler<FingerprintCapturedEventArgs> FingerCaptured;
+
+public void StartListening()
+{
+    // Abre lector + arranca CaptureAsync
+}
+
+private void OnCaptured(CaptureResult captureResult)
+{
+    // validar resultado...
+
+    // Notificar hacia arriba (esto sería tu “evento touch” de alto nivel)
+    FingerCaptured?.Invoke(this, new FingerprintCapturedEventArgs(captureResult));
+
+    // Re-armar captura si quieres seguir escuchando
+    StartCaptureAsync(OnCaptured);
+}
+De este modo:
+
+El “estado” hardware real lo lees como reader.Status.Status.
+
+El “evento touch/lectura” lo modelas tú con FingerCaptured basado en OnCaptured.
+
+En resumen: en DPUruNet no hay Reader.State que dispare un evento; lo que hay es Reader.Status.Status para consultar el estado, y el gancho real de “tocó el lector” es el callback de CaptureAsync. Si quieres, el siguiente paso puedo ser más directo y escribirte el bloque exacto que encaje en tu FingerPrinterReaderBase con el patrón de evento que tienes.
+
+Tú dijiste:
+quiero una documnetancion que hables de este tema y del primer codigo que me distes para dar una implementacion de esto a un proyecto. puedes acceder a un repositorio de github?
+ChatGPT Plus
+
+Pensó durante 19s
+Sí, puedo leer repositorios públicos de GitHub (código, README, etc.) siempre que me pases la URL.
+No puedo clonar ni hacer push, pero sí analizar archivos, clases y darte sugerencias concretas sobre tu proyecto.
+
+Mientras tanto, te dejo la documentación que pediste, basada en el código que te propuse (el controlador de captura por “touch”) y en cómo integrarlo en un proyecto real.
+
+1. Contexto: captura por evento en DigitalPersona 4500 (DPUruNet)
+1.1. Modelo de operación del lector
+En el SDK DPUruNet (U.are.U DigitalPersona moderno):
+
+La clase clave es DPUruNet.Reader.
+
+El lector:
+
+Se abre con reader.Open(...).
+
+Se consulta su estado con reader.GetStatus() → reader.Status.Status.
+
+Se captura huella con:
+
+reader.Capture(...) (bloqueante), o
+
+reader.CaptureAsync(...) (no bloqueante, con callback).
+
+Importante:
+
+No existe un evento OnFingerTouch como en el SDK OneTouch antiguo.
+
+El equivalente práctico al “evento de toque” es el callback On_Captured que se dispara cuando el lector termina una captura (es decir, cuando detectó dedo + obtuvo imagen).
+
+Por eso, el patrón recomendado es:
+
+Abrir el lector.
+
+Arrancar una sola vez CaptureAsync.
+
+El SDK se queda internamente “esperando dedo”.
+
+Cuando la huella se captura, se dispara On_Captured.
+
+En el callback, tú:
+
+Validas el resultado.
+
+Generas el FMD.
+
+Lanzas tus propios eventos lógicos (ej. FingerTouched, FingerCaptured).
+
+Rearmas otra vez CaptureAsync si quieres seguir escuchando.
+
+No necesitas timers en tu código; el “esperar al dedo” lo hace el driver.
+
+2. Clase FingerTouchCaptureController: objetivo y responsabilidades
+Esta clase que te propuse es un wrapper alrededor de DPUruNet.Reader que encapsula toda la lógica de:
+
+Abrir/cerrar el lector.
+
+Arrancar la captura asíncrona.
+
+Reactualizar el estado del lector (READY, BUSY, NEED_CALIBRATION).
+
+Validar los CaptureResult.
+
+Traducir el callback On_Captured en eventos de dominio:
+
+FingerTouched: “hubo una captura válida, el usuario tocó el sensor”.
+
+FingerCaptured: “además de saber que hubo toque, aquí tienes el FMD para validar 1:1 o 1:N”.
+
+2.1. API pública
+Resumen de la interfaz pública:
+
+public sealed class FingerTouchCaptureController : IDisposable
+{
+    public event EventHandler FingerTouched;
+    public event EventHandler<FingerprintCapturedEventArgs> FingerCaptured;
+
+    public FingerTouchCaptureController(Reader reader);
+
+    public void Start();   // Abre el lector + arma la primera captura
+    public void Stop();    // Cancela captura, desuscribe eventos, libera recursos
+    public void Dispose(); // Igual que Stop()
+}
+Y el DTO del evento:
+
+public sealed class FingerprintCapturedEventArgs : EventArgs
+{
+    public CaptureResult CaptureResult { get; }
+    public Fmd Fmd { get; }
+
+    public FingerprintCapturedEventArgs(CaptureResult captureResult, Fmd fmd);
+}
+Este DTO te permite acceder:
+
+A la captura cruda (CaptureResult → contiene Fid, calidad, etc.).
+
+Al Fmd ya listo para comparar (1:1, 1:N).
+
+3. Flujo interno de la clase
+3.1. Start()
+public void Start()
+{
+    if (_isCapturing)
+        return;
+
+    var openResult = _reader.Open(Constants.CapturePriority.DP_PRIORITY_EXCLUSIVE);
+    if (openResult != Constants.ResultCode.DP_SUCCESS)
+        throw new InvalidOperationException($"No se pudo abrir el lector: {openResult}");
+
+    _reader.On_Captured += OnCaptured;
+
+    _isCapturing = CaptureFingerAsync();
+}
+Responsabilidades:
+
+Abrir el lector en modo exclusivo (puedes cambiar a DP_PRIORITY_COOPERATIVE si compartes).
+
+Suscribir el callback del SDK (On_Captured).
+
+Iniciar la primera captura asíncrona con CaptureFingerAsync().
+
+3.2. CaptureFingerAsync()
+private bool CaptureFingerAsync()
+{
+    GetStatusReadyOrCalibrate();
+
+    var captureResult = _reader.CaptureAsync(
+        Constants.Formats.Fid.ANSI,
+        Constants.CaptureProcessing.DP_IMG_PROC_DEFAULT,
+        _reader.Capabilities.Resolutions[0]);
+
+    if (captureResult != Constants.ResultCode.DP_SUCCESS)
+        throw new InvalidOperationException($"CaptureAsync falló: {captureResult}");
+
+    return true;
+}
+Responsabilidades:
+
+Verificar que el lector esté en estado adecuado antes de capturar:
+
+DP_STATUS_BUSY → pequeño Thread.Sleep y volver a intentar.
+
+DP_STATUS_NEED_CALIBRATION → llamar Calibrate().
+
+Cualquier otro estado no READY → lanzar excepción.
+
+Llamar a CaptureAsync para que el driver espere el dedo.
+
+3.3. OnCaptured(CaptureResult captureResult)
+private void OnCaptured(CaptureResult captureResult)
+{
+    try
+    {
+        if (!CheckCaptureResult(captureResult))
+            return;
+
+        FingerTouched?.Invoke(this, EventArgs.Empty);
+
+        var fmdResult = FeatureExtraction.CreateFmdFromFid(
+            captureResult.Data,
+            Constants.Formats.Fmd.ANSI);
+
+        if (fmdResult.ResultCode != Constants.ResultCode.DP_SUCCESS)
+            throw new InvalidOperationException(
+                $"CreateFmdFromFid falló: {fmdResult.ResultCode}");
+
+        var args = new FingerprintCapturedEventArgs(captureResult, fmdResult.Data);
+
+        FingerCaptured?.Invoke(this, args);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[FingerTouchCaptureController] Error en OnCaptured: {ex}");
+    }
+    finally
+    {
+        if (!_reset)
+        {
+            try
+            {
+                CaptureFingerAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[FingerTouchCaptureController] Error rearmando captura: {ex}");
+                _reset = true;
+            }
+        }
+    }
+}
+Responsabilidades:
+
+Interpretar que la llegada de un CaptureResult válido = hubo toque + captura.
+
+Disparar FingerTouched como señal lógica de “evento touch”.
+
+Generar Fmd (formato ANSI) a partir del Fid capturado.
+
+Disparar FingerCaptured con el FMD.
+
+Rearmar la siguiente captura mientras no se haya pedido Stop().
+
+4. Cómo integrarlo en tu proyecto (con FingerPrinterReaderBase)
+Supongamos que tienes una clase base en tu arquitectura:
+
+public abstract class FingerPrinterReaderBase
+{
+    protected Reader _reader;
+    protected FingerTouchCaptureController _controller;
+
+    public event EventHandler<FingerprintCapturedEventArgs> FingerCaptured;
+    public event EventHandler FingerTouched;
+
+    public void Initialize()
+    {
+        var readers = ReaderCollection.GetReaders();
+        if (readers == null || readers.Count == 0)
+            throw new InvalidOperationException("No se encontró ningún lector DigitalPersona.");
+
+        _reader = readers[0]; // o lógica para seleccionar
+
+        _controller = new FingerTouchCaptureController(_reader);
+        _controller.FingerTouched += (s, e) => OnFingerTouched();
+        _controller.FingerCaptured += (s, e) => OnFingerCaptured(e);
+    }
+
+    public void StartListening()
+    {
+        if (_controller == null)
+            Initialize();
+
+        _controller.Start();
+    }
+
+    public void StopListening()
+    {
+        _controller?.Stop();
+    }
+
+    protected virtual void OnFingerTouched()
+    {
+        FingerTouched?.Invoke(this, EventArgs.Empty);
+    }
+
+    protected virtual void OnFingerCaptured(FingerprintCapturedEventArgs e)
+    {
+        FingerCaptured?.Invoke(this, e);
+    }
+}
+Y luego, una implementación concreta para tu flujo de negocio (ej. registro o validación):
+
+public class FingerPrinterVerificationService : FingerPrinterReaderBase
+{
+    private readonly IDictionary<string, Fmd> _plantillasPorUsuario;
+
+    public FingerPrinterVerificationService(IDictionary<string, Fmd> plantillasPorUsuario)
+    {
+        _plantillasPorUsuario = plantillasPorUsuario;
+        this.FingerCaptured += OnFingerCapturedForVerification;
+    }
+
+    private void OnFingerCapturedForVerification(object sender, FingerprintCapturedEventArgs e)
+    {
+        // Aquí haces 1:N contra tu diccionario
+        var fmdCapturado = e.Fmd;
+
+        // Ejemplo simple: recorrer diccionario (puedes optimizar luego)
+        string usuarioEncontrado = null;
+        int scoreMinimo = 0; // define tu umbral
+
+        foreach (var kv in _plantillasPorUsuario)
+        {
+            var res = Comparison.Compare(
+                fmdCapturado,
+                0,
+                kv.Value,
+                0);
+
+            if (res.ResultCode == Constants.ResultCode.DP_SUCCESS && res.Score <= scoreMinimo)
+            {
+                usuarioEncontrado = kv.Key;
+                scoreMinimo = res.Score;
+            }
+        }
+
+        if (usuarioEncontrado != null)
+        {
+            // Notificar que la huella pertenece a usuarioEncontrado
+            Console.WriteLine($"Huella verificada, usuario: {usuarioEncontrado}, score: {scoreMinimo}");
+        }
+        else
+        {
+            // No match
+            Console.WriteLine("Huella no coincide con ningún usuario.");
+        }
+    }
+}
+Con esto:
+
+Tu UI (WinForms, WPF, Blazor, consola, etc.) solo necesita:
+
+Instanciar FingerPrinterVerificationService.
+
+Llamar StartListening() cuando quieras activar la lectura.
+
+Suscribirse a los eventos de alto nivel si lo deseas.
+
+No tienes timers: el lector se queda esperando dedo internamente.
+
+5. Ejemplo mínimo de uso (consola o servicio)
+var diccionarioPlantillas = CargarPlantillasDesdeBD(); // IDictionary<string, Fmd>
+
+var servicio = new FingerPrinterVerificationService(diccionarioPlantillas);
+servicio.FingerTouched += (s, e) =>
+{
+    Console.WriteLine("[INFO] Dedo detectado y captura iniciada/completada.");
+};
+
+servicio.StartListening();
+
+Console.WriteLine("Lector listo. Presiona ENTER para salir.");
+Console.ReadLine();
+
+servicio.StopListening();
+Este es el flujo típico para un servicio o un demonio que está “escuchando” huellas permanentemente.
+
+ 
