@@ -410,6 +410,168 @@ component.on('fingerIdentified', (data) => {
 
 ---
 
-**Última Actualización**: 2025-10-28
-**Versión**: EdgeUruBridgeCore v1.2
+---
+
+## 🔥 NUEVO: Modo Touch Continuo (Noviembre 2025)
+
+### Eventos del Modo Touch
+
+El **Modo Touch Continuo** introduce nuevos eventos SSE para captura continua sin timers:
+
+#### TOUCH_MODE_STARTED
+
+Se dispara al iniciar el modo de escucha continua.
+
+```json
+{
+  "eventType": "TOUCH_MODE_STARTED",
+  "message": "🎧 Modo de eventos touch ACTIVADO",
+  "severity": "SUCCESS",
+  "data": {
+    "mode": "Continuous",
+    "eventsAvailable": ["FINGER_TOUCHED", "FINGERPRINT_READY", "CAPTURE_READY"]
+  }
+}
+```
+
+#### FINGER_TOUCHED
+
+Se dispara cada vez que se detecta un dedo en el lector (modo continuo).
+
+```json
+{
+  "eventType": "FINGER_TOUCHED",
+  "message": "👆 Dedo detectado en el lector",
+  "severity": "INFO",
+  "data": {
+    "width": 500,
+    "height": 550,
+    "timestamp": "2025-11-15T08:50:53.970Z"
+  }
+}
+```
+
+#### IMAGE_CAPTURED (Modo Touch)
+
+Similar al evento IMAGE_CAPTURED regular, pero disparado automáticamente en modo continuo.
+
+```json
+{
+  "eventType": "IMAGE_CAPTURED",
+  "message": "Imagen de huella capturada",
+  "severity": "SUCCESS",
+  "data": {
+    "imageBase64": "iVBORw0KGgoAAAANSUhEUg...",
+    "imageSize": 215664
+  }
+}
+```
+
+#### FINGERPRINT_READY
+
+Se dispara cuando el FMD (template) está generado y listo para comparación.
+
+```json
+{
+  "eventType": "FINGERPRINT_READY",
+  "message": "✅ Huella lista para comparación",
+  "severity": "SUCCESS",
+  "data": {
+    "fmdSize": 440,
+    "format": "ANSI",
+    "timestamp": "2025-11-15T08:50:54.005Z"
+  }
+}
+```
+
+#### CAPTURE_READY
+
+Se dispara cuando el lector está rearmado y listo para la próxima captura.
+
+```json
+{
+  "eventType": "CAPTURE_READY",
+  "message": "🔄 Listo para próxima captura",
+  "severity": "INFO",
+  "data": {
+    "timestamp": "2025-11-15T08:50:54.100Z"
+  }
+}
+```
+
+#### TOUCH_MODE_STOPPED
+
+Se dispara al detener el modo continuo.
+
+```json
+{
+  "eventType": "TOUCH_MODE_STOPPED",
+  "message": "Modo de eventos touch desactivado",
+  "severity": "INFO",
+  "data": {
+    "reason": "User requested stop"
+  }
+}
+```
+
+### Flujo de Eventos en Modo Touch
+
+```
+Usuario → adapter.startTouchMode()
+    ↓
+[SSE] TOUCH_MODE_STARTED
+    ↓
+Usuario coloca dedo
+    ↓
+[SSE] FINGER_TOUCHED
+    ↓
+[SSE] IMAGE_CAPTURED (con imagen Base64)
+    ↓
+[SSE] FINGERPRINT_READY (con FMD)
+    ↓
+[SSE] CAPTURE_READY
+    ↓
+(Ciclo se repite automáticamente...)
+    ↓
+Usuario → adapter.stopTouchMode()
+    ↓
+[SSE] TOUCH_MODE_STOPPED
+```
+
+### Uso con BiometricAdapter
+
+```javascript
+// Registrar listeners antes de iniciar
+adapter.on('FINGER_TOUCHED', (data) => {
+    console.log('👆 Dedo detectado');
+});
+
+adapter.on('FINGERPRINT_READY', (data) => {
+    console.log('✅ Huella lista:', data.fmdSize, 'bytes');
+    // Usar para verificación o identificación
+});
+
+adapter.on('CAPTURE_READY', () => {
+    console.log('🔄 Listo para siguiente captura');
+});
+
+// Iniciar modo touch
+await adapter.startTouchMode();
+
+// El lector captura automáticamente cada dedo colocado
+// hasta que se llame stopTouchMode()
+
+await adapter.stopTouchMode();
+```
+
+### Documentación Completa
+
+Para detalles completos del Modo Touch, ver:
+- **[HITO-MODO-TOUCH-IMPLEMENTADO.md](./HITO-MODO-TOUCH-IMPLEMENTADO.md)** - Documentación del logro
+- **[MODO-TOUCH-GUIA-COMPLETA.md](./MODO-TOUCH-GUIA-COMPLETA.md)** - Guía de uso
+
+---
+
+**Última Actualización**: 2025-11-15
+**Versión**: EdgeUruBridgeCore v2.0
 **Autor**: Sistema de Arquitectura Edge-Uru-UI
