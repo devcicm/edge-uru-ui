@@ -683,15 +683,27 @@ public sealed class Dp4500Service : IDisposable
             _sampleReady.Reset();
             _lastCapture = null;
 
-            // Intentar hasta 5 veces con esperas incrementales
-            for (int attempt = 1; attempt <= 5; attempt++)
+            // IMPORTANTE: Cancelar captura anterior primero (libera el lector)
+            try
+            {
+                Reader.CancelCapture();
+                OnStatus?.Invoke("[TouchMode] 🔧 Captura anterior cancelada");
+                Thread.Sleep(100); // Dar tiempo al SDK para liberar recursos
+            }
+            catch (Exception ex)
+            {
+                OnStatus?.Invoke($"[TouchMode] ⚠️ Error cancelando captura anterior: {ex.Message}");
+            }
+
+            // Intentar hasta 8 veces con esperas más largas (el usuario debe levantar el dedo)
+            for (int attempt = 1; attempt <= 8; attempt++)
             {
                 // Verificar estado del lector
                 var statusResult = Reader.GetStatus();
                 if (statusResult != DPUruNet.Constants.ResultCode.DP_SUCCESS)
                 {
-                    OnStatus?.Invoke($"[TouchMode] ⚠️ GetStatus falló (intento {attempt}/5): {statusResult}");
-                    Thread.Sleep(attempt * 100); // Espera incremental: 100ms, 200ms, 300ms...
+                    OnStatus?.Invoke($"[TouchMode] ⚠️ GetStatus falló (intento {attempt}/8): {statusResult}");
+                    Thread.Sleep(attempt * 200); // Espera más larga
                     continue;
                 }
 
@@ -699,8 +711,16 @@ public sealed class Dp4500Service : IDisposable
 
                 if (status == DPUruNet.Constants.ReaderStatuses.DP_STATUS_BUSY)
                 {
-                    OnStatus?.Invoke($"[TouchMode] ⏳ Lector ocupado (intento {attempt}/5), esperando...");
-                    Thread.Sleep(attempt * 150);
+                    if (attempt == 1)
+                    {
+                        OnStatus?.Invoke($"[TouchMode] ⏳ Lector ocupado - esperando que levantes el dedo...");
+                    }
+                    else
+                    {
+                        OnStatus?.Invoke($"[TouchMode] ⏳ Todavía ocupado (intento {attempt}/8)...");
+                    }
+                    // Espera más larga: 300ms, 400ms, 500ms, 600ms, 700ms, 800ms, 900ms, 1000ms
+                    Thread.Sleep(200 + (attempt * 100));
                     continue;
                 }
 
@@ -714,8 +734,8 @@ public sealed class Dp4500Service : IDisposable
 
                 if (status != DPUruNet.Constants.ReaderStatuses.DP_STATUS_READY)
                 {
-                    OnStatus?.Invoke($"[TouchMode] ⚠️ Status no READY (intento {attempt}/5): {status}");
-                    Thread.Sleep(attempt * 100);
+                    OnStatus?.Invoke($"[TouchMode] ⚠️ Status no READY (intento {attempt}/8): {status}");
+                    Thread.Sleep(attempt * 200);
                     continue;
                 }
 
@@ -727,17 +747,18 @@ public sealed class Dp4500Service : IDisposable
 
                 if (rc == DPUruNet.Constants.ResultCode.DP_SUCCESS)
                 {
-                    OnStatus?.Invoke("[TouchMode] 🔄 Listo para próxima captura");
+                    OnStatus?.Invoke("[TouchMode] ✅ 🔄 Listo para próxima captura - ¡Puedes colocar el dedo de nuevo!");
                     OnCaptureReady?.Invoke();
                     return; // ✅ Éxito
                 }
 
-                OnStatus?.Invoke($"[TouchMode] ⚠️ CaptureAsync falló (intento {attempt}/5): {rc}");
-                Thread.Sleep(attempt * 200);
+                OnStatus?.Invoke($"[TouchMode] ⚠️ CaptureAsync falló (intento {attempt}/8): {rc}");
+                Thread.Sleep(attempt * 300);
             }
 
             // Si llegamos aquí, todos los intentos fallaron
-            OnStatus?.Invoke("[TouchMode] ❌ No se pudo rearmar captura después de 5 intentos - deteniendo modo continuo");
+            OnStatus?.Invoke("[TouchMode] ❌ No se pudo rearmar captura después de 8 intentos - deteniendo modo continuo");
+            OnStatus?.Invoke("[TouchMode] 💡 Consejo: Asegúrate de levantar el dedo completamente del lector");
             _isContinuousMode = false;
             _captureMode = CaptureMode.OnDemand;
         }
