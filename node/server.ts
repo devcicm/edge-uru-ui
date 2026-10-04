@@ -32,6 +32,26 @@ function call(payload: any): Promise<any> {
 const app = express();
 app.use(bodyParser.json());
 const PORT = Number(process.env.BIOMETRIC_PORT ?? process.env.PORT) || 8080;
+// B1: bind por env (default loopback). Guard: si HOST no es loopback, exigir X-Api-Token.
+const HOST = process.env.BIOMETRIC_HOST || "127.0.0.1";
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1", "localhost"]);
+const API_TOKEN = process.env.BIOMETRIC_API_TOKEN;
+const REMOTE_REQUIRED = !LOOPBACK_HOSTS.has(HOST);
+
+if (REMOTE_REQUIRED && !API_TOKEN) {
+  console.error(`[ERROR] BIOMETRIC_HOST=${HOST} no es loopback: BIOMETRIC_API_TOKEN es obligatorio. Abortando.`);
+  process.exit(1);
+}
+
+if (REMOTE_REQUIRED) {
+  app.use((req, res, next) => {
+    const token = req.header("X-Api-Token");
+    if (token !== API_TOKEN) {
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+    next();
+  });
+}
 
 const sseBridge = new SseBridge((message, ...meta) => console.log(message, ...meta));
 const ATTEMPT_REGEX = /Intento\s+(\d+)/i;
@@ -457,4 +477,4 @@ app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
   }
 })();
 
-app.listen(PORT, () => console.log(`UI at http://localhost:${PORT}`));
+app.listen(PORT, HOST, () => console.log(`UI at http://${HOST}:${PORT}`));
