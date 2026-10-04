@@ -570,13 +570,15 @@ class TemplateManagerControl extends BaseComponent {
                         <br><br>
                         <strong>Detalle:</strong> ${error.message}
                         <br><br>
-                        <button onclick="window.location.reload()"
+                        <button id="retry-load-templates-btn"
                                 style="padding: 8px 16px; border-radius: 6px; border: none;
                                        background: #ef4444; color: white; cursor: pointer;">
-                            🔄 Recargar Página
+                            🔄 Reintentar
                         </button>
                     </div>
                 `;
+                const retryBtn = this.refs.templateList.querySelector('#retry-load-templates-btn');
+                if (retryBtn) retryBtn.addEventListener('click', () => this.loadTemplates());
             }
 
             // Emitir evento de error
