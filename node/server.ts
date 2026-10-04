@@ -5,6 +5,12 @@ import express = require("express");
 import bodyParser = require("body-parser");
 import { RawBiometricEvent, SseBridge } from "./sseBridge";
 
+// Configurar encoding UTF-8 para la consola en Windows
+if (process.platform === 'win32') {
+  process.stdout.setDefaultEncoding('utf8');
+  process.stderr.setDefaultEncoding('utf8');
+}
+
 const edge = require("edge-js");
 type EdgeFunc = (payload: any, cb: (err: any, res: any) => void) => void;
 
@@ -195,6 +201,18 @@ app.get("/api/store-stats", async (_, res) => {
   catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
 });
 
+app.post("/api/load-template", async (req, res) => {
+  try {
+    const { userId, templateBase64, hand, finger } = req.body;
+
+    if (!userId || !templateBase64) {
+      return res.status(400).json({ ok: false, error: "userId and templateBase64 are required" });
+    }
+
+    res.json(await call({ op: "loadTemplate", userId, templateBase64, hand, finger }));
+  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+});
+
 // ==========================================
 // EXTERNAL API INTEGRATION ENDPOINTS
 // ==========================================
@@ -342,6 +360,68 @@ app.post("/api/external/convert-template", async (req, res) => {
       tag
     });
 
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+// ==========================================
+// TOUCH MODE ENDPOINTS (Continuous Capture)
+// ==========================================
+
+/**
+ * POST /api/touch/start
+ * Iniciar modo de eventos touch (escucha continua sin timers)
+ * Response: { ok: boolean, message: string, mode: "Continuous", events: string[] }
+ */
+app.post("/api/touch/start", async (req, res) => {
+  try {
+    const result = await call({ op: "startTouchMode" });
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+/**
+ * POST /api/touch/stop
+ * Detener modo de eventos touch
+ * Response: { ok: boolean, message: string, mode: "OnDemand" }
+ */
+app.post("/api/touch/stop", async (req, res) => {
+  try {
+    const result = await call({ op: "stopTouchMode" });
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+/**
+ * GET /api/touch/status
+ * Obtener estado actual del modo touch
+ * Response: { ok: boolean, isActive: boolean, mode: string, modeDescription: string }
+ */
+app.get("/api/touch/status", async (req, res) => {
+  try {
+    const result = await call({ op: "getTouchModeStatus" });
+    res.json(result);
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+/**
+ * POST /api/touch/identify-last
+ * Identificar usando la última huella capturada en modo touch
+ * Request body: { targetFarn?: number }
+ * Response: { ok: boolean, matched: boolean, userId?: string, score: number, gallerySize: number, message: string }
+ */
+app.post("/api/touch/identify-last", async (req, res) => {
+  try {
+    const targetFarn = req.body?.targetFarn ?? 21474;
+    const result = await call({ op: "identifyLastCapture", targetFarn });
     res.json(result);
   } catch (e: any) {
     res.status(500).json({ ok: false, error: String(e) });

@@ -68,6 +68,15 @@ public enum EnrollmentType
     AllFingers        // Enroll de 10 dedos
 }
 
+/// <summary>
+/// Modos de captura del lector
+/// </summary>
+public enum CaptureMode
+{
+    OnDemand,    // Modo tradicional con timeouts (compatible con código existente)
+    Continuous   // Modo de escucha continua con eventos touch (sin timers)
+}
+
 /* ===============================
  * DTOs (Data Transfer Objects)
  * ===============================*/
@@ -525,10 +534,32 @@ public sealed class Dp4500Service : IDisposable
     private readonly ManualResetEventSlim _sampleReady = new ManualResetEventSlim(false);
     private volatile DPUruNet.CaptureResult? _lastCapture;
     private volatile DPUruNet.Fid? _lastFid;
+    private volatile DPUruNet.Fmd? _lastFmd; // Último FMD capturado
     private bool _subscribed;
     private int _dpi = 500;
 
+    // ===== Propiedades para Modo Touch (Continuous Capture) =====
+    private CaptureMode _captureMode = CaptureMode.OnDemand;
+    private bool _isContinuousMode = false;
+    private readonly object _continuousModeLock = new object();
+
     public DPUruNet.Fid? LastFid => _lastFid;
+
+    // ===== Eventos para Modo Touch (Continuous Capture) =====
+    /// <summary>
+    /// Se dispara cuando se detecta un dedo en el lector (captura válida)
+    /// </summary>
+    public event Action<DPUruNet.Fid>? OnFingerTouched;
+
+    /// <summary>
+    /// Se dispara cuando la huella está lista para comparación (FMD generado)
+    /// </summary>
+    public event Action<DPUruNet.Fmd>? OnFingerprintReady;
+
+    /// <summary>
+    /// Se dispara cuando el lector está listo para la siguiente captura
+    /// </summary>
+    public event Action? OnCaptureReady;
 
     private readonly Lazy<DPUruNet.Reader> _readerLazy = new Lazy<DPUruNet.Reader>(() =>
     {
@@ -563,7 +594,143 @@ public sealed class Dp4500Service : IDisposable
     private void OnCaptured(DPUruNet.CaptureResult result)
     {
         _lastCapture = result;
-        _sampleReady.Set();
+        _sampleReady.Set(); // Mantener para modo OnDemand
+
+        // ===== NUEVO: Lógica para Modo Touch (Continuous) =====
+        lock (_continuousModeLock)
+        {
+            if (_isContinuousMode && _captureMode == CaptureMode.Continuous)
+            {
+                try
+                {
+                    // Validar que la captura sea buena
+                    if (!IsGoodCapture(result, out var why))
+                    {
+                        OnStatus?.Invoke($"[TouchMode] ⚠️ Captura rechazada: {why}");
+                        // Rearmar captura automáticamente incluso si falla (con manejo robusto)
+                        // IMPORTANTE: Ejecutar en thread separado para no bloquear el callback del SDK
+                        Thread.Sleep(200);
+                        ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture());
+                        return;
+                    }
+
+                    OnStatus?.Invoke("[TouchMode] 👆 Dedo detectado - captura válida");
+
+                    // Disparar evento de dedo tocado
+                    OnFingerTouched?.Invoke(result.Data!);
+
+                    _lastFid = result.Data;
+
+                    // Generar FMD para comparación
+                    var fmdResult = DPUruNet.FeatureExtraction.CreateFmdFromFid(
+                        result.Data!,
+                        DPUruNet.Constants.Formats.Fmd.ANSI);
+
+                    if (fmdResult.ResultCode == DPUruNet.Constants.ResultCode.DP_SUCCESS && fmdResult.Data != null)
+                    {
+                        OnStatus?.Invoke("[TouchMode] ✅ Huella lista para comparación");
+
+                        // Almacenar el último FMD capturado
+                        _lastFmd = fmdResult.Data;
+
+                        // Disparar evento de huella lista
+                        OnFingerprintReady?.Invoke(fmdResult.Data);
+                    }
+                    else
+                    {
+                        OnStatus?.Invoke($"[TouchMode] ⚠️ Error generando FMD: {fmdResult.ResultCode}");
+                    }
+
+                    // Rearmar captura INMEDIATAMENTE - sin sleeps
+                    // IMPORTANTE: Ejecutar en thread separado para no bloquear el callback del SDK
+                    if (_isContinuousMode) // Verificar de nuevo por si se detuvo
+                    {
+                        ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    OnStatus?.Invoke($"[TouchMode] ❌ Error procesando captura: {ex.Message}");
+                    // Intentar rearmar de todos modos si aún está en modo continuo
+                    // IMPORTANTE: Ejecutar en thread separado para no bloquear el callback del SDK
+                    if (_isContinuousMode)
+                    {
+                        ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture());
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Rearma la captura continua usando retries agresivos.
+    /// Intenta CaptureAsync inmediatamente y reintenta si falla.
+    /// Continúa indefinidamente mientras _isContinuousMode sea true.
+    /// </summary>
+    private void TryRearmContinuousCapture(bool isFirstAttempt = true)
+    {
+        if (!_isContinuousMode)
+        {
+            return;
+        }
+
+        try
+        {
+            // Resetear para próxima captura (solo en primer intento)
+            if (isFirstAttempt)
+            {
+                _sampleReady.Reset();
+                _lastCapture = null;
+            }
+
+            // Verificar estado solo para calibración
+            var statusResult = Reader.GetStatus();
+            if (statusResult == DPUruNet.Constants.ResultCode.DP_SUCCESS)
+            {
+                var status = Reader.Status?.Status ?? DPUruNet.Constants.ReaderStatuses.DP_STATUS_FAILURE;
+
+                if (status == DPUruNet.Constants.ReaderStatuses.DP_STATUS_NEED_CALIBRATION)
+                {
+                    OnStatus?.Invoke("[TouchMode] 🔧 Calibrando lector...");
+                    Reader.Calibrate();
+                    // Reprogramar después de calibración (necesita tiempo)
+                    Thread.Sleep(500);
+                    ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture(false));
+                    return;
+                }
+            }
+
+            // Intentar CaptureAsync directamente
+            var rc = Reader.CaptureAsync(
+                DPUruNet.Constants.Formats.Fid.ANSI,
+                DPUruNet.Constants.CaptureProcessing.DP_IMG_PROC_DEFAULT,
+                _dpi);
+
+            if (rc == DPUruNet.Constants.ResultCode.DP_SUCCESS)
+            {
+                // ✅ Éxito!
+                OnCaptureReady?.Invoke();
+                return;
+            }
+            else if (rc == DPUruNet.Constants.ResultCode.DP_DEVICE_BUSY)
+            {
+                // Lector ocupado - reprogramar retry con delay mínimo para evitar busy-wait
+                Thread.Sleep(50); // Sleep mínimo anti-busy-wait
+                ThreadPool.QueueUserWorkItem(_ => TryRearmContinuousCapture(false));
+                return;
+            }
+            else
+            {
+                // Error inesperado
+                throw new InvalidOperationException($"CaptureAsync falló: {rc}");
+            }
+        }
+        catch (Exception ex)
+        {
+            OnStatus?.Invoke($"[TouchMode] ❌ Error rearmando: {ex.Message} - deteniendo modo continuo");
+            _isContinuousMode = false;
+            _captureMode = CaptureMode.OnDemand;
+        }
     }
 
     private static readonly TimeSpan BusyPollDelay = TimeSpan.FromMilliseconds(35);
@@ -1060,10 +1227,155 @@ public sealed class Dp4500Service : IDisposable
         return (false, null, "Enrollment falló: DP_ENROLLMENT_NOT_READY.");
     }
 
+    // ===== Métodos Públicos para Modo Touch (Continuous Capture) =====
+
+    /// <summary>
+    /// Inicia el modo de escucha continua (Modo Touch) sin timeouts.
+    /// El lector quedará esperando dedos indefinidamente hasta que se llame StopContinuousCapture().
+    /// Los eventos OnFingerTouched y OnFingerprintReady se dispararán automáticamente.
+    /// </summary>
+    public void StartContinuousCapture()
+    {
+        lock (_continuousModeLock)
+        {
+            if (_isContinuousMode)
+            {
+                OnStatus?.Invoke("[TouchMode] ⚠️ Modo continuo ya está activo");
+                return;
+            }
+
+            try
+            {
+                Init(); // Asegurar que el lector está inicializado
+
+                _isContinuousMode = true;
+                _captureMode = CaptureMode.Continuous;
+
+                OnStatus?.Invoke("[TouchMode] 🎧 Iniciando modo de escucha continua...");
+
+                // Iniciar primera captura asíncrona - el SDK esperará internamente
+                RequestCaptureGentle(CancellationToken.None);
+
+                OnStatus?.Invoke("[TouchMode] ✅ Modo escucha continua ACTIVO - esperando toque del dedo...");
+                OnStatus?.Invoke("[TouchMode] 💡 Eventos disponibles: OnFingerTouched, OnFingerprintReady, OnCaptureReady");
+            }
+            catch (Exception ex)
+            {
+                _isContinuousMode = false;
+                _captureMode = CaptureMode.OnDemand;
+                OnStatus?.Invoke($"[TouchMode] ❌ Error iniciando modo continuo: {ex.Message}");
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Detiene el modo de escucha continua (Modo Touch).
+    /// El lector vuelve al modo OnDemand tradicional.
+    /// </summary>
+    public void StopContinuousCapture()
+    {
+        lock (_continuousModeLock)
+        {
+            if (!_isContinuousMode)
+            {
+                OnStatus?.Invoke("[TouchMode] ⚠️ Modo continuo no está activo");
+                return;
+            }
+
+            try
+            {
+                OnStatus?.Invoke("[TouchMode] ⏹️ Deteniendo modo de escucha continua...");
+
+                _isContinuousMode = false;
+                _captureMode = CaptureMode.OnDemand;
+
+                // Cancelar captura pendiente
+                try
+                {
+                    Reader.CancelCapture();
+                }
+                catch (Exception ex)
+                {
+                    OnStatus?.Invoke($"[TouchMode] ⚠️ Error cancelando captura: {ex.Message}");
+                }
+
+                // Limpiar eventos
+                OnFingerTouched = null;
+                OnFingerprintReady = null;
+                OnCaptureReady = null;
+
+                OnStatus?.Invoke("[TouchMode] ✅ Modo continuo DETENIDO - vuelto a modo OnDemand");
+            }
+            catch (Exception ex)
+            {
+                OnStatus?.Invoke($"[TouchMode] ❌ Error deteniendo modo continuo: {ex.Message}");
+                // Forzar detención de todos modos
+                _isContinuousMode = false;
+                _captureMode = CaptureMode.OnDemand;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Obtiene el modo de captura actual
+    /// </summary>
+    public CaptureMode GetCaptureMode()
+    {
+        lock (_continuousModeLock)
+        {
+            return _captureMode;
+        }
+    }
+
+    /// <summary>
+    /// Indica si el modo continuo está activo
+    /// </summary>
+    public bool IsContinuousModeActive()
+    {
+        lock (_continuousModeLock)
+        {
+            return _isContinuousMode;
+        }
+    }
+
+    /// <summary>
+    /// Obtiene el último FMD capturado en modo touch
+    /// </summary>
+    public DPUruNet.Fmd? GetLastCapturedFmd()
+    {
+        return _lastFmd;
+    }
+
+    /// <summary>
+    /// Obtiene todos los templates (FMDs) del store con sus tags
+    /// </summary>
+    public Dictionary<string, DPUruNet.Fmd> GetAllTemplates()
+    {
+        var templates = new Dictionary<string, DPUruNet.Fmd>();
+        var allFingerprints = FingerprintTempStore.GetAllFingerprints();
+
+        foreach (var fp in allFingerprints)
+        {
+            if (fp.Fmd != null)
+            {
+                templates[fp.Tag] = fp.Fmd;
+            }
+        }
+
+        return templates;
+    }
+
     public void Dispose()
     {
         try
         {
+            // Detener modo continuo si está activo
+            if (_isContinuousMode)
+            {
+                StopContinuousCapture();
+            }
+
             if (_subscribed) { Reader.On_Captured -= OnCaptured; _subscribed = false; }
             try { Reader.CancelCapture(); } catch { }
         }

@@ -78,3 +78,9 @@ session.txt
 
 # Investigation scripts (development only)
 scripts-investigacion/
+
+# Artefactos TS compilados junto a su fuente (node/ raíz; public/js/ es fuente real)
+/node/*.js
+/node/*.js.map
+/node/*.d.ts
+/node/*.d.ts.map

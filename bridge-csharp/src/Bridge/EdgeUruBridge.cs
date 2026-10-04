@@ -568,6 +568,86 @@ namespace EdgeBridge
                     }
                 }
 
+                case "identifyLastCapture":
+                {
+                    if (_reader == null)
+                    {
+                        var error = "Reader not initialized. Call 'init' first.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    // Obtener el último FMD capturado en modo touch
+                    var lastFmd = _reader.GetLastCapturedFmd();
+                    if (lastFmd == null)
+                    {
+                        var error = "No fingerprint captured yet in touch mode";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    var targetFarn = (int?)input?.targetFarn ?? 21474;
+                    var allTemplates = _reader.GetAllTemplates();
+                    var gallerySize = allTemplates.Count;
+
+                    SendEvent("TOUCH_IDENTIFICATION_STARTED", $"Identificando con última huella capturada (galería: {gallerySize})", "INFO",
+                        new { gallerySize });
+
+                    // Buscar match contra todos los templates
+                    string? matchedUserId = null;
+                    int bestScore = int.MaxValue;
+
+                    foreach (var kvp in allTemplates)
+                    {
+                        var tag = kvp.Key;
+                        var storedFmd = kvp.Value;
+                        var compareResult = DPUruNet.Comparison.Compare(lastFmd, 0, storedFmd, 0);
+
+                        if (compareResult.ResultCode == DPUruNet.Constants.ResultCode.DP_SUCCESS && compareResult.Score != int.MaxValue)
+                        {
+                            if (compareResult.Score < bestScore)
+                            {
+                                bestScore = compareResult.Score;
+                                if (compareResult.Score < targetFarn)
+                                {
+                                    matchedUserId = tag;
+                                }
+                            }
+                        }
+                    }
+
+                    if (matchedUserId != null)
+                    {
+                        var parsedTag = ParseTag(matchedUserId);
+                        SendEvent("TOUCH_IDENTIFICATION_MATCH", $"Usuario identificado: {matchedUserId}", "SUCCESS",
+                            new { userId = matchedUserId, score = bestScore, gallerySize, parsedTag });
+
+                        return new
+                        {
+                            ok = true,
+                            matched = true,
+                            userId = matchedUserId,
+                            score = bestScore,
+                            gallerySize,
+                            message = "Identificado con última huella capturada",
+                            parsedTag
+                        };
+                    }
+
+                    SendEvent("TOUCH_IDENTIFICATION_NO_MATCH", "No se encontró coincidencia", "WARNING",
+                        new { bestScore, threshold = targetFarn, gallerySize });
+
+                    return new
+                    {
+                        ok = true,
+                        matched = false,
+                        userId = (string?)null,
+                        score = bestScore,
+                        gallerySize,
+                        message = "No se encontró coincidencia"
+                    };
+                }
+
                 case "enrollAllFingers":
                 {
                     if (_reader == null)
@@ -829,6 +909,78 @@ namespace EdgeBridge
                     return new { ok = true, message = "Store cleared" };
                 }
 
+                case "loadTemplate":
+                {
+                    try
+                    {
+                        var userId = (string?)input?.userId;
+                        var templateBase64 = (string?)input?.templateBase64;
+                        var hand = (string?)input?.hand ?? "UNKNOWN";
+                        var finger = (string?)input?.finger ?? "UNKNOWN";
+
+                        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(templateBase64))
+                        {
+                            return new { ok = false, error = "userId and templateBase64 are required" };
+                        }
+
+                        // Decodificar template XML desde Base64
+                        var templateXml = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(templateBase64));
+
+                        // Deserializar FMD desde XML
+                        var fmd = DPUruNet.Fmd.DeserializeXml(templateXml);
+                        if (fmd == null)
+                        {
+                            return new { ok = false, error = "Failed to deserialize FMD from XML" };
+                        }
+
+                        // Parsear hand y finger
+                        Hand handEnum = hand.ToUpper() switch
+                        {
+                            "LEFT" => Hand.Left,
+                            "RIGHT" => Hand.Right,
+                            _ => Hand.Unknown
+                        };
+
+                        Finger fingerEnum = finger.ToUpper() switch
+                        {
+                            "THUMB" => Finger.Thumb,
+                            "INDEX" => Finger.Index,
+                            "MIDDLE" => Finger.Middle,
+                            "RING" => Finger.Ring,
+                            "PINKY" => Finger.Pinky,
+                            _ => Finger.Unknown
+                        };
+
+                        // Agregar al store
+                        var storedFingerprint = FingerprintTempStore.AddFingerprint(
+                            userId,
+                            handEnum,
+                            fingerEnum,
+                            fmd,
+                            EnrollmentType.SingleFinger,
+                            false
+                        );
+
+                        SendEvent("TEMPLATE_LOADED", $"Template cargado: {userId} | {hand} {finger}", "SUCCESS",
+                            new { userId, hand, finger, tag = storedFingerprint.Tag });
+
+                        return new
+                        {
+                            ok = true,
+                            message = "Template loaded successfully",
+                            tag = storedFingerprint.Tag,
+                            userId,
+                            hand,
+                            finger
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("SYSTEM_ERROR", $"Error loading template: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
                 case "dispose":
                 {
                     if (_reader != null)
@@ -916,6 +1068,154 @@ namespace EdgeBridge
                     catch (Exception ex)
                     {
                         SendEvent("SYSTEM_ERROR", $"Error obteniendo estadísticas: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
+                case "startTouchMode":
+                {
+                    if (_reader == null)
+                    {
+                        var error = "Reader not initialized. Call 'init' first.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    try
+                    {
+                        // Verificar si ya está activo
+                        if (_reader.IsContinuousModeActive())
+                        {
+                            return new { ok = false, error = "Touch mode is already active" };
+                        }
+
+                        // Suscribirse a eventos de modo continuo
+                        _reader.OnFingerTouched += (fid) =>
+                        {
+                            SendEvent("FINGER_TOUCHED", "👆 Dedo detectado en el lector", "INFO",
+                                new {
+                                    width = fid.Views[0].Width,
+                                    height = fid.Views[0].Height,
+                                    timestamp = DateTime.UtcNow.ToString("O")
+                                });
+
+                            // Enviar imagen si es posible
+                            try
+                            {
+                                var imageBase64 = Dp4500Service.FidToBase64Png(fid);
+                                SendEvent("IMAGE_CAPTURED", "Imagen de huella capturada", "SUCCESS",
+                                    new { imageBase64, imageSize = imageBase64.Length });
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[TouchMode] Error generando imagen: {ex.Message}");
+                            }
+                        };
+
+                        _reader.OnFingerprintReady += (fmd) =>
+                        {
+                            SendEvent("FINGERPRINT_READY", "✅ Huella lista para comparación", "SUCCESS",
+                                new {
+                                    fmdSize = fmd.Bytes?.Length ?? 0,
+                                    format = "ANSI",
+                                    timestamp = DateTime.UtcNow.ToString("O")
+                                });
+                        };
+
+                        _reader.OnCaptureReady += () =>
+                        {
+                            SendEvent("CAPTURE_READY", "🔄 Listo para próxima captura", "INFO",
+                                new { timestamp = DateTime.UtcNow.ToString("O") });
+                        };
+
+                        // Iniciar modo continuo
+                        _reader.StartContinuousCapture();
+
+                        SendEvent("TOUCH_MODE_STARTED", "🎧 Modo de eventos touch ACTIVADO - esperando dedos...", "SUCCESS",
+                            new {
+                                mode = "Continuous",
+                                eventsAvailable = new[] { "FINGER_TOUCHED", "FINGERPRINT_READY", "CAPTURE_READY" }
+                            });
+
+                        return new {
+                            ok = true,
+                            message = "Touch mode started successfully",
+                            mode = "Continuous",
+                            events = new[] { "FINGER_TOUCHED", "FINGERPRINT_READY", "CAPTURE_READY" }
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("SYSTEM_ERROR", $"Error starting touch mode: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
+                case "stopTouchMode":
+                {
+                    if (_reader == null)
+                    {
+                        var error = "Reader not initialized.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    try
+                    {
+                        // Verificar si está activo
+                        if (!_reader.IsContinuousModeActive())
+                        {
+                            return new { ok = false, error = "Touch mode is not active" };
+                        }
+
+                        // Detener modo continuo (esto limpia los eventos internamente)
+                        _reader.StopContinuousCapture();
+
+                        SendEvent("TOUCH_MODE_STOPPED", "⏹️ Modo de eventos touch DESACTIVADO", "INFO",
+                            new {
+                                mode = "OnDemand",
+                                timestamp = DateTime.UtcNow.ToString("O")
+                            });
+
+                        return new {
+                            ok = true,
+                            message = "Touch mode stopped successfully",
+                            mode = "OnDemand"
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("SYSTEM_ERROR", $"Error stopping touch mode: {ex.Message}", "ERROR");
+                        return new { ok = false, error = ex.Message };
+                    }
+                }
+
+                case "getTouchModeStatus":
+                {
+                    if (_reader == null)
+                    {
+                        var error = "Reader not initialized.";
+                        SendEvent("SYSTEM_ERROR", error, "ERROR");
+                        return new { ok = false, error };
+                    }
+
+                    try
+                    {
+                        var isActive = _reader.IsContinuousModeActive();
+                        var mode = _reader.GetCaptureMode();
+
+                        return new {
+                            ok = true,
+                            isActive,
+                            mode = mode.ToString(),
+                            modeDescription = mode == CaptureMode.Continuous
+                                ? "Escucha continua - eventos automáticos"
+                                : "Bajo demanda - requiere llamadas API"
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        SendEvent("SYSTEM_ERROR", $"Error getting touch mode status: {ex.Message}", "ERROR");
                         return new { ok = false, error = ex.Message };
                     }
                 }
