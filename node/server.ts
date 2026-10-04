@@ -53,6 +53,12 @@ if (REMOTE_REQUIRED) {
   });
 }
 
+// B2: helper para errores uniformes. Evita filtrar String(e) al cliente (BE-19).
+function respondInternal(res, e: any, code = "INTERNAL_ERROR", message = "Error interno del motor biométrico") {
+  console.error(`[ERROR ${code}]`, e);
+  res.status(500).json({ ok: false, code, error: message });
+}
+
 const sseBridge = new SseBridge((message, ...meta) => console.log(message, ...meta));
 const ATTEMPT_REGEX = /Intento\s+(\d+)/i;
 const SAMPLE_REGEX = /muestra\s*(\d+)\s*\/\s*(\d+)/i;
@@ -135,17 +141,17 @@ app.post("/api/bootstrap", async (req, res) => {
     const nativeDir = path.join(__dirname, "..", "..", "bin-deps");
     const out = await call({ op: "bootstrap", searchPath: nativeDir });
     res.json(out);
-  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 app.post("/api/init", async (_, res) => {
   try { res.json(await call({ op: "init" })); }
-  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  catch (e: any) { respondInternal(res, e); }
 });
 
 app.post("/api/single", async (req, res) => {
   try { res.json(await call({ op: "single", timeoutMs: req.body?.timeoutMs ?? 10000 })); }
-  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  catch (e: any) { respondInternal(res, e); }
 });
 
 app.post("/api/identify", async (req, res) => {
@@ -155,7 +161,7 @@ app.post("/api/identify", async (req, res) => {
     const top = req.body?.top ?? 5;
     const maxAttempts = req.body?.maxAttempts ?? 4;
     res.json(await call({ op: "identify", timeoutMs, targetFarn, top, maxAttempts }));
-  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 app.post("/api/enroll", async (req, res) => {
@@ -166,7 +172,7 @@ app.post("/api/enroll", async (req, res) => {
     const maxRetriesPerSample = req.body?.maxRetriesPerSample ?? 3;
     const maxSamples = req.body?.maxSamples ?? 4;
     res.json(await call({ op: "enroll", tag, timeoutMs, targetFarn, maxRetriesPerSample, maxSamples }));
-  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 app.post("/api/enroll-all-fingers", async (req, res) => {
@@ -180,7 +186,7 @@ app.post("/api/enroll-all-fingers", async (req, res) => {
     const maxRetriesPerSample = req.body?.maxRetriesPerSample ?? 3;
     const maxSamples = req.body?.maxSamples ?? 4;
     res.json(await call({ op: "enrollAllFingers", userId, timeoutPerFingerMs, targetFarn, maxRetriesPerSample, maxSamples }));
-  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 app.post("/api/verify", async (req, res) => {
@@ -193,32 +199,32 @@ app.post("/api/verify", async (req, res) => {
     const targetFarn = req.body?.targetFarn ?? 21474;
     const maxAttempts = req.body?.maxAttempts ?? 4;
     res.json(await call({ op: "verify", tag, timeoutMs, targetFarn, maxAttempts }));
-  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 app.get("/api/store", async (_, res) => {
   try { res.json(await call({ op: "storeList" })); }
-  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  catch (e: any) { respondInternal(res, e); }
 });
 
 app.delete("/api/store", async (_, res) => {
   try { res.json(await call({ op: "storeClear" })); }
-  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  catch (e: any) { respondInternal(res, e); }
 });
 
 app.post("/api/dispose", async (_, res) => {
   try { res.json(await call({ op: "dispose" })); }
-  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  catch (e: any) { respondInternal(res, e); }
 });
 
 app.get("/api/reader-info", async (_, res) => {
   try { res.json(await call({ op: "getReaderInfo" })); }
-  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  catch (e: any) { respondInternal(res, e); }
 });
 
 app.get("/api/store-stats", async (_, res) => {
   try { res.json(await call({ op: "storeStats" })); }
-  catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  catch (e: any) { respondInternal(res, e); }
 });
 
 app.post("/api/load-template", async (req, res) => {
@@ -230,7 +236,7 @@ app.post("/api/load-template", async (req, res) => {
     }
 
     res.json(await call({ op: "loadTemplate", userId, templateBase64, hand, finger }));
-  } catch (e: any) { res.status(500).json({ ok: false, error: String(e) }); }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 // ==========================================
@@ -274,9 +280,7 @@ app.post("/api/external/register", async (req, res) => {
     });
 
     res.json(result);
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: String(e) });
-  }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 /**
@@ -316,9 +320,7 @@ app.post("/api/external/verify", async (req, res) => {
     });
 
     res.json(result);
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: String(e) });
-  }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 /**
@@ -350,9 +352,7 @@ app.post("/api/external/verify-multiple", async (req, res) => {
     });
 
     res.json(result);
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: String(e) });
-  }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 /**
@@ -381,9 +381,7 @@ app.post("/api/external/convert-template", async (req, res) => {
     });
 
     res.json(result);
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: String(e) });
-  }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 // ==========================================
@@ -399,9 +397,7 @@ app.post("/api/touch/start", async (req, res) => {
   try {
     const result = await call({ op: "startTouchMode" });
     res.json(result);
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: String(e) });
-  }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 /**
@@ -413,9 +409,7 @@ app.post("/api/touch/stop", async (req, res) => {
   try {
     const result = await call({ op: "stopTouchMode" });
     res.json(result);
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: String(e) });
-  }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 /**
@@ -427,9 +421,7 @@ app.get("/api/touch/status", async (req, res) => {
   try {
     const result = await call({ op: "getTouchModeStatus" });
     res.json(result);
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: String(e) });
-  }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 /**
@@ -443,9 +435,7 @@ app.post("/api/touch/identify-last", async (req, res) => {
     const targetFarn = req.body?.targetFarn ?? 21474;
     const result = await call({ op: "identifyLastCapture", targetFarn });
     res.json(result);
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: String(e) });
-  }
+  } catch (e: any) { respondInternal(res, e); }
 });
 
 // Static file serving - MUST be after API routes
