@@ -31,7 +31,7 @@ function call(payload: any): Promise<any> {
 
 const app = express();
 app.use(bodyParser.json());
-const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
+const PORT = Number(process.env.BIOMETRIC_PORT ?? process.env.PORT) || 8080;
 
 const sseBridge = new SseBridge((message, ...meta) => console.log(message, ...meta));
 const ATTEMPT_REGEX = /Intento\s+(\d+)/i;
