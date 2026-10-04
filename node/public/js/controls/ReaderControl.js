@@ -128,7 +128,7 @@ class ReaderControl extends BaseComponent {
 
         } catch (error) {
             this.readerState = 'error';
-            this.showError(`Error: ${error.message}`);
+            this.showError(`Error: ${escapeHtml(error.message)}`);
         } finally {
             this._updateButtonStates();
         }
@@ -152,7 +152,7 @@ class ReaderControl extends BaseComponent {
             }
 
         } catch (error) {
-            this.showError(`Error: ${error.message}`);
+            this.showError(`Error: ${escapeHtml(error.message)}`);
         } finally {
             this._updateButtonStates();
         }
@@ -177,7 +177,7 @@ class ReaderControl extends BaseComponent {
             }
 
         } catch (error) {
-            this.showError(`Error: ${error.message}`);
+            this.showError(`Error: ${escapeHtml(error.message)}`);
         }
     }
 

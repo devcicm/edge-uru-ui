@@ -560,7 +560,7 @@ class TemplateManagerControl extends BaseComponent {
             this._updateStats();
 
             // Mostrar error en UI
-            this._updateStatus(`❌ Error: ${error.message}`, 'error');
+            this._updateStatus(`❌ Error: ${escapeHtml(error.message)}`, 'error');
 
             // Mostrar mensaje de error en la lista
             if (this.refs.templateList) {
@@ -568,7 +568,7 @@ class TemplateManagerControl extends BaseComponent {
                     <div class="empty-message" style="color: #ef4444;">
                         ❌ Error al cargar plantillas
                         <br><br>
-                        <strong>Detalle:</strong> ${error.message}
+                        <strong>Detalle:</strong> ${escapeHtml(error.message)}
                         <br><br>
                         <button id="retry-load-templates-btn"
                                 style="padding: 8px 16px; border-radius: 6px; border: none;
@@ -668,9 +668,9 @@ class TemplateManagerControl extends BaseComponent {
         const hashShort = template.sha1 ? template.sha1.substring(0, 16) + '...' : 'N/A';
 
         return `
-            <div class="template-item" data-tag="${template.tag}">
+            <div class="template-item" data-tag="${escapeHtml(template.tag)}">
                 <div class="template-header">
-                    <span class="template-tag">👤 ${template.tag}</span>
+                    <span class="template-tag">👤 ${escapeHtml(template.tag)}</span>
                     <span class="template-date">${date}</span>
                 </div>
                 <div class="template-details">
@@ -773,12 +773,12 @@ class TemplateManagerControl extends BaseComponent {
             console.error('[TemplateManagerControl] 📋 Stack trace:', error.stack);
 
             // Actualizar estado con error
-            this._updateStatus(`❌ Error: ${error.message}`, 'error');
+            this._updateStatus(`❌ Error: ${escapeHtml(error.message)}`, 'error');
 
             // Mostrar alerta al usuario con más detalle
             alert(
                 `❌ Error al eliminar plantillas\n\n` +
-                `Detalle: ${error.message}\n\n` +
+                `Detalle: ${escapeHtml(error.message)}\n\n` +
                 `Por favor, intente nuevamente o contacte al administrador.`
             );
 

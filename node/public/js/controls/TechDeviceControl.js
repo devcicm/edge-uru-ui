@@ -198,7 +198,7 @@ class TechDeviceControl extends BaseComponent {
             }
 
         } catch (error) {
-            this.showError(`Error: ${error.message}`);
+            this.showError(`Error: ${escapeHtml(error.message)}`);
         }
     }
 
@@ -352,7 +352,7 @@ class TechDeviceControl extends BaseComponent {
             this.emit('diagnosticCompleted', diagnosticResult);
 
         } catch (error) {
-            this.showError(`Error en diagnóstico: ${error.message}`);
+            this.showError(`Error en diagnóstico: ${escapeHtml(error.message)}`);
         }
     }
 

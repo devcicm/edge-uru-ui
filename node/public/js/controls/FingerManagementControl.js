@@ -497,7 +497,7 @@ class FingerManagementControl extends BaseComponent {
 
         } catch (error) {
             console.error('[FingerManagement] Error:', error);
-            this._updateStatus('error', `❌ ${error.message}`);
+            this._updateStatus('error', `❌ ${escapeHtml(error.message)}`);
         } finally {
             this.isProcessing = false;
             this._updateSelectorLabels('idle'); // Restaurar a estado normal
@@ -545,7 +545,7 @@ class FingerManagementControl extends BaseComponent {
 
         } catch (error) {
             console.error('[FingerManagement] Error:', error);
-            this._updateStatus('error', `❌ ${error.message}`);
+            this._updateStatus('error', `❌ ${escapeHtml(error.message)}`);
         } finally {
             this._updateSelectorLabels('idle'); // Restaurar a estado normal
         }
@@ -605,7 +605,7 @@ class FingerManagementControl extends BaseComponent {
 
         } catch (error) {
             console.error('[FingerManagement] Error en identificación:', error);
-            this._updateStatus('error', `❌ Error: ${error.message}`);
+            this._updateStatus('error', `❌ Error: ${escapeHtml(error.message)}`);
         } finally {
             this._updateSelectorLabels('idle'); // Restaurar a estado normal
         }
@@ -673,7 +673,7 @@ class FingerManagementControl extends BaseComponent {
 
         } catch (error) {
             console.error('[FingerManagement] Error en enrolamiento completo:', error);
-            this._updateStatus('error', `❌ Error: ${error.message}`);
+            this._updateStatus('error', `❌ Error: ${escapeHtml(error.message)}`);
             throw error;
         } finally {
             this.isProcessing = false;
@@ -783,7 +783,7 @@ class FingerManagementControl extends BaseComponent {
 
                 } catch (error) {
                     console.error(`[FingerManagement] Error enrolando ${tag}:`, error);
-                    this._updateStatus('error', `❌ Error: ${error.message}`);
+                    this._updateStatus('error', `❌ Error: ${escapeHtml(error.message)}`);
                 }
             }
 
@@ -806,7 +806,7 @@ class FingerManagementControl extends BaseComponent {
 
         } catch (error) {
             console.error('[FingerManagement] Error en completeMissingFingers:', error);
-            this._updateStatus('error', `❌ Error: ${error.message}`);
+            this._updateStatus('error', `❌ Error: ${escapeHtml(error.message)}`);
         } finally {
             this.isProcessing = false;
             this.isEnrollingAll = false;
@@ -1370,7 +1370,7 @@ class FingerManagementControl extends BaseComponent {
 
         } catch (error) {
             console.error('[FingerManagement] Error en recaptura:', error);
-            this._updateStatus('error', `❌ Error: ${error.message}`);
+            this._updateStatus('error', `❌ Error: ${escapeHtml(error.message)}`);
         } finally {
             this.isProcessing = false;
             this._updateSelectorLabels('idle'); // Restaurar a estado normal

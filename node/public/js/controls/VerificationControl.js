@@ -608,7 +608,7 @@ class VerificationControl extends BaseComponent {
             }
 
         } catch (error) {
-            this._updateStatus('verify', `Error cargando usuarios: ${error.message}`, 'error');
+            this._updateStatus('verify', `Error cargando usuarios: ${escapeHtml(error.message)}`, 'error');
 
             // En caso de error, mostrar mensaje en ambos contadores
             this.userCount.textContent = 'Error al cargar usuarios';
@@ -757,7 +757,7 @@ class VerificationControl extends BaseComponent {
 
         } catch (error) {
             console.error(`[${this.componentId}] ❌ Excepción en verificación:`, error);
-            this._updateStatus('verify', `❌ ${error.message}`, 'error');
+            this._updateStatus('verify', `❌ ${escapeHtml(error.message)}`, 'error');
 
             // Ocultar progreso en caso de error
             setTimeout(() => {
@@ -827,7 +827,7 @@ class VerificationControl extends BaseComponent {
             }, 3000);
 
         } catch (error) {
-            this._updateStatus('identify', `Error: ${error.message}`, 'error');
+            this._updateStatus('identify', `Error: ${escapeHtml(error.message)}`, 'error');
 
             // Ocultar progreso en caso de error
             setTimeout(() => {

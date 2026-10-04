@@ -129,7 +129,7 @@ class SimpleCaptureControl extends BaseComponent {
 
         } catch (error) {
             this.captureState = 'error';
-            this.showError(`Error: ${error.message}`);
+            this.showError(`Error: ${escapeHtml(error.message)}`);
         } finally {
             this._updateState();
         }

@@ -454,7 +454,7 @@ class EnrollmentControl extends BaseComponent {
             }
 
         } catch (error) {
-            this.showError(`Error: ${error.message}`);
+            this.showError(`Error: ${escapeHtml(error.message)}`);
 
             // Solo en caso de error de conexión finalizamos
             this.isEnrolling = false;

@@ -1118,7 +1118,7 @@
 
                 } catch (error) {
                     console.error('[DP4500] ❌ Error:', error);
-                    updateStatus(dom.readerStatus, `❌ Error: ${error.message}`, 'error');
+                    updateStatus(dom.readerStatus, `❌ Error: ${escapeHtml(error.message)}`, 'error');
                     dom.btnInitReader.disabled = false;
                 }
             }
@@ -1216,7 +1216,7 @@
 
                 } catch (error) {
                     console.error('[Enroll] Error:', error);
-                    updateStatus(dom.enrollStatus, `❌ ${error.message}`, 'error');
+                    updateStatus(dom.enrollStatus, `❌ ${escapeHtml(error.message)}`, 'error');
                     state.isEnrolling = false;
                     dom.btnEnroll.disabled = false;
                 }
@@ -1297,7 +1297,7 @@
 
                 } catch (error) {
                     console.error('[Verify] Error:', error);
-                    updateStatus(dom.verifyStatus, `❌ ${error.message}`, 'error');
+                    updateStatus(dom.verifyStatus, `❌ ${escapeHtml(error.message)}`, 'error');
                     dom.verifyProgress.classList.remove('active');
                 } finally {
                     dom.btnVerify.disabled = false;
@@ -1354,7 +1354,7 @@
 
                 } catch (error) {
                     console.error('[Identify] Error:', error);
-                    updateStatus(dom.identifyStatus, `❌ ${error.message}`, 'error');
+                    updateStatus(dom.identifyStatus, `❌ ${escapeHtml(error.message)}`, 'error');
                     dom.identifyProgress.classList.remove('active');
                 } finally {
                     dom.btnIdentify.disabled = false;
@@ -1390,7 +1390,7 @@
 
                 } catch (error) {
                     console.error('[Capture] Error:', error);
-                    updateStatus(dom.captureStatus, `❌ ${error.message}`, 'error');
+                    updateStatus(dom.captureStatus, `❌ ${escapeHtml(error.message)}`, 'error');
                 } finally {
                     dom.btnCapture.disabled = false;
                 }
@@ -1416,7 +1416,7 @@
                         } else {
                             dom.templatesList.innerHTML = result.items.map(item => `
                                 <div class="template-item">
-                                    <span>${item.tag}</span>
+                                    <span>${escapeHtml(item.tag)}</span>
                                     <span class="template-format">${item.format}</span>
                                 </div>
                             `).join('');
@@ -1490,7 +1490,7 @@
                     }
                 } catch (error) {
                     console.error('[TechInfo] Error:', error);
-                    updateStatus(dom.techStatus, `❌ ${error.message}`, 'error');
+                    updateStatus(dom.techStatus, `❌ ${escapeHtml(error.message)}`, 'error');
                 } finally {
                     dom.btnLoadTechInfo.disabled = false;
                 }
@@ -2018,7 +2018,7 @@
 
                 } catch (error) {
                     console.error('[FingerManagement] Error:', error);
-                    updateStatus(dom.fingerStatus, `❌ ${error.message}`, 'error');
+                    updateStatus(dom.fingerStatus, `❌ ${escapeHtml(error.message)}`, 'error');
                 } finally {
                     state.isEnrollingFinger = false;
                 }
@@ -2066,7 +2066,7 @@
 
                 } catch (error) {
                     console.error('[FingerManagement] Error en enrolamiento completo:', error);
-                    updateStatus(dom.fingerStatus, `❌ Error: ${error.message}`, 'error');
+                    updateStatus(dom.fingerStatus, `❌ Error: ${escapeHtml(error.message)}`, 'error');
                     throw error;
                 } finally {
                     state.isEnrollingFinger = false;
@@ -2159,7 +2159,7 @@
 
                 } catch (error) {
                     console.error('[FingerManagement] Error completando dedos faltantes:', error);
-                    updateStatus(dom.fingerStatus, `❌ Error: ${error.message}`, 'error');
+                    updateStatus(dom.fingerStatus, `❌ Error: ${escapeHtml(error.message)}`, 'error');
                 } finally {
                     state.isEnrollingFinger = false;
                     dom.btnCompleteMissing.disabled = false;
@@ -2238,7 +2238,7 @@
 
                 } catch (error) {
                     console.error('[FingerManagement] Error en recaptura:', error);
-                    updateStatus(dom.fingerStatus, `❌ Error: ${error.message}`, 'error');
+                    updateStatus(dom.fingerStatus, `❌ Error: ${escapeHtml(error.message)}`, 'error');
                 } finally {
                     state.isEnrollingFinger = false;
                     dom.btnRecaptureFinger.disabled = false;
@@ -2280,7 +2280,7 @@
 
                 } catch (error) {
                     console.error('[FingerManagement] Error:', error);
-                    updateStatus(dom.fingerStatus, `❌ ${error.message}`, 'error');
+                    updateStatus(dom.fingerStatus, `❌ ${escapeHtml(error.message)}`, 'error');
                 } finally {
                     dom.btnVerifyFinger.disabled = false;
                 }
@@ -2328,7 +2328,7 @@
 
                 } catch (error) {
                     console.error('[FingerManagement] Error en identificación:', error);
-                    updateStatus(dom.fingerStatus, `❌ Error: ${error.message}`, 'error');
+                    updateStatus(dom.fingerStatus, `❌ Error: ${escapeHtml(error.message)}`, 'error');
                 } finally {
                     dom.btnIdentifyFinger.disabled = false;
                 }

@@ -281,6 +281,7 @@
     <!-- Scripts: Orden de dependencias -->
 
     <!-- 1. Adapter (no dependencies) -->
+    <script src="/js/escape-html.js"></script>
     <script src="/js/adapter/BiometricAdapter.js"></script>
 
     <!-- 2. Component Framework (no dependencies) -->
@@ -412,7 +413,7 @@
 
                 } catch (error) {
                     console.error('[DEMO] ❌ Error inicializando adapter:', error);
-                    updateGlobalStatus(`❌ Error: ${error.message}`, false);
+                    updateGlobalStatus(`❌ Error: ${escapeHtml(error.message)}`, false);
                 }
             }
 
@@ -565,7 +566,7 @@
 
                 } catch (error) {
                     console.error('[DEMO] ❌ Error inicializando controles:', error);
-                    updateGlobalStatus(`❌ Error: ${error.message}`, false);
+                    updateGlobalStatus(`❌ Error: ${escapeHtml(error.message)}`, false);
                 }
             }
 
@@ -582,7 +583,7 @@
                     console.log('[DEMO] ✅ Lector DP4500 inicializado');
                 } catch (error) {
                     console.error('[DEMO] ❌ Error inicializando lector:', error);
-                    updateGlobalStatus(`❌ Error: ${error.message}`, false);
+                    updateGlobalStatus(`❌ Error: ${escapeHtml(error.message)}`, false);
                 }
             }
 
@@ -608,7 +609,7 @@
 
                 } catch (error) {
                     console.error('[DEMO] ❌ Error en setup:', error);
-                    updateGlobalStatus(`❌ Error en setup: ${error.message}`, false);
+                    updateGlobalStatus(`❌ Error en setup: ${escapeHtml(error.message)}`, false);
                 }
             }
 
