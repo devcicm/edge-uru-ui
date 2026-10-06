@@ -223,7 +223,7 @@ namespace EdgeBridge
                         return new { ok = false, error };
                     }
 
-                    var timeoutMs = (int?)input?.timeoutMs ?? 10000;
+                    var timeoutMs = (int?)input?.timeoutMs ?? 20000;
 
                     SendEvent("CAPTURE_STARTED", "Coloque su dedo en el lector", "INFO");
 
@@ -232,8 +232,8 @@ namespace EdgeBridge
 
                     try
                     {
-                        // Capturar usando SingleCapture (void method)
-                        await Task.Run(() => _reader.SingleCapture(_cts.Token));
+                        // Capturar usando SingleCapture con timeout en segundos (por defecto 20s)
+                        await Task.Run(() => _reader.SingleCapture(_cts.Token, timeoutMs / 1000));
 
                         string? imageBase64 = null;
                         string? templateBase64 = null;
@@ -287,10 +287,13 @@ namespace EdgeBridge
                     }
 
                     var userId = (string?)input?.tag ?? $"User_{DateTime.Now:yyyyMMdd_HHmmss}";
-                    var timeoutMs = (int?)input?.timeoutMs ?? 60000;
+                    var timeoutPerSampleSeconds = (int?)input?.timeoutPerSampleSeconds ?? 20;
                     var targetFarn = (int?)input?.targetFarn ?? 21474;
                     var maxRetriesPerSample = (int?)input?.maxRetriesPerSample ?? 3;
                     var maxSamples = (int?)input?.maxSamples ?? 4;
+                    var defaultTotalMs = (maxSamples * timeoutPerSampleSeconds * 1000) + 15000;
+                    var timeoutMs = (int?)input?.timeoutMs ?? defaultTotalMs;
+                    if (timeoutMs < defaultTotalMs) timeoutMs = defaultTotalMs;
 
                     SendEvent("ENROLLMENT_STARTED", $"Iniciando enrolamiento para: {userId}", "INFO",
                         new { userId });
@@ -300,7 +303,7 @@ namespace EdgeBridge
                     _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
 
                     // ⚡ EJECUTAR EN THREAD SEPARADO para no bloquear Edge.js
-                    var result = await Task.Run(() => _reader.Enroll3(_cts.Token, targetFarn, maxRetriesPerSample, maxSamples));
+                    var result = await Task.Run(() => _reader.Enroll3(_cts.Token, targetFarn, maxRetriesPerSample, maxSamples, timeoutPerSampleSeconds));
 
                     try
                     {
@@ -369,9 +372,12 @@ namespace EdgeBridge
                         return new { ok = false, error = "UserId is required for verification" };
                     }
 
-                    var timeoutMs = (int?)input?.timeoutMs ?? 60000;
+                    var timeoutPerAttemptSeconds = (int?)input?.timeoutPerAttemptSeconds ?? 20;
                     var targetFarn = (int?)input?.targetFarn ?? 21474;
                     var maxAttempts = (int?)input?.maxAttempts ?? 4;
+                    var defaultTotalMs = (maxAttempts * timeoutPerAttemptSeconds * 1000) + 15000;
+                    var timeoutMs = (int?)input?.timeoutMs ?? defaultTotalMs;
+                    if (timeoutMs < defaultTotalMs) timeoutMs = defaultTotalMs;
 
                     SendEvent("VERIFICATION_STARTED", $"Iniciando verificación para: {userId}", "INFO",
                         new { userId, maxAttempts });
@@ -394,7 +400,7 @@ namespace EdgeBridge
                                 new { attemptNumber = attempt, totalAttempts = maxAttempts });
 
                             // ⚡ EJECUTAR EN THREAD SEPARADO para no bloquear Edge.js
-                            var result = await Task.Run(() => _reader.VerifyLiveAgainstReg(stored.Fmd, _cts.Token, targetFarn));
+                            var result = await Task.Run(() => _reader.VerifyLiveAgainstReg(stored.Fmd, _cts.Token, targetFarn, timeoutPerAttemptSeconds));
 
                             string? imageBase64 = null;
                             if (result.ok && _reader.LastFid != null)
@@ -474,10 +480,13 @@ namespace EdgeBridge
                         return new { ok = false, error };
                     }
 
-                    var timeoutMs = (int?)input?.timeoutMs ?? 60000;
+                    var timeoutPerAttemptSeconds = (int?)input?.timeoutPerAttemptSeconds ?? 20;
                     var targetFarn = (int?)input?.targetFarn ?? 21474;
                     var top = (int?)input?.top ?? 5;
                     var maxAttempts = (int?)input?.maxAttempts ?? 4;
+                    var defaultTotalMs = (maxAttempts * timeoutPerAttemptSeconds * 1000) + 15000;
+                    var timeoutMs = (int?)input?.timeoutMs ?? defaultTotalMs;
+                    if (timeoutMs < defaultTotalMs) timeoutMs = defaultTotalMs;
 
                     var gallerySize = FingerprintTempStore.GetAllFingerprints().Count;
 
@@ -496,7 +505,7 @@ namespace EdgeBridge
                                 new { attemptNumber = attempt, totalAttempts = maxAttempts });
 
                             // ⚡ EJECUTAR EN THREAD SEPARADO para no bloquear Edge.js
-                            var result = await Task.Run(() => _reader.IdentifyLive1N(_cts.Token, targetFarn, top));
+                            var result = await Task.Run(() => _reader.IdentifyLive1N(_cts.Token, targetFarn, top, timeoutPerAttemptSeconds));
 
                             string? imageBase64 = null;
                             if (_reader.LastFid != null)
@@ -663,10 +672,11 @@ namespace EdgeBridge
                         return new { ok = false, error = "UserId is required for enrollAllFingers" };
                     }
 
-                    var timeoutPerFingerMs = (int?)input?.timeoutPerFingerMs ?? 240000; // 4 minutos POR DEDO (1 min por muestra × 4)
-                    var targetFarn = (int?)input?.targetFarn ?? 21474;
+                    var timeoutPerSampleSeconds = (int?)input?.timeoutPerSampleSeconds ?? 20;
                     var maxRetriesPerSample = (int?)input?.maxRetriesPerSample ?? 3;
                     var maxSamples = (int?)input?.maxSamples ?? 4;
+                    var timeoutPerFingerMs = (int?)input?.timeoutPerFingerMs ?? (maxSamples * timeoutPerSampleSeconds * 1000 + 15000);
+                    var targetFarn = (int?)input?.targetFarn ?? 21474;
 
                     SendEvent("ALL_FINGERS_ENROLLMENT_STARTED", $"Iniciando enrolamiento de 10 dedos para: {userId}", "INFO",
                         new { userId, totalFingers = 10 });
@@ -736,7 +746,7 @@ namespace EdgeBridge
                                 _cts?.Cancel();
                                 _cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutPerFingerMs));
 
-                                var result = await Task.Run(() => _reader.Enroll3(_cts.Token, targetFarn, maxRetriesPerSample, maxSamples));
+                                var result = await Task.Run(() => _reader.Enroll3(_cts.Token, targetFarn, maxRetriesPerSample, maxSamples, timeoutPerSampleSeconds));
 
                                 if (result.ok && result.fmdReg != null)
                                 {

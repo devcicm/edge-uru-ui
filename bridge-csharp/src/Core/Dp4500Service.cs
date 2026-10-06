@@ -531,12 +531,37 @@ public static class FingerprintTempStore
  * ===============================*/
 public sealed class Dp4500Service : IDisposable
 {
-    private readonly ManualResetEventSlim _sampleReady = new ManualResetEventSlim(false);
+    // Sincronización basada en eventos con ManualResetEvent para el SDK DigitalPersona DP4500
+    private readonly ManualResetEvent _sampleReady = new ManualResetEvent(false);
     private volatile DPUruNet.CaptureResult? _lastCapture;
     private volatile DPUruNet.Fid? _lastFid;
     private volatile DPUruNet.Fmd? _lastFmd; // Último FMD capturado
     private bool _subscribed;
     private int _dpi = 500;
+
+    /// <summary>
+    /// Tiempo de inactividad por defecto para captura de huella (20 segundos por intento).
+    /// </summary>
+    public int DefaultCaptureTimeoutSeconds { get; set; } = 20;
+
+    /// <summary>
+    /// Espera a que el evento ManualResetEvent sea activado por el evento OnCaptured del SDK.
+    /// Maneja cancelación vía CancellationToken y tiempo de inactividad (timeout).
+    /// </summary>
+    private bool WaitForSample(TimeSpan timeout, CancellationToken ct)
+    {
+        if (!ct.CanBeCanceled)
+        {
+            return _sampleReady.WaitOne(timeout);
+        }
+
+        int index = WaitHandle.WaitAny(new WaitHandle[] { _sampleReady, ct.WaitHandle }, timeout);
+        if (index == 1)
+        {
+            ct.ThrowIfCancellationRequested();
+        }
+        return index == 0;
+    }
 
     // ===== Propiedades para Modo Touch (Continuous Capture) =====
     private CaptureMode _captureMode = CaptureMode.OnDemand;
@@ -890,14 +915,15 @@ public sealed class Dp4500Service : IDisposable
     }
 
     // ==== Captura simple (S) ====
-    public void SingleCapture(CancellationToken ct)
+    public void SingleCapture(CancellationToken ct, int timeoutSeconds = 20)
     {
         Init();
         OnStatus?.Invoke("Captura simple… coloca el dedo.");
         RequestCaptureGentle(ct);
 
-        if (!_sampleReady.Wait(TimeSpan.FromSeconds(10), ct))
-            throw new TimeoutException("Timeout en captura simple.");
+        int effectiveTimeout = timeoutSeconds > 0 ? timeoutSeconds : DefaultCaptureTimeoutSeconds;
+        if (!WaitForSample(TimeSpan.FromSeconds(effectiveTimeout), ct))
+            throw new TimeoutException($"Tiempo de inactividad agotado ({effectiveTimeout}s) en captura simple.");
 
         var cap = _lastCapture;
         if (!IsGoodCapture(cap, out var why))
@@ -1002,12 +1028,13 @@ public sealed class Dp4500Service : IDisposable
 
     // ===== Verificación en vivo contra un REG dado =====
     public (bool ok, int score, string used, string msg) VerifyLiveAgainstReg(
-        DPUruNet.Fmd reg, CancellationToken ct, int targetFarn = 21474)
+        DPUruNet.Fmd reg, CancellationToken ct, int targetFarn = 21474, int timeoutSeconds = 20)
     {
         OnStatus?.Invoke("Verificación en vivo… coloca el dedo.");
         RequestCaptureGentle(ct);
-        if (!_sampleReady.Wait(TimeSpan.FromSeconds(10), ct))
-            return (false, int.MaxValue, "TIMEOUT", "Timeout en captura de verificación.");
+        int effectiveTimeout = timeoutSeconds > 0 ? timeoutSeconds : DefaultCaptureTimeoutSeconds;
+        if (!WaitForSample(TimeSpan.FromSeconds(effectiveTimeout), ct))
+            return (false, int.MaxValue, "TIMEOUT", $"Tiempo de inactividad agotado ({effectiveTimeout}s) en captura de verificación.");
 
         var cap = _lastCapture;
         if (!IsGoodCapture(cap, out var why))
@@ -1050,7 +1077,7 @@ public sealed class Dp4500Service : IDisposable
 
     // ===== 1:N en vivo contra galería (solo DP_REGISTRATION) =====
     public (bool match, int bestScore, string bestTag, string galleryFormat, System.Collections.Generic.List<(string tag, int score)> topK, string msg)
-        IdentifyLive1N(CancellationToken ct, int targetFarn = 21474, int top = 5)
+        IdentifyLive1N(CancellationToken ct, int targetFarn = 21474, int top = 5, int timeoutSeconds = 20)
     {
         var gallery = FingerprintTempStore.GetAllFingerprints();
         if (gallery.Count == 0) return (false, int.MaxValue, "", "", new System.Collections.Generic.List<(string tag, int score)>(), "Galería vacía.");
@@ -1059,8 +1086,9 @@ public sealed class Dp4500Service : IDisposable
 
         OnStatus?.Invoke($"Identificación 1:N… coloca el dedo. (galería: {gallery.Count} huellas)");
         RequestCaptureGentle(ct);
-        if (!_sampleReady.Wait(TimeSpan.FromSeconds(12), ct))
-            return (false, int.MaxValue, "", galleryFmt, new System.Collections.Generic.List<(string tag, int score)>(), "Timeout en captura de identificación.");
+        int effectiveTimeout = timeoutSeconds > 0 ? timeoutSeconds : DefaultCaptureTimeoutSeconds;
+        if (!WaitForSample(TimeSpan.FromSeconds(effectiveTimeout), ct))
+            return (false, int.MaxValue, "", galleryFmt, new System.Collections.Generic.List<(string tag, int score)>(), $"Tiempo de inactividad agotado ({effectiveTimeout}s) en captura de identificación.");
 
         var cap = _lastCapture;
         if (!IsGoodCapture(cap, out var why))
@@ -1116,7 +1144,8 @@ public sealed class Dp4500Service : IDisposable
         CancellationToken ct,
         int targetFarn = 21474,
         int maxRetriesPerSample = 3,
-        int maxSamples = 4)
+        int maxSamples = 4,
+        int timeoutPerSampleSeconds = 20)
     {
         Init();
 
@@ -1125,6 +1154,7 @@ public sealed class Dp4500Service : IDisposable
         var verList = new System.Collections.Generic.List<DPUruNet.Fmd>(maxSamples);
 
         DPUruNet.Fmd? verFirst = null, ansiFirst = null;
+        int effectiveTimeout = timeoutPerSampleSeconds > 0 ? timeoutPerSampleSeconds : DefaultCaptureTimeoutSeconds;
 
         for (int sampleIndex = 0; sampleIndex < maxSamples; sampleIndex++)
         {
@@ -1136,8 +1166,11 @@ public sealed class Dp4500Service : IDisposable
                 OnStatus?.Invoke($"Coloca el dedo (muestra {sampleIndex + 1}/{maxSamples})… levanta y recoloca cada vez.");
                 RequestCaptureGentle(ct);
 
-                if (!_sampleReady.Wait(TimeSpan.FromSeconds(10), ct))
-                { OnAttemptResult?.Invoke(sampleIndex + 1, false, "timeout"); return (false, null, $"Timeout en muestra {sampleIndex + 1}"); }
+                if (!WaitForSample(TimeSpan.FromSeconds(effectiveTimeout), ct))
+                { 
+                    OnAttemptResult?.Invoke(sampleIndex + 1, false, "timeout"); 
+                    return (false, null, $"Tiempo de inactividad agotado ({effectiveTimeout}s) en muestra {sampleIndex + 1}."); 
+                }
 
                 var cap = _lastCapture;
                 if (!IsGoodCapture(cap, out var why))
@@ -1381,6 +1414,6 @@ public sealed class Dp4500Service : IDisposable
         }
         catch { }
         if (_readerLazy.IsValueCreated) { try { Reader.Dispose(); } catch { } }
-        _sampleReady.Dispose();
+        _sampleReady.Close();
     }
 }

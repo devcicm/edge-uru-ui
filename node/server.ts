@@ -54,7 +54,7 @@ if (REMOTE_REQUIRED) {
 }
 
 // B2: helper para errores uniformes. Evita filtrar String(e) al cliente (BE-19).
-function respondInternal(res, e: any, code = "INTERNAL_ERROR", message = "Error interno del motor biométrico") {
+function respondInternal(res: any, e: any, code = "INTERNAL_ERROR", message = "Error interno del motor biométrico") {
   console.error(`[ERROR ${code}]`, e);
   res.status(500).json({ ok: false, code, error: message });
 }
@@ -150,28 +150,30 @@ app.post("/api/init", async (_, res) => {
 });
 
 app.post("/api/single", async (req, res) => {
-  try { res.json(await call({ op: "single", timeoutMs: req.body?.timeoutMs ?? 10000 })); }
+  try { res.json(await call({ op: "single", timeoutMs: req.body?.timeoutMs ?? 20000 })); }
   catch (e: any) { respondInternal(res, e); }
 });
 
 app.post("/api/identify", async (req, res) => {
   try {
-    const timeoutMs = req.body?.timeoutMs ?? 12000;
+    const timeoutPerAttemptSeconds = req.body?.timeoutPerAttemptSeconds ?? 20;
+    const maxAttempts = req.body?.maxAttempts ?? 4;
+    const timeoutMs = req.body?.timeoutMs ?? (maxAttempts * timeoutPerAttemptSeconds * 1000 + 15000);
     const targetFarn = req.body?.targetFarn ?? 21474;
     const top = req.body?.top ?? 5;
-    const maxAttempts = req.body?.maxAttempts ?? 4;
-    res.json(await call({ op: "identify", timeoutMs, targetFarn, top, maxAttempts }));
+    res.json(await call({ op: "identify", timeoutMs, timeoutPerAttemptSeconds, targetFarn, top, maxAttempts }));
   } catch (e: any) { respondInternal(res, e); }
 });
 
 app.post("/api/enroll", async (req, res) => {
   try {
     const tag = req.body?.tag || `User_${new Date().toISOString().replace(/[:.]/g, '-')}`;
-    const timeoutMs = req.body?.timeoutMs ?? 30000;
+    const timeoutPerSampleSeconds = req.body?.timeoutPerSampleSeconds ?? 20;
+    const maxSamples = req.body?.maxSamples ?? 4;
+    const timeoutMs = req.body?.timeoutMs ?? (maxSamples * timeoutPerSampleSeconds * 1000 + 15000);
     const targetFarn = req.body?.targetFarn ?? 21474;
     const maxRetriesPerSample = req.body?.maxRetriesPerSample ?? 3;
-    const maxSamples = req.body?.maxSamples ?? 4;
-    res.json(await call({ op: "enroll", tag, timeoutMs, targetFarn, maxRetriesPerSample, maxSamples }));
+    res.json(await call({ op: "enroll", tag, timeoutMs, timeoutPerSampleSeconds, targetFarn, maxRetriesPerSample, maxSamples }));
   } catch (e: any) { respondInternal(res, e); }
 });
 
@@ -181,11 +183,12 @@ app.post("/api/enroll-all-fingers", async (req, res) => {
     if (!userId) {
       return res.status(400).json({ ok: false, error: "UserId is required for enrollAllFingers" });
     }
-    const timeoutPerFingerMs = req.body?.timeoutPerFingerMs ?? 240000; // 4 minutos POR DEDO (1 min por muestra)
+    const timeoutPerSampleSeconds = req.body?.timeoutPerSampleSeconds ?? 20;
+    const maxSamples = req.body?.maxSamples ?? 4;
+    const timeoutPerFingerMs = req.body?.timeoutPerFingerMs ?? (maxSamples * timeoutPerSampleSeconds * 1000 + 15000);
     const targetFarn = req.body?.targetFarn ?? 21474;
     const maxRetriesPerSample = req.body?.maxRetriesPerSample ?? 3;
-    const maxSamples = req.body?.maxSamples ?? 4;
-    res.json(await call({ op: "enrollAllFingers", userId, timeoutPerFingerMs, targetFarn, maxRetriesPerSample, maxSamples }));
+    res.json(await call({ op: "enrollAllFingers", userId, timeoutPerFingerMs, timeoutPerSampleSeconds, targetFarn, maxRetriesPerSample, maxSamples }));
   } catch (e: any) { respondInternal(res, e); }
 });
 
@@ -195,10 +198,11 @@ app.post("/api/verify", async (req, res) => {
     if (!tag) {
       return res.status(400).json({ ok: false, error: "Tag is required for verification" });
     }
-    const timeoutMs = req.body?.timeoutMs ?? 15000;
-    const targetFarn = req.body?.targetFarn ?? 21474;
+    const timeoutPerAttemptSeconds = req.body?.timeoutPerAttemptSeconds ?? 20;
     const maxAttempts = req.body?.maxAttempts ?? 4;
-    res.json(await call({ op: "verify", tag, timeoutMs, targetFarn, maxAttempts }));
+    const timeoutMs = req.body?.timeoutMs ?? (maxAttempts * timeoutPerAttemptSeconds * 1000 + 15000);
+    const targetFarn = req.body?.targetFarn ?? 21474;
+    res.json(await call({ op: "verify", tag, timeoutMs, timeoutPerAttemptSeconds, targetFarn, maxAttempts }));
   } catch (e: any) { respondInternal(res, e); }
 });
 
