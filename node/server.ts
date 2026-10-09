@@ -30,7 +30,8 @@ function call(payload: any): Promise<any> {
 }
 
 const app = express();
-app.use(bodyParser.json());
+app.disable("x-powered-by");
+
 const PORT = Number(process.env.BIOMETRIC_PORT ?? process.env.PORT) || 8080;
 // B1: bind por env (default loopback). Guard: si HOST no es loopback, exigir X-Api-Token.
 const HOST = process.env.BIOMETRIC_HOST || "127.0.0.1";
@@ -43,6 +44,44 @@ if (REMOTE_REQUIRED && !API_TOKEN) {
   process.exit(1);
 }
 
+// ==========================================
+// WAF & WEB SECURITY DEFENSE LAYER
+// ==========================================
+
+// 1. Cabeceras de seguridad HTTP
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none';");
+  next();
+});
+
+// 2. DNS Rebinding & Host Validation Guard
+const ALLOWED_HOSTS = new Set(["127.0.0.1", "localhost", "::1", HOST]);
+app.use((req, res, next) => {
+  const rawHost = req.headers.host || "";
+  const hostname = rawHost.split(":")[0].toLowerCase();
+  if (hostname && !ALLOWED_HOSTS.has(hostname) && !LOOPBACK_HOSTS.has(hostname)) {
+    console.warn(`[WAF BLOCKED] Intento de DNS Rebinding / Host inválido: ${rawHost}`);
+    return res.status(403).json({ ok: false, error: "Host Header Validation Failed" });
+  }
+  next();
+});
+
+// 3. Control de métodos HTTP permitidos
+const ALLOWED_METHODS = new Set(["GET", "POST", "DELETE", "OPTIONS", "HEAD"]);
+app.use((req, res, next) => {
+  if (!ALLOWED_METHODS.has(req.method)) {
+    return res.status(405).json({ ok: false, error: `Method ${req.method} Not Allowed` });
+  }
+  next();
+});
+
+// 4. Token de autenticación remota si aplica
 if (REMOTE_REQUIRED) {
   app.use((req, res, next) => {
     const token = req.header("X-Api-Token");
@@ -52,6 +91,64 @@ if (REMOTE_REQUIRED) {
     next();
   });
 }
+
+// 5. Límite estricto de tamaño en JSON (Anti-DoS / Memory Exhaustion)
+app.use(bodyParser.json({ limit: "2mb", strict: true }));
+
+// 6. Manejador de error de parseo JSON malformado (Anti-Leak)
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof SyntaxError && "status" in err && (err as any).status === 400) {
+    console.warn(`[WAF BLOCKED] JSON malformado en ${req.method} ${req.path}`);
+    return res.status(400).json({ ok: false, error: "Malformed JSON payload" });
+  }
+  next(err);
+});
+
+// 7. Sanitizador contra Prototype Pollution y Deserialización Insegura
+function isDangerousKey(key: string): boolean {
+  return key === "__proto__" || key === "constructor" || key === "prototype";
+}
+
+function inspectAndSanitize(obj: any, depth = 0): boolean {
+  if (!obj || typeof obj !== "object") return true;
+  if (depth > 12) return false;
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      if (!inspectAndSanitize(item, depth + 1)) return false;
+    }
+    return true;
+  }
+
+  for (const key of Object.keys(obj)) {
+    if (isDangerousKey(key)) {
+      delete obj[key];
+      return false;
+    }
+    const val = obj[key];
+    if (val && typeof val === "object") {
+      if (!inspectAndSanitize(val, depth + 1)) return false;
+    }
+  }
+  return true;
+}
+
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === "object") {
+    const clean = inspectAndSanitize(req.body);
+    if (!clean) {
+      console.warn(`[WAF BLOCKED] Prototype Pollution detectado desde ${req.ip} en ${req.path}`);
+      return res.status(403).json({ ok: false, error: "Security violation: prototype pollution detected" });
+    }
+  }
+  if (req.query && typeof req.query === "object") {
+    const clean = inspectAndSanitize(req.query);
+    if (!clean) {
+      return res.status(403).json({ ok: false, error: "Security violation: prototype pollution detected" });
+    }
+  }
+  next();
+});
 
 // B2: helper para errores uniformes. Evita filtrar String(e) al cliente (BE-19).
 function respondInternal(res: any, e: any, code = "INTERNAL_ERROR", message = "Error interno del motor biométrico") {
