@@ -1,12 +1,150 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Win32;
 
 namespace EdgeBridge
 {
+    /// <summary>
+    /// Estado observable del lector biométrico que implementa INotifyPropertyChanged.
+    /// Alimentado en tiempo real por eventos del Kernel de Windows (CM_Register_Notification en cfgmgr32.dll)
+    /// sin necesidad de polling (0% CPU en reposo).
+    /// </summary>
+    public sealed class ObservableReaderState : INotifyPropertyChanged
+    {
+        private readonly object _syncLock = new object();
+        private DPUruNet.Reader? _activeReader;
+        private bool _isConnected;
+        private bool _isInitialized;
+        private string _serialNumber = "";
+        private string _productName = "DigitalPersona U.are.U 4500";
+        private string _firmwareVersion = "N/A";
+        private string _hardwareRevision = "N/A";
+        private string _symbolicLink = "";
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        public DPUruNet.Reader? ActiveReader => _activeReader;
+        public bool IsConnected => _isConnected;
+        public string SerialNumber => _serialNumber;
+        public string ProductName => _productName;
+        public string FirmwareVersion => _firmwareVersion;
+        public string HardwareRevision => _hardwareRevision;
+        public string SymbolicLink => _symbolicLink;
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        /// <summary>
+        /// Desconexión inmediata (< 5 ms) notificada por CM_NOTIFY_ACTION_DEVICEINTERFACEREMOVAL del Kernel
+        /// </summary>
+        public void HandleDeviceRemoved(string symbolicLink)
+        {
+            bool changed = false;
+            lock (_syncLock)
+            {
+                _symbolicLink = symbolicLink;
+                if (_isInitialized && _isConnected)
+                {
+                    _activeReader = null;
+                    _isConnected = false;
+                    _serialNumber = "";
+                    changed = true;
+                }
+                else
+                {
+                    _activeReader = null;
+                    _isConnected = false;
+                    _isInitialized = true;
+                }
+            }
+
+            if (changed)
+            {
+                OnPropertyChanged(nameof(ActiveReader));
+                OnPropertyChanged(nameof(IsConnected));
+            }
+        }
+
+        /// <summary>
+        /// Sincroniza el estado observable con DPUruNet.ReaderCollection tras un evento de llegada USB o al iniciar
+        /// </summary>
+        public void SyncFromHardware(bool isArrivalHint = false, string? symbolicLink = null)
+        {
+            bool changed = false;
+            lock (_syncLock)
+            {
+                if (!string.IsNullOrEmpty(symbolicLink))
+                {
+                    _symbolicLink = symbolicLink!;
+                }
+
+                DPUruNet.Reader? foundReader = null;
+                int maxAttempts = isArrivalHint ? 6 : 1;
+
+                for (int attempt = 0; attempt < maxAttempts; attempt++)
+                {
+                    try
+                    {
+                        var readers = DPUruNet.ReaderCollection.GetReaders();
+                        if (readers != null && readers.Count > 0)
+                        {
+                            foundReader = readers[0];
+                            break;
+                        }
+                    }
+                    catch
+                    {
+                        foundReader = null;
+                    }
+
+                    if (attempt + 1 < maxAttempts)
+                    {
+                        Thread.Sleep(35);
+                    }
+                }
+
+                bool nowConnected = foundReader != null;
+                string newSerial = foundReader?.Description?.SerialNumber ?? "";
+                string newModel = (foundReader?.Description?.Id?.ProductName ?? "DigitalPersona U.are.U 4500")
+                    .Replace("\uFFFD", "®").Trim();
+                string newFw = foundReader?.Description?.Version?.FirmwareVersion ?? "N/A";
+                string newHw = foundReader?.Description?.Version?.HardwareVersion ?? "N/A";
+
+                bool wasInitialized = _isInitialized;
+                bool previousConnected = _isConnected;
+
+                _activeReader = foundReader;
+                _isConnected = nowConnected;
+                _serialNumber = nowConnected ? newSerial : "";
+                _productName = newModel;
+                _firmwareVersion = nowConnected ? newFw : "N/A";
+                _hardwareRevision = nowConnected ? newHw : "N/A";
+                _isInitialized = true;
+
+                if (wasInitialized && previousConnected != nowConnected)
+                {
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                OnPropertyChanged(nameof(ActiveReader));
+                OnPropertyChanged(nameof(IsConnected));
+            }
+        }
+    }
+
     /// <summary>
     /// Bridge simple y directo para comunicación con lector biométrico DP4500
     /// Envía eventos en tiempo real al frontend vía callback
@@ -16,6 +154,45 @@ namespace EdgeBridge
         private static Dp4500Service? _reader;
         private static CancellationTokenSource? _cts;
         private static Func<object, Task<object>>? _callback;
+
+        // ===== MONITOR PLUG & PLAY NATIVO DEL KERNEL (cfgmgr32.dll + INotifyPropertyChanged) =====
+        private const int CM_NOTIFY_FILTER_TYPE_DEVICEINTERFACE = 0;
+        private const int CM_NOTIFY_ACTION_DEVICEINTERFACEARRIVAL = 0;
+        private const int CM_NOTIFY_ACTION_DEVICEINTERFACEREMOVAL = 1;
+        private static readonly Guid GUID_DEVINTERFACE_USB_DEVICE = new Guid("A5DCBF10-6530-11D2-901F-00C04FB951ED");
+
+        [StructLayout(LayoutKind.Explicit, Size = 416, CharSet = CharSet.Unicode)]
+        private struct CM_NOTIFY_FILTER
+        {
+            [FieldOffset(0)] public uint cbSize;
+            [FieldOffset(4)] public uint Flags;
+            [FieldOffset(8)] public uint FilterType;
+            [FieldOffset(12)] public uint Reserved;
+            [FieldOffset(16)] public Guid ClassGuid;
+        }
+
+        private delegate uint PCM_NOTIFY_CALLBACK(
+            IntPtr hNotify,
+            IntPtr context,
+            int action,
+            IntPtr eventData,
+            int eventDataSize);
+
+        [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+        private static extern uint CM_Register_Notification(
+            ref CM_NOTIFY_FILTER pFilter,
+            IntPtr pContext,
+            PCM_NOTIFY_CALLBACK pCallback,
+            out IntPtr pNotifyContext);
+
+        [DllImport("cfgmgr32.dll")]
+        private static extern uint CM_Unregister_Notification(IntPtr hNotifyContext);
+
+        private static readonly ObservableReaderState _observableReader = new ObservableReaderState();
+        // Referencia estática viva para evitar que el GC recolecte el delegado nativo de cfgmgr32.dll
+        private static readonly PCM_NOTIFY_CALLBACK _cmNotifyDelegate = OnKernelUsbDeviceNotification;
+        private static IntPtr _cmNotificationHandle = IntPtr.Zero;
+        private static readonly object _monitorInitLock = new object();
 
         /// <summary>
         /// Parsea un tag con formato "userId_HAND_FINGER" y retorna componentes individuales
@@ -128,6 +305,411 @@ namespace EdgeBridge
             });
         }
 
+        /// <summary>
+        /// Obtiene la versión real de archivo de una DLL nativa o administrada
+        /// </summary>
+        private static string GetDllFileVersion(string dllName, bool preferSystem32 = false)
+        {
+            try
+            {
+                if (dllName.Equals("DPUruNet.dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    var asmLoc = typeof(DPUruNet.Reader).Assembly.Location;
+                    if (!string.IsNullOrWhiteSpace(asmLoc) && File.Exists(asmLoc))
+                    {
+                        var vi = FileVersionInfo.GetVersionInfo(asmLoc);
+                        if (!string.IsNullOrWhiteSpace(vi.FileVersion))
+                            return vi.FileVersion.Trim();
+                    }
+                    var asmVer = typeof(DPUruNet.Reader).Assembly.GetName().Version;
+                    if (asmVer != null)
+                        return asmVer.ToString();
+                }
+
+                var asmDir = Path.GetDirectoryName(typeof(EdgeUruBridge).Assembly.Location) ?? AppDomain.CurrentDomain.BaseDirectory;
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var candidates = preferSystem32
+                    ? new[]
+                    {
+                        Path.Combine(Environment.SystemDirectory, dllName),
+                        Path.Combine(asmDir, dllName),
+                        Path.Combine(asmDir, @"..\..\bin-deps", dllName),
+                        Path.Combine(baseDir, dllName),
+                        Path.Combine(baseDir, @"..\bin-deps", dllName),
+                        Path.Combine(baseDir, @"..\..\bin-deps", dllName)
+                    }
+                    : new[]
+                    {
+                        Path.Combine(asmDir, dllName),
+                        Path.Combine(asmDir, @"..\..\bin-deps", dllName),
+                        Path.Combine(baseDir, dllName),
+                        Path.Combine(baseDir, @"..\bin-deps", dllName),
+                        Path.Combine(baseDir, @"..\..\bin-deps", dllName),
+                        Path.Combine(Environment.SystemDirectory, dllName)
+                    };
+
+                foreach (var candidate in candidates)
+                {
+                    if (File.Exists(candidate))
+                    {
+                        var vi = FileVersionInfo.GetVersionInfo(candidate);
+                        if (!string.IsNullOrWhiteSpace(vi.FileVersion))
+                        {
+                            return vi.FileVersion.Trim();
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            return "Desconocida";
+        }
+
+        /// <summary>
+        /// Consulta en el Registro de Windows la versión del controlador USB de DigitalPersona (VID_05BA)
+        /// </summary>
+        private static (string driverVersion, string driverDate, string provider, string service, string deviceDesc) GetWindowsUsbDriverInfo()
+        {
+            string driverVersion = "No detectado";
+            string driverDate = "N/A";
+            string provider = "DigitalPersona / HID Global";
+            string service = "usbdpfp";
+            string deviceDesc = "DigitalPersona USB Biometric Reader";
+
+            try
+            {
+                using var usbKey = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Enum\USB");
+                if (usbKey != null)
+                {
+                    foreach (var subKeyName in usbKey.GetSubKeyNames())
+                    {
+                        if (!subKeyName.StartsWith("VID_05BA", StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        using var vidKey = usbKey.OpenSubKey(subKeyName);
+                        if (vidKey == null) continue;
+
+                        foreach (var instanceName in vidKey.GetSubKeyNames())
+                        {
+                            using var instKey = vidKey.OpenSubKey(instanceName);
+                            if (instKey == null) continue;
+
+                            var drvClassPath = instKey.GetValue("Driver") as string;
+                            var svcVal = instKey.GetValue("Service") as string;
+                            var descVal = instKey.GetValue("DeviceDesc") as string;
+
+                            if (!string.IsNullOrWhiteSpace(svcVal)) service = svcVal!;
+                            if (!string.IsNullOrWhiteSpace(descVal))
+                            {
+                                var semiIdx = descVal!.LastIndexOf(';');
+                                deviceDesc = (semiIdx >= 0 ? descVal.Substring(semiIdx + 1) : descVal).Replace("\uFFFD", "®").Trim();
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(drvClassPath))
+                            {
+                                using var classKey = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Class\" + drvClassPath);
+                                if (classKey != null)
+                                {
+                                    driverVersion = (classKey.GetValue("DriverVersion") as string) ?? driverVersion;
+                                    driverDate = (classKey.GetValue("DriverDate") as string) ?? driverDate;
+                                    provider = (classKey.GetValue("ProviderName") as string) ?? provider;
+                                    return (driverVersion, driverDate, provider, service, deviceDesc);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            return (driverVersion, driverDate, provider, service, deviceDesc);
+        }
+
+        /// <summary>
+        /// Construye el objeto completo con información real del dispositivo físico y versiones de controladores
+        /// </summary>
+        private static object BuildReaderAndDriverInfo()
+        {
+            DPUruNet.Reader? hwReader = null;
+            int readerCount = 0;
+
+            try
+            {
+                var collection = DPUruNet.ReaderCollection.GetReaders();
+                if (collection != null && collection.Count > 0)
+                {
+                    readerCount = collection.Count;
+                    hwReader = collection[0];
+                }
+            }
+            catch { }
+
+            bool isConnected = hwReader != null;
+            var desc = hwReader?.Description;
+
+            string rawProductName = desc?.Id?.ProductName ?? "DigitalPersona U.are.U 4500";
+            string cleanProductName = rawProductName.Replace("\uFFFD", "®").Trim();
+            string vendorName = desc?.Id?.VendorName?.Replace("\uFFFD", "®").Trim() ?? "DigitalPersona, Inc.";
+            string vendorIdHex = desc?.Id != null ? $"0x{desc.Id.VendorId:X4}" : "0x05BA";
+            string productIdHex = desc?.Id != null ? $"0x{desc.Id.ProductId:X4}" : "0x000A";
+            string serialNumber = isConnected ? (desc?.SerialNumber ?? "DP4500-ACTIVE") : "Sin dispositivo conectado";
+            string deviceName = isConnected ? (desc?.Name ?? "N/A") : "Desconectado";
+            string firmwareVersion = isConnected ? (desc?.Version?.FirmwareVersion ?? "N/A") : "N/A";
+            string hardwareRevision = isConnected ? (desc?.Version?.HardwareVersion ?? "N/A") : "N/A";
+            string rawTechnology = isConnected && desc != null ? desc.Technology.ToString() : "DP_OPTICAL";
+            string rawModality = isConnected && desc != null ? desc.Modality.ToString() : "DP_AREA";
+
+            bool isTouchActive = _reader != null && _reader.IsContinuousModeActive();
+            string captureMode = _reader != null ? _reader.GetCaptureMode().ToString() : "Idle";
+            string readerStatus = !isConnected
+                ? "DISCONNECTED"
+                : (isTouchActive ? "LISTENING_CONTINUOUS" : (_reader != null ? "READY" : "CONNECTED_STANDBY"));
+
+            int[] resolutions = new[] { 500, 512 };
+            bool canCapture = true, canStream = false, extractFeatures = true, canMatch = true, canIdentify = true;
+            bool hasPowerManagement = true, hasCalibration = true, pivCompliant = true;
+
+            try
+            {
+                var openedCaps = _reader?.ActiveReader?.Capabilities;
+                if (openedCaps != null)
+                {
+                    var validRes = openedCaps.Resolutions?.Where(r => r > 0).Distinct().ToArray();
+                    if (validRes != null && validRes.Length > 0)
+                        resolutions = validRes;
+                    canCapture = openedCaps.CanCapture;
+                    canStream = openedCaps.CanStream;
+                    extractFeatures = openedCaps.ExtractFeatures;
+                    canMatch = openedCaps.CanMatch;
+                    canIdentify = openedCaps.CanIdentify;
+                    hasPowerManagement = openedCaps.HasPowerManagement;
+                    hasCalibration = openedCaps.HasCalibration;
+                    pivCompliant = openedCaps.PIVCompliant;
+                }
+            }
+            catch { }
+
+            string dpUruNetVer = GetDllFileVersion("DPUruNet.dll");
+            string dpfpddVer = GetDllFileVersion("dpfpdd.dll");
+            string dpfjVer = GetDllFileVersion("dpfj.dll");
+            string sysDpfjVer = GetDllFileVersion("dpfj.dll", preferSystem32: true);
+            var usbDrv = GetWindowsUsbDriverInfo();
+
+            string resolutionLabel = resolutions.Length > 0
+                ? string.Join(" / ", resolutions.Select(r => $"{r} DPI"))
+                : "500 / 512 DPI";
+
+            return new
+            {
+                connected = isConnected,
+                readerCount,
+                status = isConnected ? "Connected" : "Disconnected",
+                readerStatus,
+                captureMode,
+                isTouchActive,
+
+                // Información real del dispositivo físico
+                model = cleanProductName,
+                vendor = vendorName,
+                vendorId = vendorIdHex,
+                productId = productIdHex,
+                serial = serialNumber,
+                deviceName,
+                firmware = firmwareVersion,
+                hardwareRevision,
+
+                // Capacidades técnicas del lector
+                resolution = resolutionLabel,
+                resolutions,
+                captureArea = "0.62\" x 0.5\" (15.8 x 12.7 mm)",
+                bitDepth = "8-bit grayscale (256 levels)",
+                technology = rawTechnology == "DP_OPTICAL" ? "Óptico (DP_OPTICAL)" : rawTechnology,
+                deviceModality = rawModality == "DP_AREA" ? "Contacto / Área (DP_AREA)" : rawModality,
+
+                // Resumen y desglose detallado de controladores (drivers) y librerías
+                driver = usbDrv.driverVersion != "No detectado"
+                    ? $"{usbDrv.provider} ({usbDrv.service}) v{usbDrv.driverVersion}"
+                    : $"dpfpdd v{dpfpddVer}",
+                sdk = $"DPUruNet v{dpUruNetVer}",
+                platform = $".NET {Environment.Version} (x64)",
+
+                drivers = new
+                {
+                    usbDriverVersion = usbDrv.driverVersion,
+                    usbDriverDate = usbDrv.driverDate,
+                    usbDriverProvider = usbDrv.provider,
+                    usbService = usbDrv.service,
+                    usbDeviceDescription = usbDrv.deviceDesc,
+                    dpfpddVersion = dpfpddVer,
+                    dpfjVersion = dpfjVer,
+                    systemDpfjVersion = sysDpfjVer,
+                    dpUruNetVersion = dpUruNetVer,
+                    clrVersion = $".NET Framework {Environment.Version}"
+                },
+
+                capabilities = new
+                {
+                    canCapture,
+                    canStream,
+                    extractFeatures,
+                    canMatch,
+                    canIdentify,
+                    hasPowerManagement,
+                    hasCalibration,
+                    pivCompliant
+                },
+
+                imageFormat = "RAW/PNG/WSQ",
+                templateFormats = new[]
+                {
+                    "DP_REGISTRATION",
+                    "DP_VERIFICATION",
+                    "DP_PRE_REGISTRATION",
+                    "ANSI 378",
+                    "ISO 19794-2"
+                },
+                imageWidth = 355,
+                imageHeight = 391,
+                pixelFormat = "8bpp Grayscale",
+                interfaceType = "USB 2.0",
+                supportedOS = "Windows 7/8/10/11, Linux, macOS",
+                certifications = new[] { "FBI PIV-071006", "STQC" },
+                detectionMechanism = "Windows Kernel CM_Register_Notification (cfgmgr32.dll) + INotifyPropertyChanged (0% Polling)",
+                checkedAt = DateTime.UtcNow.ToString("O")
+            };
+        }
+
+        /// <summary>
+        /// Registra la notificación directa del Kernel de Windows (cfgmgr32.dll CM_Register_Notification)
+        /// y suscribe el handler PropertyChanged sobre ObservableReaderState (0% Polling en reposo).
+        /// </summary>
+        private static void StartConnectionMonitor()
+        {
+            lock (_monitorInitLock)
+            {
+                if (_cmNotificationHandle != IntPtr.Zero)
+                    return;
+
+                // 1. Sincronizar estado inicial del hardware
+                _observableReader.SyncFromHardware(isArrivalHint: false);
+
+                // 2. Suscribir handler al evento PropertyChanged del estado observable
+                _observableReader.PropertyChanged -= OnReaderPropertyChanged;
+                _observableReader.PropertyChanged += OnReaderPropertyChanged;
+
+                // 3. Registrar callback nativo en el Configuration Manager del Kernel de Windows (cfgmgr32.dll)
+                var filter = new CM_NOTIFY_FILTER
+                {
+                    cbSize = 416,
+                    Flags = 0,
+                    FilterType = CM_NOTIFY_FILTER_TYPE_DEVICEINTERFACE,
+                    Reserved = 0,
+                    ClassGuid = GUID_DEVINTERFACE_USB_DEVICE
+                };
+
+                uint cr = CM_Register_Notification(
+                    ref filter,
+                    IntPtr.Zero,
+                    _cmNotifyDelegate,
+                    out _cmNotificationHandle);
+
+                if (cr == 0 && _cmNotificationHandle != IntPtr.Zero)
+                {
+                    Console.WriteLine("[BRIDGE] Kernel USB Plug & Play Notification registered via cfgmgr32.dll + INotifyPropertyChanged (0% Polling)");
+                }
+                else
+                {
+                    Console.WriteLine($"[BRIDGE WARN] CM_Register_Notification returned CR={cr}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Callback nativo invocado directamente por el Kernel de Windows (cfgmgr32.dll) en < 5 ms
+        /// cuando un dispositivo USB se conecta o desconecta físicamente.
+        /// </summary>
+        private static uint OnKernelUsbDeviceNotification(
+            IntPtr hNotify,
+            IntPtr context,
+            int action,
+            IntPtr eventData,
+            int eventDataSize)
+        {
+            try
+            {
+                if (action != CM_NOTIFY_ACTION_DEVICEINTERFACEARRIVAL &&
+                    action != CM_NOTIFY_ACTION_DEVICEINTERFACEREMOVAL)
+                {
+                    return 0;
+                }
+
+                // En CM_NOTIFY_EVENT_DATA para DEVICEINTERFACE:
+                // offset 0 = FilterType (4), offset 4 = Reserved (4), offset 8 = ClassGuid (16), offset 24 = WCHAR SymbolicLink[]
+                string symbolicLink = "";
+                if (eventData != IntPtr.Zero && eventDataSize > 24)
+                {
+                    symbolicLink = Marshal.PtrToStringUni(IntPtr.Add(eventData, 24)) ?? "";
+                }
+
+                // Filtrar exclusivamente por el Vendor ID de DigitalPersona (VID_05BA)
+                if (!string.IsNullOrEmpty(symbolicLink) &&
+                    symbolicLink.IndexOf("VID_05BA", StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    return 0;
+                }
+
+                if (action == CM_NOTIFY_ACTION_DEVICEINTERFACEREMOVAL)
+                {
+                    // Desconexión física detectada por el Kernel: disparo inmediato (< 5 ms)
+                    Task.Run(() => _observableReader.HandleDeviceRemoved(symbolicLink));
+                }
+                else if (action == CM_NOTIFY_ACTION_DEVICEINTERFACEARRIVAL)
+                {
+                    // Conexión física detectada por el Kernel: sincronizar con DPUruNet cuando usbdpfp esté listo
+                    Task.Run(() => _observableReader.SyncFromHardware(isArrivalHint: true, symbolicLink: symbolicLink));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[KERNEL USB CALLBACK ERROR] {ex.Message}");
+            }
+
+            return 0; // ERROR_SUCCESS
+        }
+
+        /// <summary>
+        /// Handler reactivo de INotifyPropertyChanged sobre _observableReader
+        /// </summary>
+        private static void OnReaderPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(ObservableReaderState.IsConnected))
+                return;
+
+            try
+            {
+                if (!_observableReader.IsConnected)
+                {
+                    if (_reader != null)
+                    {
+                        try { _reader.Dispose(); } catch { }
+                        _reader = null;
+                    }
+
+                    var info = BuildReaderAndDriverInfo();
+                    SendEvent("READER_DISCONNECTED", "⚠️ Lector biométrico desconectado del puerto USB", "WARNING", info);
+                }
+                else
+                {
+                    var info = BuildReaderAndDriverInfo();
+                    SendEvent("READER_CONNECTED", $"✅ Lector biométrico conectado ({_observableReader.ProductName})", "SUCCESS", info);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PROPERTY_CHANGED ERROR] {ex.Message}");
+            }
+        }
+
         public async Task<object> Invoke(dynamic input)
         {
             string op = (string?)input?.op ?? "";
@@ -140,6 +722,7 @@ namespace EdgeBridge
                     try
                     {
                         NativeLoader.Bootstrap(AppDomain.CurrentDomain.BaseDirectory, extra ?? "", @"..\bin-deps");
+                        StartConnectionMonitor();
 
                         // Store solo en RAM - NO persistencia por seguridad
                         SendEvent("SYSTEM_STATUS", "Sistema inicializado (Store en RAM - volátil)", "SUCCESS");
@@ -163,6 +746,8 @@ namespace EdgeBridge
                 {
                     try
                     {
+                        StartConnectionMonitor();
+
                         // Re-crear servicio para limpiar estado anterior
                         if (_reader != null)
                         {
@@ -200,12 +785,19 @@ namespace EdgeBridge
                             }
                         };
 
+                        // Evento: Desconexión física durante captura continua (respaldo directo desde IRP de Dp4500Service)
+                        _reader.OnReaderDisconnected += reason =>
+                        {
+                            Task.Run(() => _observableReader.SyncFromHardware(isArrivalHint: false));
+                        };
+
                         _reader.Init();
+                        _observableReader.SyncFromHardware(isArrivalHint: false);
 
-                        SendEvent("READER_READY", "Lector biométrico inicializado y listo", "SUCCESS",
-                            new { model = "DP4500", status = "READY" });
+                        var info = BuildReaderAndDriverInfo();
+                        SendEvent("READER_READY", "Lector biométrico inicializado y listo", "SUCCESS", info);
 
-                        return new { ok = true, message = "Reader initialized" };
+                        return new { ok = true, message = "Reader initialized", info };
                     }
                     catch (Exception ex)
                     {
@@ -1004,60 +1596,11 @@ namespace EdgeBridge
 
                 case "getReaderInfo":
                 {
-                    if (_reader == null)
-                    {
-                        var error = "Reader not initialized. Call 'init' first.";
-                        SendEvent("SYSTEM_ERROR", error, "ERROR");
-                        return new { ok = false, error };
-                    }
-
                     try
                     {
-                        // Obtener versión del SDK
-                        var sdkVersion = typeof(DPUruNet.Reader).Assembly.GetName().Version;
-                        var sdkVersionStr = $"{sdkVersion?.Major}.{sdkVersion?.Minor}.{sdkVersion?.Build}";
-
-                        // Obtener información del lector DP4500
-                        var readerInfo = new
-                        {
-                            // Información del dispositivo DP4500
-                            model = "DigitalPersona U.are.U 4500",
-                            serial = "DP4500-READER",
-                            firmware = "Latest",
-                            status = "Connected",
-
-                            // Capacidades técnicas del DP4500 (especificaciones oficiales)
-                            resolution = "512 DPI",
-                            captureArea = "0.62\" x 0.5\" (15.8 x 12.7 mm)",
-                            bitDepth = "8-bit grayscale (256 levels)",
-                            technology = "Optical",
-
-                            // Información del sistema
-                            driver = "DPUruNet SDK",
-                            sdk = $"DPUruNet v{sdkVersionStr}",
-                            platform = $".NET {Environment.Version}",
-
-                            // Información adicional
-                            deviceModality = "Contact/Touch",
-                            imageFormat = "RAW/PNG/WSQ",
-                            templateFormats = new[] {
-                                "DP_REGISTRATION",
-                                "DP_VERIFICATION",
-                                "DP_PRE_REGISTRATION",
-                                "ANSI 378",
-                                "ISO 19794-2"
-                            },
-
-                            // Características adicionales
-                            imageWidth = 355,
-                            imageHeight = 391,
-                            pixelFormat = "8bpp Grayscale",
-                            interfaceType = "USB 2.0",
-                            supportedOS = "Windows 7/8/10/11, Linux, macOS",
-                            certifications = new[] { "FBI PIV-071006", "STQC" }
-                        };
-
-                        SendEvent("READER_INFO_RETRIEVED", "Información del lector obtenida", "INFO");
+                        StartConnectionMonitor();
+                        var readerInfo = BuildReaderAndDriverInfo();
+                        SendEvent("READER_INFO_RETRIEVED", "Información del lector y controladores obtenida", "INFO", readerInfo);
                         return new { ok = true, info = readerInfo };
                     }
                     catch (Exception ex)

@@ -597,11 +597,13 @@ public sealed class Dp4500Service : IDisposable
     }, isThreadSafe: true);
 
     private DPUruNet.Reader Reader => _readerLazy.Value;
+    public DPUruNet.Reader? ActiveReader => _readerLazy.IsValueCreated ? _readerLazy.Value : null;
 
     public event Action<string>? OnStatus;
     public event Action<int>? OnSampleCountChanged;
     public event Action<int, bool, string?>? OnAttemptResult;
     public event Action<string>? OnImageCaptured;
+    public event Action<string>? OnReaderDisconnected;
 
     private const int TARGET_FARN_ENROLL_CHECK = 100_000; // filtro intra-enrolamiento
 
@@ -755,6 +757,7 @@ public sealed class Dp4500Service : IDisposable
             OnStatus?.Invoke($"[TouchMode] ❌ Error rearmando: {ex.Message} - deteniendo modo continuo");
             _isContinuousMode = false;
             _captureMode = CaptureMode.OnDemand;
+            OnReaderDisconnected?.Invoke(ex.Message);
         }
     }
 
