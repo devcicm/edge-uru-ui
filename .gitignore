@@ -62,11 +62,10 @@ images/
 packages/
 .nuget/
 
-# Build artifacts (keep only main DLL)
+# Build artifacts (keep only main DLL, never track .pdb debug symbols)
 out/net472/*.dll
 out/net472/*.pdb
 !out/net472/bridge-csharp.dll
-!out/net472/bridge-csharp.pdb
 
 # MSBuild
 bridge-csharp/obj/

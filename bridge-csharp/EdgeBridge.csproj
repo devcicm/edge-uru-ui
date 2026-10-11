@@ -6,6 +6,9 @@
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
     <OutputPath>..\out\</OutputPath>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <Deterministic>true</Deterministic>
     <!-- Deshabilitar inclusión automática de archivos .cs para control manual -->
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>

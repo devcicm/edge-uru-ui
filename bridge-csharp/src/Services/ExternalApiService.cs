@@ -99,7 +99,7 @@ namespace EdgeBridge.Services
                 },
                 Fingerprints = capturedFingerprints,
                 CapturedAt = DateTime.UtcNow,
-                DeviceId = "DP4500_" + Environment.MachineName,
+                DeviceId = "DP4500_" + ComputeSHA256Hash(Encoding.UTF8.GetBytes(Environment.MachineName)).Substring(0, 8),
                 Metadata = metadata
             };
 
